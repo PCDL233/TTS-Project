@@ -18,6 +18,23 @@ export function base64ToBlob(base64: string, mimeType: string): Blob {
 }
 
 /**
+ * Blob转Base64字符串
+ */
+export function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const result = reader.result as string
+      // result 是 data URL，如 data:audio/wav;base64,xxxx
+      const base64 = result.split(',')[1]
+      resolve(base64)
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
+
+/**
  * Base64字符串转ArrayBuffer
  */
 export function base64ToArrayBuffer(base64: string): ArrayBuffer {
@@ -90,6 +107,18 @@ export function fileToBase64(file: File): Promise<string> {
     }
     reader.onerror = reject
     reader.readAsDataURL(file)
+  })
+}
+
+/**
+ * 读取文本文件内容
+ */
+export function readTextFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsText(file)
   })
 }
 

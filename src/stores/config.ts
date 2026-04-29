@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import type { TTSConfig, TTSMode, PresetVoice, BaseUrlPreset } from '../types/tts'
-import { BASE_URL_OPTIONS } from '../types/tts'
+import { BASE_URL_OPTIONS, MODEL_MAP } from '../types/tts'
 
 const STORAGE_KEY = 'mimo-tts-config'
 
@@ -11,6 +11,7 @@ function getDefaultConfig(): TTSConfig {
     baseUrlPreset: 'default',
     baseUrlCustom: '',
     mode: 'preset',
+    model: MODEL_MAP.preset,
     presetVoice: 'mimo_default',
     voiceDesignText: '',
     cloneAudioBase64: '',
@@ -18,7 +19,6 @@ function getDefaultConfig(): TTSConfig {
     styleMode: 'natural',
     styleText: '',
     audioFormat: 'wav',
-    stream: false,
   }
 }
 
@@ -26,7 +26,14 @@ function loadConfig(): TTSConfig {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
-      return { ...getDefaultConfig(), ...JSON.parse(saved) }
+      const parsed = JSON.parse(saved)
+      // 兼容性：旧配置可能没有 model 字段
+      if (!parsed.model) {
+        parsed.model = MODEL_MAP[parsed.mode || 'preset']
+      }
+      // 兼容性：移除旧的 stream 字段
+      delete parsed.stream
+      return { ...getDefaultConfig(), ...parsed }
     }
   } catch {
     // ignore
@@ -67,6 +74,17 @@ export const useConfigStore = defineStore('config', () => {
 
   function updateMode(mode: TTSMode) {
     config.value.mode = mode
+    // 联动更新模型
+    config.value.model = MODEL_MAP[mode]
+  }
+
+  function updateModel(model: string) {
+    config.value.model = model
+    // 联动更新模式
+    const option = Object.entries(MODEL_MAP).find(([, v]) => v === model)
+    if (option) {
+      config.value.mode = option[0] as TTSMode
+    }
   }
 
   function updatePresetVoice(voice: PresetVoice) {
@@ -90,12 +108,8 @@ export const useConfigStore = defineStore('config', () => {
     config.value.styleText = text
   }
 
-  function updateAudioFormat(format: 'wav' | 'pcm16') {
+  function updateAudioFormat(format: 'wav' | 'pcm16' | 'mp3') {
     config.value.audioFormat = format
-  }
-
-  function updateStream(stream: boolean) {
-    config.value.stream = stream
   }
 
   return {
@@ -105,12 +119,12 @@ export const useConfigStore = defineStore('config', () => {
     updateBaseUrlCustom,
     getEffectiveBaseUrl,
     updateMode,
+    updateModel,
     updatePresetVoice,
     updateVoiceDesignText,
     updateCloneAudio,
     updateStyleMode,
     updateStyleText,
     updateAudioFormat,
-    updateStream,
   }
 })

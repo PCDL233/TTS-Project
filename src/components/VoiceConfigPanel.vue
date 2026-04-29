@@ -1,24 +1,51 @@
 <template>
   <div class="h-full flex flex-col">
-    <div class="flex-1 overflow-y-auto p-4 space-y-5">
+    <div class="flex-1 overflow-y-auto p-4 space-y-6">
+      <!-- 模型选择 -->
+      <div>
+        <label class="text-sm font-medium text-gray-700 mb-2 block">选择模型</label>
+        <el-select
+          v-model="configStore.config.model"
+          class="w-full"
+          size="default"
+          popper-class="model-select-dropdown"
+          @change="onModelChange"
+        >
+          <el-option
+            v-for="m in MODEL_OPTIONS"
+            :key="m.value"
+            :label="m.label"
+            :value="m.value"
+          >
+            <div class="flex flex-col py-1.5">
+              <span class="text-sm font-medium">{{ m.label }}</span>
+              <span class="text-xs text-gray-400 leading-relaxed">{{ m.description }}</span>
+            </div>
+          </el-option>
+        </el-select>
+        <p class="text-xs text-gray-400 mt-1.5">
+          {{ currentModelOption?.description }}
+        </p>
+      </div>
+
       <!-- 模式选择 -->
       <div>
         <label class="text-sm font-medium text-gray-700 mb-2 block">合成模式</label>
-        <el-radio-group v-model="configStore.config.mode" size="default" class="w-full">
-          <el-radio-button label="preset" class="flex-1">
+        <el-radio-group v-model="configStore.config.mode" size="default" class="w-full mode-radio-group" @change="onModeChange">
+          <el-radio-button label="preset">
             <el-icon><headset /></el-icon> 预置音色
           </el-radio-button>
-          <el-radio-button label="design" class="flex-1">
+          <el-radio-button label="design">
             <el-icon><magic-stick /></el-icon> 音色设计
           </el-radio-button>
-          <el-radio-button label="clone" class="flex-1">
+          <el-radio-button label="clone">
             <el-icon><copy-document /></el-icon> 音色复刻
           </el-radio-button>
         </el-radio-group>
       </div>
 
       <!-- 预置音色 -->
-      <div v-if="configStore.config.mode === 'preset'">
+      <div v-if="configStore.config.mode === 'preset'" key="preset-panel" class="mt-4">
         <label class="text-sm font-medium text-gray-700 mb-2 block">选择音色</label>
         <el-select v-model="configStore.config.presetVoice" class="w-full" size="default">
           <el-option
@@ -31,7 +58,7 @@
       </div>
 
       <!-- 音色设计 -->
-      <div v-if="configStore.config.mode === 'design'">
+      <div v-if="configStore.config.mode === 'design'" key="design-panel" class="mt-4">
         <label class="text-sm font-medium text-gray-700 mb-2 block">音色描述</label>
         <el-input
           v-model="configStore.config.voiceDesignText"
@@ -39,7 +66,7 @@
           :rows="4"
           placeholder="描述你想要的音色，例如：年轻女性，温柔甜美的声音，语速适中，像电台主持人一样..."
         />
-        <div class="mt-2 flex flex-wrap gap-2">
+        <div class="mt-3 flex flex-wrap gap-2">
           <el-tag
             v-for="template in voiceDesignTemplates"
             :key="template.name"
@@ -53,7 +80,7 @@
       </div>
 
       <!-- 音色复刻 -->
-      <div v-if="configStore.config.mode === 'clone'">
+      <div v-if="configStore.config.mode === 'clone'" key="clone-panel" class="mt-4">
         <label class="text-sm font-medium text-gray-700 mb-2 block">上传参考音频</label>
         <AudioUploader />
       </div>
@@ -78,7 +105,7 @@
           :rows="3"
           placeholder="用自然语言描述你想要的语音风格，例如：用轻快上扬的语调，语速稍快，带着兴奋与骄傲..."
         />
-        <div class="mt-2 flex flex-wrap gap-2">
+        <div class="mt-3 flex flex-wrap gap-2">
           <el-tag
             v-for="template in styleTemplates"
             :key="template.name"
@@ -139,57 +166,19 @@
       <el-divider />
 
       <!-- 高级设置 -->
-      <!-- Base URL 配置 -->
-      <div>
-        <label class="text-sm font-medium text-gray-700 mb-2 block">Base URL</label>
-        <el-select
-          v-model="configStore.config.baseUrlPreset"
-          class="w-full"
-          size="default"
-          @change="onBaseUrlPresetChange"
-        >
-          <el-option
-            v-for="opt in BASE_URL_OPTIONS"
-            :key="opt.value"
-            :label="opt.label"
-            :value="opt.value"
-          />
-        </el-select>
-        <p class="text-xs text-gray-400 mt-1">
-          {{ currentBaseUrlOption?.description }}
-        </p>
-        <el-input
-          v-if="configStore.config.baseUrlPreset === 'custom'"
-          v-model="configStore.config.baseUrlCustom"
-          class="mt-2"
-          size="default"
-          placeholder="https://your-custom-endpoint.com/v1"
-        />
-      </div>
-
-      <el-divider />
-
       <div>
         <el-collapse>
           <el-collapse-item title="高级设置" name="advanced">
-            <div class="space-y-3 pt-1">
+            <div class="space-y-4 pt-1">
+              <!-- 音频格式 -->
               <div>
-                <label class="text-sm text-gray-600">音频格式</label>
-                <el-radio-group v-model="configStore.config.audioFormat" size="small" class="mt-1">
+                <label class="text-sm text-gray-600 mb-2 block">音频格式</label>
+                <el-radio-group v-model="configStore.config.audioFormat" size="small">
                   <el-radio-button label="wav">WAV</el-radio-button>
                   <el-radio-button label="pcm16">PCM16</el-radio-button>
+                  <el-radio-button label="mp3">MP3</el-radio-button>
                 </el-radio-group>
               </div>
-              <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">流式输出</span>
-                <el-switch
-                  v-model="configStore.config.stream"
-                  size="small"
-                />
-              </div>
-              <p v-if="configStore.config.stream" class="text-xs text-amber-600">
-                提示：流式功能暂未正式上线，当前为兼容模式
-              </p>
             </div>
           </el-collapse-item>
         </el-collapse>
@@ -202,18 +191,27 @@
 import { computed } from 'vue'
 import { Headset, MagicStick, CopyDocument } from '@element-plus/icons-vue'
 import { useConfigStore } from '../stores/config'
-import { PRESET_VOICES, STYLE_TAGS, STYLE_TAG_GROUPS, BASE_URL_OPTIONS } from '../types/tts'
+import { PRESET_VOICES, STYLE_TAGS, STYLE_TAG_GROUPS, MODEL_OPTIONS } from '../types/tts'
 import AudioUploader from './AudioUploader.vue'
 
 const configStore = useConfigStore()
 
-const currentBaseUrlOption = computed(() =>
-  BASE_URL_OPTIONS.find(o => o.value === configStore.config.baseUrlPreset)
+const currentModelOption = computed(() =>
+  MODEL_OPTIONS.find(m => m.value === configStore.config.model)
 )
 
-function onBaseUrlPresetChange(val: string) {
-  // 预设变更时不需要额外处理，v-model 已自动同步
-  // 自定义模式下保留用户之前输入的 URL
+function onModelChange(model: string) {
+  const option = MODEL_OPTIONS.find(m => m.value === model)
+  if (option) {
+    configStore.updateMode(option.mode)
+  }
+}
+
+function onModeChange(mode: string) {
+  const option = MODEL_OPTIONS.find(m => m.mode === mode)
+  if (option) {
+    configStore.updateModel(option.value)
+  }
 }
 
 const voiceDesignTemplates = [
@@ -262,12 +260,32 @@ function applyStyleTemplate(text: string) {
   configStore.updateStyleText(text)
 }
 
-function insertTag(tag: string, type: 'style' | 'audio') {
+function insertTag(tag: string, _type: 'style' | 'audio') {
   const current = configStore.config.styleText
-  if (type === 'style') {
-    configStore.updateStyleText(current ? `${current} ${tag}` : tag)
-  } else {
-    configStore.updateStyleText(current ? `${current} ${tag}` : tag)
-  }
+  configStore.updateStyleText(current ? `${current} ${tag}` : tag)
 }
 </script>
+
+<style>
+/* 模型选择下拉菜单：让 option 高度自适应，容纳 label + description 两行 */
+.model-select-dropdown .el-select-dropdown__item {
+  height: auto;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  line-height: 1.4;
+}
+
+/* 合成模式 radio group：强制 flex 布局，按钮等分宽度 */
+.mode-radio-group {
+  display: flex !important;
+  gap: 8px;
+}
+.mode-radio-group .el-radio-button {
+  flex: 1;
+}
+.mode-radio-group .el-radio-button .el-radio-button__inner {
+  width: 100%;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+</style>

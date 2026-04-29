@@ -33,7 +33,7 @@
     />
 
     <div class="flex items-center gap-4 mt-3 text-xs text-gray-500">
-      <span>格式: WAV</span>
+      <span>格式: {{ displayFormat }}</span>
       <span>采样率: 24kHz</span>
       <span v-if="duration">时长: {{ formatDuration(duration) }}</span>
     </div>
@@ -41,13 +41,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { VideoPlay, Refresh, Download } from '@element-plus/icons-vue'
 import { downloadBlob } from '../utils/audio'
 
 const props = defineProps<{
   audioUrl: string
   audioBlob: Blob | null
+  audioFormat?: string
 }>()
 
 const emit = defineEmits<{
@@ -56,6 +57,11 @@ const emit = defineEmits<{
 
 const audioRef = ref<HTMLAudioElement>()
 const duration = ref(0)
+
+const displayFormat = computed(() => {
+  const fmt = props.audioFormat || 'wav'
+  return fmt.toUpperCase()
+})
 
 function onLoadedMetadata() {
   if (audioRef.value) {
@@ -71,7 +77,8 @@ function formatDuration(seconds: number): string {
 
 function download() {
   if (props.audioBlob) {
-    downloadBlob(props.audioBlob, `mimo-tts-${Date.now()}.wav`)
+    const ext = props.audioFormat === 'mp3' ? 'mp3' : 'wav'
+    downloadBlob(props.audioBlob, `mimo-tts-${Date.now()}.${ext}`)
   }
 }
 </script>

@@ -1,10 +1,15 @@
 import { ref, computed, onUnmounted } from 'vue'
 import axios from 'axios'
 import { createTTSClient } from '../api/tts'
-import { base64ToBlob, pcm16ToWav, downloadBlob } from '../utils/audio'
+import { base64ToBlob } from '../utils/audio'
 import { useConfigStore } from '../stores/config'
-import { MODEL_MAP } from '../types/tts'
 import type { TTSRequestParams } from '../types/tts'
+
+export interface GenerateResult {
+  base64: string
+  blob: Blob
+  url: string
+}
 
 export function useTTS() {
   const configStore = useConfigStore()
@@ -12,6 +17,7 @@ export function useTTS() {
   const error = ref('')
   const audioUrl = ref('')
   const audioBlob = ref<Blob | null>(null)
+  const audioBase64 = ref('')
   const abortController = ref<AbortController | null>(null)
 
   const canGenerate = computed(() => {
@@ -30,15 +36,15 @@ export function useTTS() {
     }
   })
 
-  async function generate(text: string) {
+  async function generate(text: string): Promise<GenerateResult | null> {
     const { config } = configStore
     if (!config.apiKey) {
       error.value = '请先设置 API Key'
-      return
+      return null
     }
     if (!text.trim()) {
       error.value = '请输入要合成的文本'
-      return
+      return null
     }
 
     loading.value = true
@@ -50,6 +56,7 @@ export function useTTS() {
       audioUrl.value = ''
     }
     audioBlob.value = null
+    audioBase64.value = ''
 
     abortController.value = new AbortController()
 
@@ -57,51 +64,27 @@ export function useTTS() {
       const client = createTTSClient(config.apiKey, configStore.getEffectiveBaseUrl())
       const params = buildRequestParams(text)
 
-      if (config.stream && config.audioFormat === 'pcm16') {
-        await generateStream(client, params)
-      } else {
-        await generateNormal(client, params)
-      }
+      const base64Data = await client.generate(params, abortController.value.signal)
+      const mimeType = config.audioFormat === 'mp3' ? 'audio/mpeg' : 'audio/wav'
+      const blob = base64ToBlob(base64Data, mimeType)
+      const url = URL.createObjectURL(blob)
+
+      audioBlob.value = blob
+      audioUrl.value = url
+      audioBase64.value = base64Data
+
+      return { base64: base64Data, blob, url }
     } catch (err: any) {
       if (axios.isCancel?.(err) || err.name === 'AbortError' || err.message === 'Aborted') {
         error.value = '已取消生成'
       } else {
         error.value = err.response?.data?.error?.message || err.message || '生成失败，请检查API Key和网络连接'
       }
+      return null
     } finally {
       loading.value = false
       abortController.value = null
     }
-  }
-
-  async function generateNormal(client: ReturnType<typeof createTTSClient>, params: TTSRequestParams) {
-    const signal = abortController.value?.signal
-    const base64Data = await client.generate(params, signal)
-    const blob = base64ToBlob(base64Data, 'audio/wav')
-    audioBlob.value = blob
-    audioUrl.value = URL.createObjectURL(blob)
-  }
-
-  async function generateStream(client: ReturnType<typeof createTTSClient>, params: TTSRequestParams) {
-    const signal = abortController.value?.signal
-    const chunks: Uint8Array[] = []
-
-    for await (const base64Data of client.generateStream(params, signal)) {
-      const bytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))
-      chunks.push(bytes)
-    }
-
-    const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
-    const merged = new Uint8Array(totalLength)
-    let offset = 0
-    for (const chunk of chunks) {
-      merged.set(chunk, offset)
-      offset += chunk.length
-    }
-
-    const wavBlob = pcm16ToWav(merged.buffer)
-    audioBlob.value = wavBlob
-    audioUrl.value = URL.createObjectURL(wavBlob)
   }
 
   function buildRequestParams(text: string): TTSRequestParams {
@@ -142,26 +125,19 @@ export function useTTS() {
     if (config.mode === 'preset') {
       audio.voice = config.presetVoice
     } else if (config.mode === 'clone' && config.cloneAudioBase64) {
-      const mimeType = config.cloneAudioName.endsWith('.wav') ? 'audio/wav' : 'audio/mpeg'
+      const mimeType = config.cloneAudioName?.endsWith('.wav') ? 'audio/wav' : 'audio/mpeg'
       audio.voice = `data:${mimeType};base64,${config.cloneAudioBase64}`
     }
 
     return {
-      model: MODEL_MAP[config.mode],
+      model: config.model || 'mimo-v2.5-tts',
       messages,
       audio,
-      stream: config.stream,
     }
   }
 
   function stop() {
     abortController.value?.abort()
-  }
-
-  function download(filename?: string) {
-    if (!audioBlob.value) return
-    const name = filename || `mimo-tts-${Date.now()}.wav`
-    downloadBlob(audioBlob.value, name)
   }
 
   function clearAudio() {
@@ -170,6 +146,7 @@ export function useTTS() {
     }
     audioUrl.value = ''
     audioBlob.value = null
+    audioBase64.value = ''
     error.value = ''
   }
 
@@ -184,10 +161,10 @@ export function useTTS() {
     error,
     audioUrl,
     audioBlob,
+    audioBase64,
     canGenerate,
     generate,
     stop,
-    download,
     clearAudio,
   }
 }

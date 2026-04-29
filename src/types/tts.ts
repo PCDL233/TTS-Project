@@ -72,6 +72,34 @@ export const PRESET_VOICES: VoiceOption[] = [
   { value: 'Dean', label: 'Dean', lang: '英文', gender: '男性' },
 ]
 
+export interface ModelOption {
+  value: string
+  label: string
+  mode: TTSMode
+  description: string
+}
+
+export const MODEL_OPTIONS: ModelOption[] = [
+  {
+    value: 'mimo-v2.5-tts',
+    label: 'MiMo-V2.5-TTS',
+    mode: 'preset',
+    description: '内置精品音色，支持预置音色合成',
+  },
+  {
+    value: 'mimo-v2.5-tts-voicedesign',
+    label: 'MiMo-V2.5-TTS-VoiceDesign',
+    mode: 'design',
+    description: '通过文本描述从零设计全新音色',
+  },
+  {
+    value: 'mimo-v2.5-tts-voiceclone',
+    label: 'MiMo-V2.5-TTS-VoiceClone',
+    mode: 'clone',
+    description: '基于音频样本高保真复刻任意音色',
+  },
+]
+
 export const MODEL_MAP: Record<TTSMode, string> = {
   preset: 'mimo-v2.5-tts',
   design: 'mimo-v2.5-tts-voicedesign',
@@ -83,11 +111,13 @@ export interface TTSMessage {
   content: string
 }
 
+export type AudioFormat = 'wav' | 'pcm16' | 'mp3'
+
 export interface TTSRequestParams {
   model: string
   messages: TTSMessage[]
   audio: {
-    format: 'wav' | 'pcm16'
+    format: AudioFormat
     voice?: string
   }
   stream?: boolean
@@ -110,6 +140,8 @@ export interface TTSHistoryItem {
   voice: string
   styleText: string
   audioUrl: string
+  audioBase64?: string
+  audioFormat?: AudioFormat
   createdAt: number
 }
 
@@ -118,14 +150,14 @@ export interface TTSConfig {
   baseUrlPreset: BaseUrlPreset
   baseUrlCustom: string
   mode: TTSMode
+  model: string
   presetVoice: PresetVoice
   voiceDesignText: string
   cloneAudioBase64: string
   cloneAudioName: string
   styleMode: 'natural' | 'tag'
   styleText: string
-  audioFormat: 'wav' | 'pcm16'
-  stream: boolean
+  audioFormat: AudioFormat
 }
 
 export const STYLE_TAGS = {

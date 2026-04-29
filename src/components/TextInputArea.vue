@@ -7,6 +7,19 @@
         <el-tag size="small" type="info">{{ text.length }} 字符</el-tag>
       </div>
       <div class="flex items-center gap-2">
+        <el-upload
+          ref="uploadRef"
+          action=""
+          :auto-upload="false"
+          :show-file-list="false"
+          :on-change="onTextFileChange"
+          accept=".txt"
+        >
+          <el-button size="small" link>
+            <el-icon><document /></el-icon>
+            上传文本
+          </el-button>
+        </el-upload>
         <el-button
           size="small"
           link
@@ -31,18 +44,21 @@
       v-model="text"
       type="textarea"
       :rows="8"
-      placeholder="请输入要转换为语音的文本内容...&#10;&#10;使用音频标签控制时，可直接在文本中插入标签，例如：&#10;（开心）今天天气真好！&#10;（唱歌）原谅我这一生不羁放纵爱自由"
+      placeholder="请输入要转换为语音的文本内容...&#10;&#10;支持直接输入，或点击「上传文本」导入 .txt 文件。&#10;使用音频标签控制时，可直接在文本中插入标签，例如：&#10;（开心）今天天气真好！&#10;（唱歌）原谅我这一生不羁放纵爱自由"
       class="flex-1"
       resize="none"
     />
 
     <!-- 操作按钮 -->
     <div class="flex items-center justify-between mt-4">
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
+        <el-tag size="small" type="primary">
+          {{ currentModelLabel }}
+        </el-tag>
         <el-tag
           v-if="configStore.config.mode === 'preset'"
           size="small"
-          type="primary"
+          type="info"
         >
           {{ getVoiceLabel() }}
         </el-tag>
@@ -97,10 +113,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Microphone, Collection, Delete, VideoPause } from '@element-plus/icons-vue'
+import { ref, computed } from 'vue'
+import { Microphone, Collection, Delete, VideoPause, Document } from '@element-plus/icons-vue'
 import { useConfigStore } from '../stores/config'
-import { PRESET_VOICES } from '../types/tts'
+import { PRESET_VOICES, MODEL_OPTIONS } from '../types/tts'
+import { readTextFile } from '../utils/audio'
+import type { UploadFile } from 'element-plus'
 
 const props = defineProps<{
   loading: boolean
@@ -115,6 +133,12 @@ const emit = defineEmits<{
 const configStore = useConfigStore()
 const text = ref('')
 const showExamples = ref(false)
+const uploadRef = ref()
+
+const currentModelLabel = computed(() => {
+  const model = MODEL_OPTIONS.find(m => m.value === configStore.config.model)
+  return model?.label || configStore.config.model
+})
 
 const examples = [
   {
@@ -161,6 +185,23 @@ function clearText() {
 function applyExample(example: typeof examples[0]) {
   text.value = example.text
   showExamples.value = false
+}
+
+async function onTextFileChange(uploadFile: UploadFile) {
+  const rawFile = uploadFile.raw
+  if (!rawFile) return
+  if (!rawFile.name.endsWith('.txt')) {
+    return
+  }
+  try {
+    const content = await readTextFile(rawFile)
+    text.value = content
+    if (uploadRef.value) {
+      uploadRef.value.clearFiles()
+    }
+  } catch {
+    // ignore
+  }
 }
 
 // 暴露text给父组件
