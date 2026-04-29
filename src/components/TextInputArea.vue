@@ -15,14 +15,13 @@
           :on-change="onTextFileChange"
           accept=".txt"
         >
-          <el-button size="small" link>
+          <el-button size="small">
             <el-icon><document /></el-icon>
             上传文本
           </el-button>
         </el-upload>
         <el-button
           size="small"
-          link
           @click="showExamples = true"
         >
           <el-icon><collection /></el-icon>
@@ -30,7 +29,6 @@
         </el-button>
         <el-button
           size="small"
-          link
           @click="clearText"
         >
           <el-icon><delete /></el-icon>
@@ -45,7 +43,7 @@
       type="textarea"
       :rows="8"
       placeholder="请输入要转换为语音的文本内容...&#10;&#10;支持直接输入，或点击「上传文本」导入 .txt 文件。&#10;使用音频标签控制时，可直接在文本中插入标签，例如：&#10;（开心）今天天气真好！&#10;（唱歌）原谅我这一生不羁放纵爱自由"
-      class="flex-1"
+      class="flex-1 textarea-fill"
       resize="none"
     />
 
@@ -207,3 +205,17 @@ async function onTextFileChange(uploadFile: UploadFile) {
 // 暴露text给父组件
 defineExpose({ text })
 </script>
+
+<style scoped>
+/* 让 el-input textarea 占满父容器剩余高度 */
+.textarea-fill {
+  display: flex;
+  flex-direction: column;
+}
+.textarea-fill :deep(.el-textarea) {
+  flex: 1;
+}
+.textarea-fill :deep(.el-textarea__inner) {
+  height: 100% !important;
+}
+</style>

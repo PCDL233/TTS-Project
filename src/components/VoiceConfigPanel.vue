@@ -127,7 +127,7 @@
           class="mb-3"
         />
 
-        <div class="space-y-3 max-h-80 overflow-y-auto pr-1">
+        <div class="space-y-3 pr-1">
           <div v-for="group in STYLE_TAG_GROUPS" :key="group.key">
             <div class="text-xs text-gray-500 mb-1">{{ group.label }}</div>
             <div class="flex flex-wrap gap-1.5">
@@ -169,7 +169,7 @@
       <div>
         <el-collapse>
           <el-collapse-item title="高级设置" name="advanced">
-            <div class="space-y-4 pt-1">
+            <div class="space-y-4 pt-1 px-1">
               <!-- 音频格式 -->
               <div>
                 <label class="text-sm text-gray-600 mb-2 block">音频格式</label>
