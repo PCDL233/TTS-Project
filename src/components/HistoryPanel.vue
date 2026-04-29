@@ -47,6 +47,7 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import { Close } from '@element-plus/icons-vue'
 import { useHistoryStore } from '../stores/history'
 import type { TTSHistoryItem } from '../types/tts'
@@ -56,7 +57,7 @@ const emit = defineEmits<{
 }>()
 
 const historyStore = useHistoryStore()
-const history = historyStore.history
+const { history } = storeToRefs(historyStore)
 
 function playHistory(item: TTSHistoryItem) {
   emit('play', item)

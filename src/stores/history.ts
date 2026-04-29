@@ -5,6 +5,16 @@ import type { TTSHistoryItem } from '../types/tts'
 const STORAGE_KEY = 'mimo-tts-history'
 const MAX_ITEMS = 10
 
+/** 安全释放 blob URL，避免 undefined/null 导致异常中断删除流程 */
+function safeRevoke(url: string | undefined | null) {
+  if (!url) return
+  try {
+    URL.revokeObjectURL(url)
+  } catch {
+    // ignore
+  }
+}
+
 function loadHistory(): TTSHistoryItem[] {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
@@ -39,7 +49,7 @@ export const useHistoryStore = defineStore('history', () => {
       // 释放旧的blob URL
       const removed = history.value.pop()
       if (removed) {
-        URL.revokeObjectURL(removed.audioUrl)
+        safeRevoke(removed.audioUrl)
       }
     }
   }
@@ -47,14 +57,14 @@ export const useHistoryStore = defineStore('history', () => {
   function removeItem(id: string) {
     const index = history.value.findIndex(item => item.id === id)
     if (index > -1) {
-      URL.revokeObjectURL(history.value[index].audioUrl)
+      safeRevoke(history.value[index].audioUrl)
       history.value.splice(index, 1)
     }
   }
 
   function clear() {
     for (const item of history.value) {
-      URL.revokeObjectURL(item.audioUrl)
+      safeRevoke(item.audioUrl)
     }
     history.value = []
   }
