@@ -127,7 +127,7 @@
           class="mb-3"
         />
 
-        <div class="space-y-3 pr-1 max-h-64 overflow-y-auto">
+        <div class="space-y-3 pr-1">
           <div v-for="group in STYLE_TAG_GROUPS" :key="group.key">
             <div class="text-xs text-gray-500 mb-1">{{ group.label }}</div>
             <div class="flex flex-wrap gap-1.5">
