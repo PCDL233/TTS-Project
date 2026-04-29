@@ -163,7 +163,7 @@ async function onGenerate(text: string) {
   const result = await generate(text)
   if (!result) return
 
-  let voiceLabel = configStore.config.presetVoice
+  let voiceLabel: string = configStore.config.presetVoice
   if (configStore.config.mode === 'design') {
     voiceLabel = '自定义音色'
   } else if (configStore.config.mode === 'clone') {

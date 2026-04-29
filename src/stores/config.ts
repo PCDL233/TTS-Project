@@ -29,7 +29,7 @@ function loadConfig(): TTSConfig {
       const parsed = JSON.parse(saved)
       // 兼容性：旧配置可能没有 model 字段
       if (!parsed.model) {
-        parsed.model = MODEL_MAP[parsed.mode || 'preset']
+        parsed.model = MODEL_MAP[(parsed.mode as TTSMode) || 'preset']
       }
       // 兼容性：移除旧的 stream 字段
       delete parsed.stream

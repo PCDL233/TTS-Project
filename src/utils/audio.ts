@@ -3,7 +3,7 @@
  */
 export function base64ToBlob(base64: string, mimeType: string): Blob {
   const byteCharacters = atob(base64)
-  const byteArrays: Uint8Array[] = []
+  const byteArrays: BlobPart[] = []
 
   for (let i = 0; i < byteCharacters.length; i += 512) {
     const slice = byteCharacters.slice(i, i + 512)
@@ -55,7 +55,6 @@ export function pcm16ToWav(pcmData: ArrayBuffer): Blob {
   const numChannels = 1
   const bitsPerSample = 16
 
-  const pcmView = new DataView(pcmData)
   const pcmLength = pcmData.byteLength
 
   const wavHeaderLength = 44
