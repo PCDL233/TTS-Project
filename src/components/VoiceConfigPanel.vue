@@ -90,7 +90,7 @@
       <!-- 风格控制 -->
       <div>
         <label class="text-sm font-medium text-gray-700 mb-2 block">风格控制方式</label>
-        <el-radio-group v-model="configStore.config.styleMode" size="default">
+        <el-radio-group v-model="configStore.config.styleMode" size="default" @change="onStyleModeChange">
           <el-radio-button label="natural">自然语言</el-radio-button>
           <el-radio-button label="tag">音频标签</el-radio-button>
         </el-radio-group>
@@ -127,7 +127,7 @@
           class="mb-3"
         />
 
-        <div class="space-y-3 pr-1">
+        <div class="space-y-3 pr-1 max-h-64 overflow-y-auto">
           <div v-for="group in STYLE_TAG_GROUPS" :key="group.key">
             <div class="text-xs text-gray-500 mb-1">{{ group.label }}</div>
             <div class="flex flex-wrap gap-1.5">
@@ -135,9 +135,11 @@
                 v-for="tag in STYLE_TAGS[group.key]"
                 :key="tag"
                 size="small"
-                effect="plain"
-                class="cursor-pointer hover:bg-orange-50 hover:text-orange-600 hover:border-orange-300"
-                @click="insertTag(tag, 'style')"
+                :effect="usedTags.has(tag) ? 'dark' : 'plain'"
+                :type="usedTags.has(tag) ? 'primary' : ''"
+                class="cursor-pointer select-none transition-colors"
+                :class="usedTags.has(tag) ? 'tag-active' : 'tag-inactive'"
+                @click="toggleTag(tag)"
               >
                 {{ tag }}
               </el-tag>
@@ -151,10 +153,11 @@
                 v-for="tag in STYLE_TAGS.audioEffect"
                 :key="tag"
                 size="small"
-                effect="plain"
-                type="warning"
-                class="cursor-pointer hover:bg-orange-50 hover:text-orange-600 hover:border-orange-300"
-                @click="insertTag(tag, 'audio')"
+                :effect="usedTags.has(tag) ? 'dark' : 'plain'"
+                :type="usedTags.has(tag) ? 'primary' : 'warning'"
+                class="cursor-pointer select-none transition-colors"
+                :class="usedTags.has(tag) ? 'tag-active' : 'tag-inactive'"
+                @click="toggleTag(tag)"
               >
                 {{ tag }}
               </el-tag>
@@ -199,6 +202,13 @@ const configStore = useConfigStore()
 const currentModelOption = computed(() =>
   MODEL_OPTIONS.find(m => m.value === configStore.config.model)
 )
+
+/** 当前已选中的风格标签集合 */
+const usedTags = computed(() => {
+  const text = configStore.config.styleText.trim()
+  if (!text) return new Set<string>()
+  return new Set(text.split(/\s+/).filter(Boolean))
+})
 
 function onModelChange(model: string) {
   const option = MODEL_OPTIONS.find(m => m.value === model)
@@ -260,9 +270,22 @@ function applyStyleTemplate(text: string) {
   configStore.updateStyleText(text)
 }
 
-function insertTag(tag: string, _type: 'style' | 'audio') {
-  const current = configStore.config.styleText
-  configStore.updateStyleText(current ? `${current} ${tag}` : tag)
+function onStyleModeChange() {
+  // 切换风格控制方式时清空之前的内容
+  configStore.updateStyleText('')
+}
+
+function toggleTag(tag: string) {
+  const current = configStore.config.styleText.trim()
+  const parts = current.split(/\s+/).filter(Boolean)
+  if (parts.includes(tag)) {
+    // 已使用：移除该标签
+    const newParts = parts.filter(t => t !== tag)
+    configStore.updateStyleText(newParts.join(' '))
+  } else {
+    // 未使用：追加该标签
+    configStore.updateStyleText(current ? `${current} ${tag}` : tag)
+  }
 }
 </script>
 
@@ -287,5 +310,19 @@ function insertTag(tag: string, _type: 'style' | 'audio') {
   width: 100%;
   padding-top: 10px;
   padding-bottom: 10px;
+  /* 统一三个按钮的圆角，避免 Element Plus 默认只给首尾加圆角 */
+  border-radius: 4px !important;
+}
+
+/* 标签未选中状态 hover 效果 */
+.tag-inactive:hover {
+  background-color: #fff7ed;
+  color: #ea580c;
+  border-color: #fdba74;
+}
+
+/* 标签选中状态 */
+.tag-active {
+  font-weight: 500;
 }
 </style>

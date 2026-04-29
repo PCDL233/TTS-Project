@@ -77,7 +77,7 @@
           />
 
           <!-- 生成历史 -->
-          <HistoryPanel @play="onPlayHistory" />
+          <HistoryPanel @play="onPlayHistory" @clear="clearAudio" />
         </div>
       </div>
     </main>

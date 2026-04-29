@@ -54,6 +54,7 @@ import type { TTSHistoryItem } from '../types/tts'
 
 const emit = defineEmits<{
   play: [item: TTSHistoryItem]
+  clear: []
 }>()
 
 const historyStore = useHistoryStore()
@@ -69,6 +70,7 @@ function deleteItem(id: string) {
 
 function clearHistory() {
   historyStore.clear()
+  emit('clear')
 }
 
 function formatTime(timestamp: number): string {
