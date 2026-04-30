@@ -117,18 +117,23 @@ export class AudioTagService {
     }
   }
 
-  async findAll(query?: { name?: string; code?: string; group?: string }): Promise<AudioTag[]> {
-    const where: any = {}
+  async findAll(page = 1, pageSize = 10, query?: { name?: string; code?: string; group?: string }): Promise<[AudioTag[], number]> {
+    const qb = this.audioTagRepository.createQueryBuilder('tag')
+      .orderBy('tag.sort', 'ASC')
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+
     if (query?.name) {
-      where.name = Like(`%${query.name}%`)
+      qb.andWhere('tag.name LIKE :name', { name: `%${query.name}%` })
     }
     if (query?.code) {
-      where.code = Like(`%${query.code}%`)
+      qb.andWhere('tag.code LIKE :code', { code: `%${query.code}%` })
     }
     if (query?.group) {
-      where.group = query.group
+      qb.andWhere('tag.group = :group', { group: query.group })
     }
-    return this.audioTagRepository.find({ where, order: { sort: 'ASC' } })
+
+    return qb.getManyAndCount()
   }
 
   async create(data: Partial<AudioTag>): Promise<AudioTag> {

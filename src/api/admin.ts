@@ -77,7 +77,7 @@ export const adminApi = {
   },
 
   // 音频标签
-  getAudioTags(params?: { name?: string; code?: string; group?: string }) {
+  getAudioTags(params?: { page?: number; pageSize?: number; name?: string; code?: string; group?: string }) {
     return client.get('/audio-tags', { params })
   },
   createAudioTag(data: { name: string; code: string; group?: string; description?: string; sort?: number }) {

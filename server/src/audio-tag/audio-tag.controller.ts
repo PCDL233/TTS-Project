@@ -10,8 +10,18 @@ export class AudioTagController {
   constructor(private readonly audioTagService: AudioTagService) {}
 
   @Get()
-  async findAll(@Query() query: { name?: string; code?: string; group?: string }): Promise<AudioTag[]> {
-    return this.audioTagService.findAll(query)
+  async findAll(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('name') name?: string,
+    @Query('code') code?: string,
+    @Query('group') group?: string,
+  ): Promise<[AudioTag[], number]> {
+    return this.audioTagService.findAll(
+      Number(page) || 1,
+      Number(pageSize) || 10,
+      { name, code, group },
+    )
   }
 
   @Post()

@@ -51,6 +51,17 @@
             </el-table-column>
         </el-table>
 
+        <div class="flex justify-end mt-4">
+            <el-pagination
+                v-model:current-page="page"
+                v-model:page-size="pageSize"
+                :total="total"
+                :page-sizes="[10, 20, 50]"
+                layout="total, sizes, prev, pager, next"
+                @change="loadTags"
+            />
+        </div>
+
         <!-- 新增/编辑弹窗 -->
         <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑标签' : '新增标签'" width="400px">
             <el-form :model="form" label-width="80px">
@@ -100,6 +111,9 @@ const tags = ref<any[]>([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
+const page = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 const form = ref({ id: 0, name: '', code: '', group: '', description: '', sort: 0 })
 
 const filterForm = ref({
@@ -111,12 +125,16 @@ const filterForm = ref({
 async function loadTags() {
     loading.value = true
     try {
-        const params: Record<string, string> = {}
+        const params: Record<string, any> = {
+            page: page.value,
+            pageSize: pageSize.value,
+        }
         if (filterForm.value.name.trim()) params.name = filterForm.value.name.trim()
         if (filterForm.value.code.trim()) params.code = filterForm.value.code.trim()
         if (filterForm.value.group) params.group = filterForm.value.group
         const res = await adminApi.getAudioTags(params)
-        tags.value = res.data
+        tags.value = res.data[0]
+        total.value = res.data[1]
     } catch {
         ElMessage.error('加载音频标签失败')
     } finally {
@@ -126,6 +144,7 @@ async function loadTags() {
 
 function resetFilter() {
     filterForm.value = { name: '', code: '', group: '' }
+    page.value = 1
     loadTags()
 }
 
