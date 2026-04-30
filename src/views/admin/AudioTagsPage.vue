@@ -5,11 +5,33 @@
             <el-button type="primary" @click="openCreateDialog">新增标签</el-button>
         </div>
 
+        <el-form :model="filterForm" inline class="mb-4">
+            <el-form-item label="名称">
+                <el-input v-model="filterForm.name" placeholder="输入名称" clearable @keyup.enter="loadTags" />
+            </el-form-item>
+            <el-form-item label="标识">
+                <el-input v-model="filterForm.code" placeholder="输入标识" clearable @keyup.enter="loadTags" />
+            </el-form-item>
+            <el-form-item label="分组">
+                <el-select v-model="filterForm.group" placeholder="选择分组" clearable style="width: 160px">
+                    <el-option v-for="(label, key) in GROUP_LABELS" :key="key" :label="label" :value="key" />
+                </el-select>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" @click="loadTags">筛选</el-button>
+                <el-button @click="resetFilter">重置</el-button>
+            </el-form-item>
+        </el-form>
+
         <el-table :data="tags" v-loading="loading" border stripe>
             <el-table-column prop="id" label="ID" width="60" />
             <el-table-column prop="name" label="名称" />
             <el-table-column prop="code" label="标识" />
-            <el-table-column prop="group" label="分组" />
+            <el-table-column prop="group" label="分组">
+                <template #default="{ row }">
+                    {{ GROUP_LABELS[row.group] || row.group || '-' }}
+                </template>
+            </el-table-column>
             <el-table-column prop="description" label="描述" />
             <el-table-column prop="sort" label="排序" width="80" />
             <el-table-column prop="createdAt" label="创建时间">
@@ -39,7 +61,9 @@
                     <el-input v-model="form.code" placeholder="如：happy" :disabled="isEdit" />
                 </el-form-item>
                 <el-form-item label="分组">
-                    <el-input v-model="form.group" placeholder="如：basicEmotion" />
+                    <el-select v-model="form.group" placeholder="选择分组" class="w-full">
+                        <el-option v-for="(label, key) in GROUP_LABELS" :key="key" :label="label" :value="key" />
+                    </el-select>
                 </el-form-item>
                 <el-form-item label="描述">
                     <el-input v-model="form.description" type="textarea" placeholder="请输入描述" />
@@ -61,16 +85,37 @@ import { ref, onMounted } from 'vue'
 import { adminApi } from '../../api/admin'
 import { ElMessage } from 'element-plus'
 
+const GROUP_LABELS: Record<string, string> = {
+    basicEmotion: '基础情绪',
+    complexEmotion: '复合情绪',
+    tone: '整体语调',
+    voiceQuality: '音色定位',
+    character: '人设腔调',
+    dialect: '方言',
+    roleplay: '角色扮演',
+    audioEffect: '音频效果',
+}
+
 const tags = ref<any[]>([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
-const form = ref({ id: 0, name: '', code: '', description: '', sort: 0 })
+const form = ref({ id: 0, name: '', code: '', group: '', description: '', sort: 0 })
+
+const filterForm = ref({
+    name: '',
+    code: '',
+    group: '',
+})
 
 async function loadTags() {
     loading.value = true
     try {
-        const res = await adminApi.getAudioTags()
+        const params: Record<string, string> = {}
+        if (filterForm.value.name.trim()) params.name = filterForm.value.name.trim()
+        if (filterForm.value.code.trim()) params.code = filterForm.value.code.trim()
+        if (filterForm.value.group) params.group = filterForm.value.group
+        const res = await adminApi.getAudioTags(params)
         tags.value = res.data
     } catch {
         ElMessage.error('加载音频标签失败')
@@ -79,9 +124,14 @@ async function loadTags() {
     }
 }
 
+function resetFilter() {
+    filterForm.value = { name: '', code: '', group: '' }
+    loadTags()
+}
+
 function openCreateDialog() {
     isEdit.value = false
-    form.value = { id: 0, name: '', code: '', description: '', sort: 0 }
+    form.value = { id: 0, name: '', code: '', group: '', description: '', sort: 0 }
     dialogVisible.value = true
 }
 

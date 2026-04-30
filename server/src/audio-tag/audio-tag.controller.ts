@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common'
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common'
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'
 import { RolesGuard } from '../common/guards/roles.guard'
 import { Roles } from '../common/decorators/roles.decorator'
@@ -10,8 +10,8 @@ export class AudioTagController {
   constructor(private readonly audioTagService: AudioTagService) {}
 
   @Get()
-  async findAll(): Promise<AudioTag[]> {
-    return this.audioTagService.findAll()
+  async findAll(@Query() query: { name?: string; code?: string; group?: string }): Promise<AudioTag[]> {
+    return this.audioTagService.findAll(query)
   }
 
   @Post()

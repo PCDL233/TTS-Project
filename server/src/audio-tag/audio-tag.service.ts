@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository } from 'typeorm'
+import { Repository, Like } from 'typeorm'
 import { AudioTag } from './audio-tag.entity'
 
 const AUDIO_TAG_PRESETS: { name: string; code: string; group: string; description: string }[] = [
@@ -117,8 +117,18 @@ export class AudioTagService {
     }
   }
 
-  async findAll(): Promise<AudioTag[]> {
-    return this.audioTagRepository.find({ order: { sort: 'ASC' } })
+  async findAll(query?: { name?: string; code?: string; group?: string }): Promise<AudioTag[]> {
+    const where: any = {}
+    if (query?.name) {
+      where.name = Like(`%${query.name}%`)
+    }
+    if (query?.code) {
+      where.code = Like(`%${query.code}%`)
+    }
+    if (query?.group) {
+      where.group = query.group
+    }
+    return this.audioTagRepository.find({ where, order: { sort: 'ASC' } })
   }
 
   async create(data: Partial<AudioTag>): Promise<AudioTag> {
