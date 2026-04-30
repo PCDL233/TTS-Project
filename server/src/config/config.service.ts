@@ -12,21 +12,21 @@ export class ConfigService {
     private configRepository: Repository<Config>,
   ) {}
 
-  async getConfig(): Promise<Config> {
-    const configs = await this.configRepository.find();
-    if (configs.length === 0) {
-      this.logger.log('[getConfig] 无配置记录，创建默认配置');
-      const config = this.configRepository.create();
-      return this.configRepository.save(config);
+  async getConfig(userId: number): Promise<Config> {
+    const config = await this.configRepository.findOne({ where: { userId } });
+    if (!config) {
+      this.logger.log(`[getConfig] 用户 ${userId} 无配置记录，创建默认配置`);
+      const newConfig = this.configRepository.create({ userId });
+      return this.configRepository.save(newConfig);
     }
-    return configs[0];
+    return config;
   }
 
-  async updateConfig(partial: Partial<Config>): Promise<Config> {
-    const config = await this.getConfig();
+  async updateConfig(userId: number, partial: Partial<Config>): Promise<Config> {
+    const config = await this.getConfig(userId);
     Object.assign(config, partial);
     const saved = await this.configRepository.save(config);
-    this.logger.log(`[updateConfig] 配置已更新: baseUrlPreset=${saved.baseUrlPreset}`);
+    this.logger.log(`[updateConfig] 用户 ${userId} 配置已更新: baseUrlPreset=${saved.baseUrlPreset}`);
     return saved;
   }
 }

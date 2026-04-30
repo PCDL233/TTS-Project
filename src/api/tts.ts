@@ -1,31 +1,25 @@
-import axios, { type AxiosResponse } from 'axios'
+import { client } from './client'
 import type { TTSRequestParams } from '../types/tts'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
 
-const client = axios.create({
-  baseURL: `${BACKEND_URL}/api`,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 120000,
-})
-
 export async function generateTTS(params: TTSRequestParams, signal?: AbortSignal): Promise<string> {
-  const response: AxiosResponse<{ data: string }> = await client.post(
-    '/tts/generate',
-    params,
-    { signal }
-  )
+  const response = await client.post<{ data: string }>('/tts/generate', params, { signal })
   return response.data.data
 }
 
 export async function* generateTTSStream(params: TTSRequestParams, signal?: AbortSignal): AsyncGenerator<string, void, unknown> {
+  const token = localStorage.getItem('token')
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
   const response = await fetch(`${BACKEND_URL}/api/tts/generate-stream`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify(params),
     signal,
   })

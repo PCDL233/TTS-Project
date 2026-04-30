@@ -3,29 +3,37 @@ import {
   Post,
   Body,
   Res,
+  Req,
   HttpStatus,
   Logger,
+  UseGuards,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Response, Request } from 'express';
+
+interface RequestWithUser extends Request {
+  user: { userId: number; username: string };
+}
 import { TtsService } from './tts.service';
 import { GenerateTtsDto } from './dto/generate-tts.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('tts')
+@UseGuards(JwtAuthGuard)
 export class TtsController {
   private readonly logger = new Logger(TtsController.name);
 
   constructor(private readonly ttsService: TtsService) {}
 
   @Post('generate')
-  async generate(@Body() dto: GenerateTtsDto): Promise<{ data: string }> {
+  async generate(@Req() req: RequestWithUser, @Body() dto: GenerateTtsDto): Promise<{ data: string }> {
     this.logger.log(`[generate] model=${dto.model} voice=${dto.audio?.voice ?? 'default'}`);
-    const data = await this.ttsService.generate(dto);
+    const data = await this.ttsService.generate(req.user.userId, dto);
     this.logger.log(`[generate] 成功返回音频数据`);
     return { data };
   }
 
   @Post('generate-stream')
-  async generateStream(@Body() dto: GenerateTtsDto, @Res() res: Response) {
+  async generateStream(@Req() req: RequestWithUser, @Body() dto: GenerateTtsDto, @Res() res: Response) {
     this.logger.log(`[generate-stream] model=${dto.model} voice=${dto.audio?.voice ?? 'default'}`);
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -34,7 +42,7 @@ export class TtsController {
 
     try {
       let chunkCount = 0;
-      for await (const chunk of this.ttsService.generateStream(dto)) {
+      for await (const chunk of this.ttsService.generateStream(req.user.userId, dto)) {
         res.write(`data: ${JSON.stringify({ chunk }) }\n\n`);
         chunkCount++;
       }

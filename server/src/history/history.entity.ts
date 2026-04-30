@@ -5,6 +5,9 @@ export class History {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ nullable: true })
+  userId: number;
+
   @Column()
   text: string;
 

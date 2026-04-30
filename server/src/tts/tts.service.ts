@@ -7,12 +7,12 @@ export class TtsService {
 
   constructor(private readonly configService: ConfigService) {}
 
-  async generate(dto: {
+  async generate(userId: number, dto: {
     model: string;
     messages: Array<{ role: string; content: string }>;
     audio: { format: string; voice?: string };
   }): Promise<string> {
-    const config = await this.configService.getConfig();
+    const config = await this.configService.getConfig(userId);
     if (!config.apiKey) {
       this.logger.warn('[generate] API Key 未配置');
       throw new BadRequestException('API Key 未配置，请先在「API 设置」中填写有效的 API Key');
@@ -49,12 +49,12 @@ export class TtsService {
     return audioData;
   }
 
-  async *generateStream(dto: {
+  async *generateStream(userId: number, dto: {
     model: string;
     messages: Array<{ role: string; content: string }>;
     audio: { format: string; voice?: string };
   }): AsyncGenerator<string, void, unknown> {
-    const config = await this.configService.getConfig();
+    const config = await this.configService.getConfig(userId);
     if (!config.apiKey) {
       this.logger.warn('[generateStream] API Key 未配置');
       throw new BadRequestException('API Key 未配置，请先在「API 设置」中填写有效的 API Key');

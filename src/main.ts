@@ -5,6 +5,7 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import 'element-plus/dist/index.css'
 import './style.css'
 import App from './App.vue'
+import router from './router'
 
 console.log('[MiMo TTS] main.ts loaded')
 console.log('[MiMo TTS] Vue version:', version)
@@ -19,6 +20,7 @@ try {
   }
 
   app.use(pinia)
+  app.use(router)
   app.use(ElementPlus)
 
   // 显式挂载全局方法

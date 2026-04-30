@@ -6,6 +6,8 @@ import { AppService } from './app.service';
 import { ConfigModule as AppConfigModule } from './config/config.module';
 import { HistoryModule } from './history/history.module';
 import { TtsModule } from './tts/tts.module';
+import { AuthModule } from './auth/auth.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { TtsModule } from './tts/tts.module';
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true,
     }),
+    UserModule,
+    AuthModule,
     AppConfigModule,
     HistoryModule,
     TtsModule,

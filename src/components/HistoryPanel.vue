@@ -58,18 +58,18 @@ const emit = defineEmits<{
 }>()
 
 const historyStore = useHistoryStore()
-const { history } = storeToRefs(historyStore)
+const { items: history } = storeToRefs(historyStore)
 
 function playHistory(item: TTSHistoryItem) {
   emit('play', item)
 }
 
-function deleteItem(id: string) {
+function deleteItem(id: number | string) {
   historyStore.removeItem(id)
 }
 
 function clearHistory() {
-  historyStore.clear()
+  historyStore.clearHistory()
   emit('clear')
 }
 

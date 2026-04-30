@@ -2,8 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { TTSConfig, TTSMode, PresetVoice, BaseUrlPreset } from '../types/tts'
 import { BASE_URL_OPTIONS, MODEL_MAP } from '../types/tts'
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
+import { client } from '../api/client'
 
 function getDefaultConfig(): TTSConfig {
   return {
@@ -28,14 +27,11 @@ export const useConfigStore = defineStore('config', () => {
 
   async function loadConfig() {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/config`)
-      if (res.ok) {
-        const data = await res.json()
-        config.value = { ...getDefaultConfig(), ...data }
-        // 兼容性处理
-        if (!config.value.model) {
-          config.value.model = MODEL_MAP[(config.value.mode as TTSMode) || 'preset']
-        }
+      const res = await client.get('/config')
+      config.value = { ...getDefaultConfig(), ...res.data }
+      // 兼容性处理
+      if (!config.value.model) {
+        config.value.model = MODEL_MAP[(config.value.mode as TTSMode) || 'preset']
       }
     } catch {
       // ignore
@@ -46,11 +42,7 @@ export const useConfigStore = defineStore('config', () => {
 
   async function saveConfig() {
     try {
-      await fetch(`${BACKEND_URL}/api/config`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config.value),
-      })
+      await client.put('/config', config.value)
     } catch {
       // ignore
     }
