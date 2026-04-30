@@ -56,6 +56,7 @@
 
 ## 技术栈
 
+### 前端
 - **框架**：Vue 3.5（Composition API）
 - **语言**：TypeScript 6.0
 - **构建工具**：Vite 8.0
@@ -63,6 +64,11 @@
 - **样式方案**：Tailwind CSS 4.2
 - **状态管理**：Pinia 3.0
 - **HTTP 客户端**：Axios 1.15
+
+### 后端
+- **框架**：NestJS 11
+- **ORM**：TypeORM 0.3
+- **数据库**：SQLite（better-sqlite3）
 
 ## 快速开始
 
@@ -74,10 +80,16 @@
 ### 安装依赖
 
 ```bash
+# 前端依赖
 npm install
+
+# 后端依赖
+cd server
+npm install
+cd ..
 ```
 
-### 配置 API Key
+### 配置环境变量
 
 复制环境变量示例文件：
 
@@ -85,29 +97,49 @@ npm install
 cp .env.example .env
 ```
 
-编辑 `.env`，填入你的 MiMo API Key：
+编辑 `.env`：
 
 ```env
-VITE_MIMO_API_KEY=your_api_key_here
+# 后端服务地址
+VITE_BACKEND_URL=http://localhost:3001
 ```
 
-> API Key 获取地址：https://platform.xiaomimimo.com
+后端 `.env`（位于 `server/.env`）：
+
+```env
+PORT=3001
+```
+
+> MiMo API Key 请在后端启动后，通过前端「API 设置」弹窗保存到后端数据库。
 
 ### 开发调试
 
+需要同时启动后端和前端：
+
 ```bash
+# 终端 1：启动后端
+cd server
+npm run start:dev
+
+# 终端 2：启动前端（在项目根目录）
 npm run dev
 ```
 
-服务默认启动在 `http://localhost:3000`。
+- 后端默认地址：`http://localhost:3001`
+- 前端默认地址：`http://localhost:3000`
 
 ### 生产构建
 
 ```bash
+# 构建前端
+npm run build
+
+# 构建后端
+cd server
 npm run build
 ```
 
-构建产物输出到 `dist/` 目录。
+前端构建产物输出到 `dist/` 目录。
 
 ### 预览构建产物
 
@@ -119,10 +151,19 @@ npm run preview
 
 ```
 TTS-Project/
+├── server/                    # NestJS 后端服务
+│   ├── src/
+│   │   ├── config/            # 配置模块（TypeORM Entity + CRUD）
+│   │   ├── history/           # 历史记录模块（TypeORM Entity + CRUD）
+│   │   ├── tts/               # TTS 代理模块（MiMo API 封装 + SSE 流式）
+│   │   ├── app.module.ts      # 根模块（TypeORM + SQLite 配置）
+│   │   └── main.ts            # 入口（CORS / 全局管道 / 前缀）
+│   ├── package.json
+│   └── tsconfig.json
 ├── public/                    # 静态资源
 ├── src/
 │   ├── api/
-│   │   └── tts.ts            # MiMo TTS API 客户端（非流式 & 流式）
+│   │   └── tts.ts            # 后端 API 客户端（非流式 & 流式）
 │   ├── components/
 │   │   ├── ApiKeyDialog.vue   # API 设置弹窗
 │   │   ├── AudioPlayer.vue    # 音频播放器（纯 JS Audio）
@@ -133,8 +174,8 @@ TTS-Project/
 │   ├── composables/
 │   │   └── useTTS.ts         # TTS 生成逻辑组合式函数
 │   ├── stores/
-│   │   ├── config.ts         # 全局配置 Store（localStorage 持久化）
-│   │   └── history.ts        # 历史记录 Store（localStorage 持久化）
+│   │   ├── config.ts         # 全局配置 Store（后端 API 持久化）
+│   │   └── history.ts        # 历史记录 Store（后端 API 持久化）
 │   ├── types/
 │   │   └── tts.ts            # TypeScript 类型定义与常量
 │   ├── utils/

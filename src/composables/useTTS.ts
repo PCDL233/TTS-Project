@@ -1,6 +1,6 @@
 import { ref, computed, onUnmounted } from 'vue'
 import axios from 'axios'
-import { createTTSClient } from '../api/tts'
+import { generateTTS } from '../api/tts'
 import { base64ToBlob } from '../utils/audio'
 import { useConfigStore } from '../stores/config'
 import type { TTSRequestParams } from '../types/tts'
@@ -61,10 +61,8 @@ export function useTTS() {
     abortController.value = new AbortController()
 
     try {
-      const client = createTTSClient(config.apiKey, configStore.getEffectiveBaseUrl())
       const params = buildRequestParams(text)
-
-      const base64Data = await client.generate(params, abortController.value.signal)
+      const base64Data = await generateTTS(params, abortController.value.signal)
       const mimeType = config.audioFormat === 'mp3' ? 'audio/mpeg' : 'audio/wav'
       const blob = base64ToBlob(base64Data, mimeType)
       const url = URL.createObjectURL(blob)

@@ -1,11 +1,10 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import type { TTSHistoryItem } from '../types/tts'
 
-const STORAGE_KEY = 'mimo-tts-history'
-const MAX_ITEMS = 10
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
 
-/** 安全释放 blob URL，避免 undefined/null 导致异常中断删除流程 */
+/** 安全释放 blob URL */
 function safeRevoke(url: string | undefined | null) {
   if (!url) return
   try {
@@ -15,62 +14,78 @@ function safeRevoke(url: string | undefined | null) {
   }
 }
 
-function loadHistory(): TTSHistoryItem[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      return JSON.parse(saved)
-    }
-  } catch {
-    // ignore
-  }
-  return []
-}
-
 export const useHistoryStore = defineStore('history', () => {
-  const history = ref<TTSHistoryItem[]>(loadHistory())
+  const history = ref<TTSHistoryItem[]>([])
+  const loaded = ref(false)
 
-  watch(
-    history,
-    (val) => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(val))
-    },
-    { deep: true }
-  )
-
-  function addItem(item: Omit<TTSHistoryItem, 'id' | 'createdAt'>) {
-    const newItem: TTSHistoryItem = {
-      ...item,
-      id: Date.now().toString(),
-      createdAt: Date.now(),
-    }
-    history.value.unshift(newItem)
-    if (history.value.length > MAX_ITEMS) {
-      // 释放旧的blob URL
-      const removed = history.value.pop()
-      if (removed) {
-        safeRevoke(removed.audioUrl)
+  async function loadHistory() {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/history`)
+      if (res.ok) {
+        const data = await res.json()
+        history.value = data.map((item: any) => ({
+          ...item,
+          id: String(item.id),
+          createdAt: Number(item.createdAt),
+        }))
       }
+    } catch {
+      // ignore
+    } finally {
+      loaded.value = true
     }
   }
 
-  function removeItem(id: string) {
+  async function addItem(item: Omit<TTSHistoryItem, 'id' | 'createdAt'>) {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/history`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item),
+      })
+      if (res.ok) {
+        const saved = await res.json()
+        const newItem: TTSHistoryItem = {
+          ...saved,
+          id: String(saved.id),
+          createdAt: Number(saved.createdAt),
+        }
+        history.value.unshift(newItem)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  async function removeItem(id: string) {
     const index = history.value.findIndex(item => item.id === id)
     if (index > -1) {
       safeRevoke(history.value[index].audioUrl)
       history.value.splice(index, 1)
     }
+    try {
+      await fetch(`${BACKEND_URL}/api/history/${id}`, { method: 'DELETE' })
+    } catch {
+      // ignore
+    }
   }
 
-  function clear() {
+  async function clear() {
     for (const item of history.value) {
       safeRevoke(item.audioUrl)
     }
     history.value = []
+    try {
+      await fetch(`${BACKEND_URL}/api/history`, { method: 'DELETE' })
+    } catch {
+      // ignore
+    }
   }
 
   return {
     history,
+    loaded,
+    loadHistory,
     addItem,
     removeItem,
     clear,

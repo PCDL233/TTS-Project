@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import type { TTSConfig, TTSMode, PresetVoice, BaseUrlPreset } from '../types/tts'
 import { BASE_URL_OPTIONS, MODEL_MAP } from '../types/tts'
 
-const STORAGE_KEY = 'mimo-tts-config'
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
 
 function getDefaultConfig(): TTSConfig {
   return {
@@ -22,46 +22,53 @@ function getDefaultConfig(): TTSConfig {
   }
 }
 
-function loadConfig(): TTSConfig {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      // 兼容性：旧配置可能没有 model 字段
-      if (!parsed.model) {
-        parsed.model = MODEL_MAP[(parsed.mode as TTSMode) || 'preset']
-      }
-      // 兼容性：移除旧的 stream 字段
-      delete parsed.stream
-      return { ...getDefaultConfig(), ...parsed }
-    }
-  } catch {
-    // ignore
-  }
-  return getDefaultConfig()
-}
-
 export const useConfigStore = defineStore('config', () => {
-  const config = ref<TTSConfig>(loadConfig())
+  const config = ref<TTSConfig>(getDefaultConfig())
+  const loaded = ref(false)
 
-  watch(
-    config,
-    (val) => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(val))
-    },
-    { deep: true }
-  )
+  async function loadConfig() {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/config`)
+      if (res.ok) {
+        const data = await res.json()
+        config.value = { ...getDefaultConfig(), ...data }
+        // 兼容性处理
+        if (!config.value.model) {
+          config.value.model = MODEL_MAP[(config.value.mode as TTSMode) || 'preset']
+        }
+      }
+    } catch {
+      // ignore
+    } finally {
+      loaded.value = true
+    }
+  }
+
+  async function saveConfig() {
+    try {
+      await fetch(`${BACKEND_URL}/api/config`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config.value),
+      })
+    } catch {
+      // ignore
+    }
+  }
 
   function updateApiKey(key: string) {
     config.value.apiKey = key
+    saveConfig()
   }
 
   function updateBaseUrlPreset(preset: BaseUrlPreset) {
     config.value.baseUrlPreset = preset
+    saveConfig()
   }
 
   function updateBaseUrlCustom(url: string) {
     config.value.baseUrlCustom = url
+    saveConfig()
   }
 
   function getEffectiveBaseUrl(): string {
@@ -74,46 +81,54 @@ export const useConfigStore = defineStore('config', () => {
 
   function updateMode(mode: TTSMode) {
     config.value.mode = mode
-    // 联动更新模型
     config.value.model = MODEL_MAP[mode]
+    saveConfig()
   }
 
   function updateModel(model: string) {
     config.value.model = model
-    // 联动更新模式
     const option = Object.entries(MODEL_MAP).find(([, v]) => v === model)
     if (option) {
       config.value.mode = option[0] as TTSMode
     }
+    saveConfig()
   }
 
   function updatePresetVoice(voice: PresetVoice) {
     config.value.presetVoice = voice
+    saveConfig()
   }
 
   function updateVoiceDesignText(text: string) {
     config.value.voiceDesignText = text
+    saveConfig()
   }
 
   function updateCloneAudio(base64: string, name: string) {
     config.value.cloneAudioBase64 = base64
     config.value.cloneAudioName = name
+    saveConfig()
   }
 
   function updateStyleMode(mode: 'natural' | 'tag') {
     config.value.styleMode = mode
+    saveConfig()
   }
 
   function updateStyleText(text: string) {
     config.value.styleText = text
+    saveConfig()
   }
 
   function updateAudioFormat(format: 'wav' | 'pcm16' | 'mp3') {
     config.value.audioFormat = format
+    saveConfig()
   }
 
   return {
     config,
+    loaded,
+    loadConfig,
     updateApiKey,
     updateBaseUrlPreset,
     updateBaseUrlCustom,

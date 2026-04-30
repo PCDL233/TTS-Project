@@ -168,7 +168,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { Microphone, Setting, QuestionFilled } from "@element-plus/icons-vue";
 import { useConfigStore } from "./stores/config";
 import { useHistoryStore } from "./stores/history";
@@ -256,6 +256,11 @@ function onPlayHistory(item: TTSHistoryItem) {
         audioUrl.value = item.audioUrl;
     }
 }
+
+onMounted(() => {
+    configStore.loadConfig();
+    historyStore.loadHistory();
+});
 
 onUnmounted(() => {
     clearAudio();
