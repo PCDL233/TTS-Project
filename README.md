@@ -1,12 +1,14 @@
 # MiMo TTS 语音合成
 
-基于小米 MiMo TTS API 的 Web 语音合成前端应用，支持预置音色合成、文本描述音色设计、以及音频样本音色复刻三种模式。
+基于小米 MiMo TTS API 的全栈 Web 语音合成应用，支持预置音色合成、文本描述音色设计、以及音频样本音色复刻三种模式。
 
 ![Tech Stack](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vuedotjs)
 ![Tech Stack](https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript)
 ![Tech Stack](https://img.shields.io/badge/Vite-8.0-646CFF?logo=vite)
 ![Tech Stack](https://img.shields.io/badge/Element_Plus-2.13-409EFF?logo=element)
 ![Tech Stack](https://img.shields.io/badge/Tailwind_CSS-4.2-06B6D4?logo=tailwindcss)
+![Tech Stack](https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs)
+![Tech Stack](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite)
 
 ## 功能特性
 
@@ -44,7 +46,7 @@
 
 ### 历史记录
 
-- 自动保存最近 10 条生成记录到 `localStorage`
+- 自动保存生成记录到后端 **SQLite** 数据库
 - 支持单条播放、删除、全部清空
 - 清空历史时自动释放当前音频资源
 
@@ -52,7 +54,8 @@
 
 - 支持多集群 Base URL 切换（普通 API / Token Plan 中国/新加坡/欧洲）
 - 支持自定义 Base URL
-- API Key 本地存储（浏览器 localStorage）
+- API Key 后端持久化存储（SQLite）
+- API Key 空值校验与中文友好错误提示
 
 ## 技术栈
 
@@ -69,6 +72,8 @@
 - **框架**：NestJS 11
 - **ORM**：TypeORM 0.3
 - **数据库**：SQLite（better-sqlite3）
+- **校验**：class-validator / class-transformer
+- **日志**：NestJS 内置 Logger（HTTP 请求中间件 + 控制器/服务层日志）
 
 ## 快速开始
 
@@ -94,6 +99,10 @@ cd ..
 复制环境变量示例文件：
 
 ```bash
+# Windows
+copy .env.example .env
+
+# macOS / Linux
 cp .env.example .env
 ```
 
@@ -114,7 +123,15 @@ PORT=3001
 
 ### 开发调试
 
-需要同时启动后端和前端：
+#### 方式一：一键启动前后端（推荐）
+
+```bash
+npm run dev:all
+```
+
+前端（绿色 `FE` 前缀）与后端（蓝色 `BE` 前缀）将在同一终端并行运行。
+
+#### 方式二：分别启动
 
 ```bash
 # 终端 1：启动后端
@@ -153,11 +170,11 @@ npm run preview
 TTS-Project/
 ├── server/                    # NestJS 后端服务
 │   ├── src/
-│   │   ├── config/            # 配置模块（TypeORM Entity + CRUD）
-│   │   ├── history/           # 历史记录模块（TypeORM Entity + CRUD）
-│   │   ├── tts/               # TTS 代理模块（MiMo API 封装 + SSE 流式）
+│   │   ├── config/            # 配置模块（TypeORM Entity + CRUD + Logger）
+│   │   ├── history/           # 历史记录模块（TypeORM Entity + CRUD + Logger）
+│   │   ├── tts/               # TTS 代理模块（MiMo API 封装 + SSE 流式 + Logger）
 │   │   ├── app.module.ts      # 根模块（TypeORM + SQLite 配置）
-│   │   └── main.ts            # 入口（CORS / 全局管道 / 前缀）
+│   │   └── main.ts            # 入口（CORS / 50MB Body Parser / 全局管道 / 请求日志 / 前缀）
 │   ├── package.json
 │   └── tsconfig.json
 ├── public/                    # 静态资源
@@ -193,6 +210,10 @@ TTS-Project/
 
 ## 核心实现说明
 
+### 大体积请求体支持（413 修复）
+
+保存历史记录时需传输 Base64 音频数据（约 1MB+），超出 NestJS/Express 默认 body limit（~100KB）。后端使用 `NestExpressApplication` 泛型 + `app.useBodyParser('json', { limit: '50mb' })` 解决。
+
 ### 音频播放优化
 
 为避免浏览器将 `<audio>` 标签对 blob URL 的预加载误判为下载行为，项目完全移除了 DOM `<audio>` 元素，改用 `new Audio()` 纯 JS 对象：`preload = 'none'`，仅在用户点击播放时加载音频。
@@ -204,6 +225,13 @@ TTS-Project/
 ### 历史记录响应性
 
 `HistoryPanel` 使用 `storeToRefs(historyStore)` 解构 `history`，确保 Pinia setup store 中的数组响应性不丢失。
+
+### 日志体系
+
+后端采用分层日志：
+- **HTTP 请求中间件**（`main.ts`）：记录 IP、方法、路径、状态码、耗时
+- **控制器层**：记录接口调用参数与结果
+- **服务层**：记录 MiMo API 调用、SSE chunk 数量、数据库操作
 
 ### 代码分割
 

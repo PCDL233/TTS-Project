@@ -76,7 +76,8 @@ export function useTTS() {
       if (axios.isCancel?.(err) || err.name === 'AbortError' || err.message === 'Aborted') {
         error.value = '已取消生成'
       } else {
-        error.value = err.response?.data?.error?.message || err.message || '生成失败，请检查API Key和网络连接'
+        const msg = err.response?.data?.message || err.response?.data?.error?.message || err.message || '生成失败，请检查API Key和网络连接'
+        error.value = msg
       }
       return null
     } finally {
