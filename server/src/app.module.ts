@@ -13,6 +13,7 @@ import { LogModule } from './log/log.module'
 import { AdminModule } from './admin/admin.module'
 import { SystemConfigModule } from './system-config/system-config.module'
 import { AudioTagModule } from './audio-tag/audio-tag.module'
+import { UploadModule } from './common/upload/upload.module'
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { AudioTagModule } from './audio-tag/audio-tag.module'
     AdminModule,
     SystemConfigModule,
     AudioTagModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],
