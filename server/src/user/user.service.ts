@@ -56,7 +56,7 @@ export class UserService {
     return Array.isArray(saved) ? saved[0] : saved
   }
 
-  async updateProfile(userId: number, data: Partial<Pick<User, 'nickname' | 'email' | 'phone'>>): Promise<User | null> {
+  async updateProfile(userId: number, data: Partial<Pick<User, 'nickname' | 'email' | 'phone' | 'avatar'>>): Promise<User | null> {
     await this.userRepository.update(userId, data)
     return this.findById(userId)
   }

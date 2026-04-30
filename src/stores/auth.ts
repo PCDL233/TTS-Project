@@ -47,7 +47,7 @@ export const useAuthStore = defineStore('auth', () => {
     return res.data
   }
 
-  async function updateProfile(data: Partial<Pick<User, 'nickname' | 'email' | 'phone'>>) {
+  async function updateProfile(data: Partial<Pick<User, 'nickname' | 'email' | 'phone' | 'avatar'>>) {
     const encrypted = aesEncrypt(JSON.stringify(data))
     const res = await client.put('/auth/profile', { data: encrypted })
     user.value = res.data

@@ -99,7 +99,7 @@ export class AuthController {
     @Req() req: RequestWithUser,
     @Body('data') data: string,
   ) {
-    let payload: { nickname?: string; email?: string; phone?: string }
+    let payload: { nickname?: string; email?: string; phone?: string; avatar?: string }
     try {
       const decrypted = this.cryptoService.aesDecrypt(data)
       payload = JSON.parse(decrypted)
@@ -107,11 +107,13 @@ export class AuthController {
       throw new BadRequestException('请求数据解密失败')
     }
 
-    const updated = await this.userService.updateProfile(req.user.userId, {
-      nickname: payload.nickname || '',
-      email: payload.email || '',
-      phone: payload.phone || '',
-    })
+    const updateData: Partial<{ nickname: string; email: string; phone: string; avatar: string }> = {}
+    if (payload.nickname !== undefined) updateData.nickname = payload.nickname
+    if (payload.email !== undefined) updateData.email = payload.email
+    if (payload.phone !== undefined) updateData.phone = payload.phone
+    if (payload.avatar !== undefined) updateData.avatar = payload.avatar
+
+    const updated = await this.userService.updateProfile(req.user.userId, updateData)
 
     if (!updated) {
       throw new BadRequestException('用户不存在')
