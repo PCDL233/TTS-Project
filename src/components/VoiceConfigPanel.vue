@@ -222,8 +222,8 @@ const tagGroups = computed(() => {
 
 onMounted(async () => {
   try {
-    const res = await adminApi.getAudioTags()
-    audioTags.value = res.data
+    const res = await adminApi.getAudioTags({ page: 1, pageSize: 200 })
+    audioTags.value = res.data[0]
   } catch {
     // 静默失败，使用空列表
   }
