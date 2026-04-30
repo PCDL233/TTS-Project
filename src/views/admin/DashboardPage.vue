@@ -25,31 +25,41 @@
             <!-- 用户注册趋势 -->
             <div class="bg-white rounded-xl border border-gray-200 p-5">
                 <h3 class="text-sm font-semibold text-gray-700 mb-4">用户注册趋势（近30天）</h3>
-                <v-chart class="h-72 w-full" :option="userTrendOption" autoresize />
+                <div class="h-72 w-full">
+                    <v-chart class="w-full h-full" :option="userTrendOption" :autoresize="{ throttle: 100 }" />
+                </div>
             </div>
 
             <!-- TTS 生成趋势 -->
             <div class="bg-white rounded-xl border border-gray-200 p-5">
                 <h3 class="text-sm font-semibold text-gray-700 mb-4">TTS 生成趋势（近30天）</h3>
-                <v-chart class="h-72 w-full" :option="ttsTrendOption" autoresize />
+                <div class="h-72 w-full">
+                    <v-chart class="w-full h-full" :option="ttsTrendOption" :autoresize="{ throttle: 100 }" />
+                </div>
             </div>
 
             <!-- 角色分布 -->
             <div class="bg-white rounded-xl border border-gray-200 p-5">
                 <h3 class="text-sm font-semibold text-gray-700 mb-4">用户角色分布</h3>
-                <v-chart class="h-72 w-full" :option="roleDistributionOption" autoresize />
+                <div class="h-72 w-full">
+                    <v-chart class="w-full h-full" :option="roleDistributionOption" :autoresize="{ throttle: 100 }" />
+                </div>
             </div>
 
             <!-- TTS 模式分布 -->
             <div class="bg-white rounded-xl border border-gray-200 p-5">
                 <h3 class="text-sm font-semibold text-gray-700 mb-4">TTS 模式分布</h3>
-                <v-chart class="h-72 w-full" :option="ttsByModeOption" autoresize />
+                <div class="h-72 w-full">
+                    <v-chart class="w-full h-full" :option="ttsByModeOption" :autoresize="{ throttle: 100 }" />
+                </div>
             </div>
 
             <!-- 登录活跃度 -->
             <div class="bg-white rounded-xl border border-gray-200 p-5 lg:col-span-2">
                 <h3 class="text-sm font-semibold text-gray-700 mb-4">登录活跃度（近30天）</h3>
-                <v-chart class="h-72 w-full" :option="loginTrendOption" autoresize />
+                <div class="h-72 w-full">
+                    <v-chart class="w-full h-full" :option="loginTrendOption" :autoresize="{ throttle: 100 }" />
+                </div>
             </div>
         </div>
     </div>

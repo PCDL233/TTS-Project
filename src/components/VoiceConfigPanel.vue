@@ -128,38 +128,20 @@
         />
 
         <div class="space-y-3 pr-1">
-          <div v-for="group in STYLE_TAG_GROUPS" :key="group.key">
+          <div v-for="group in tagGroups" :key="group.key">
             <div class="text-xs text-gray-500 mb-1">{{ group.label }}</div>
             <div class="flex flex-wrap gap-1.5">
               <el-tag
-                v-for="tag in STYLE_TAGS[group.key]"
-                :key="tag"
+                v-for="tag in group.tags"
+                :key="tag.id"
                 size="small"
-                :effect="usedTags.has(tag) ? 'dark' : 'plain'"
-                :type="usedTags.has(tag) ? 'primary' : ''"
+                :effect="usedTags.has(tag.name) ? 'dark' : 'plain'"
+                :type="usedTags.has(tag.name) ? 'primary' : (group.key === 'audioEffect' ? 'warning' : '')"
                 class="cursor-pointer select-none transition-colors"
-                :class="usedTags.has(tag) ? 'tag-active' : 'tag-inactive'"
-                @click="toggleTag(tag)"
+                :class="usedTags.has(tag.name) ? 'tag-active' : 'tag-inactive'"
+                @click="toggleTag(tag.name)"
               >
-                {{ tag }}
-              </el-tag>
-            </div>
-          </div>
-
-          <div>
-            <div class="text-xs text-gray-500 mb-1">音频效果</div>
-            <div class="flex flex-wrap gap-1.5">
-              <el-tag
-                v-for="tag in STYLE_TAGS.audioEffect"
-                :key="tag"
-                size="small"
-                :effect="usedTags.has(tag) ? 'dark' : 'plain'"
-                :type="usedTags.has(tag) ? 'primary' : 'warning'"
-                class="cursor-pointer select-none transition-colors"
-                :class="usedTags.has(tag) ? 'tag-active' : 'tag-inactive'"
-                @click="toggleTag(tag)"
-              >
-                {{ tag }}
+                {{ tag.name }}
               </el-tag>
             </div>
           </div>
@@ -191,13 +173,61 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { Headset, MagicStick, CopyDocument } from '@element-plus/icons-vue'
 import { useConfigStore } from '../stores/config'
-import { PRESET_VOICES, STYLE_TAGS, STYLE_TAG_GROUPS, MODEL_OPTIONS } from '../types/tts'
+import { PRESET_VOICES, MODEL_OPTIONS } from '../types/tts'
+import { adminApi } from '../api/admin'
 import AudioUploader from './AudioUploader.vue'
 
+interface AudioTag {
+  id: number
+  name: string
+  code: string
+  group: string
+  description: string
+  sort: number
+}
+
+const GROUP_LABELS: Record<string, string> = {
+  basicEmotion: '基础情绪',
+  complexEmotion: '复合情绪',
+  tone: '整体语调',
+  voiceQuality: '音色定位',
+  character: '人设腔调',
+  dialect: '方言',
+  roleplay: '角色扮演',
+  audioEffect: '音频效果',
+}
+
 const configStore = useConfigStore()
+const audioTags = ref<AudioTag[]>([])
+
+/** 按 group 分组后的标签 */
+const tagGroups = computed(() => {
+  const groups: Record<string, AudioTag[]> = {}
+  for (const tag of audioTags.value) {
+    if (!groups[tag.group]) groups[tag.group] = []
+    groups[tag.group].push(tag)
+  }
+  // 按预定义顺序返回
+  const result: { key: string; label: string; tags: AudioTag[] }[] = []
+  for (const key of Object.keys(GROUP_LABELS)) {
+    if (groups[key]) {
+      result.push({ key, label: GROUP_LABELS[key], tags: groups[key] })
+    }
+  }
+  return result
+})
+
+onMounted(async () => {
+  try {
+    const res = await adminApi.getAudioTags()
+    audioTags.value = res.data
+  } catch {
+    // 静默失败，使用空列表
+  }
+})
 
 const currentModelOption = computed(() =>
   MODEL_OPTIONS.find(m => m.value === configStore.config.model)

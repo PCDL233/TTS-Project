@@ -80,10 +80,10 @@ export const adminApi = {
   getAudioTags() {
     return client.get('/audio-tags')
   },
-  createAudioTag(data: { name: string; code: string; description?: string; sort?: number }) {
+  createAudioTag(data: { name: string; code: string; group?: string; description?: string; sort?: number }) {
     return client.post('/audio-tags', data)
   },
-  updateAudioTag(id: number, data: Partial<{ name: string; code: string; description: string; sort: number }>) {
+  updateAudioTag(id: number, data: Partial<{ name: string; code: string; group: string; description: string; sort: number }>) {
     return client.put(`/audio-tags/${id}`, data)
   },
   deleteAudioTag(id: number) {

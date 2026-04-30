@@ -1,5 +1,5 @@
 <template>
-    <div class="min-h-screen flex bg-gray-100">
+    <div class="h-screen flex bg-gray-100 overflow-hidden">
         <!-- 侧边栏 -->
         <aside class="w-56 bg-[#1e293b] text-white flex flex-col shrink-0">
             <div class="h-14 flex items-center px-5 border-b border-gray-700">

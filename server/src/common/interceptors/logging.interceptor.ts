@@ -7,6 +7,7 @@ import {
 import { Observable } from 'rxjs'
 import { tap } from 'rxjs/operators'
 import { OperationLogService } from '../../log/operation-log.service'
+import { getClientIp } from '../utils/ip.util'
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
@@ -20,7 +21,7 @@ export class LoggingInterceptor implements NestInterceptor {
     const path = req.originalUrl || req.url
     const method = req.method
     const user = req.user
-    const ip = req.ip || req.socket?.remoteAddress || ''
+    const ip = getClientIp(req)
     const userAgent = req.headers['user-agent'] || ''
 
     // 推断模块名

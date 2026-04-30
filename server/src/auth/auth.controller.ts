@@ -7,6 +7,7 @@ import * as bcrypt from 'bcryptjs'
 import { CryptoService } from '../common/crypto.service'
 import { LoginLogService } from '../log/login-log.service'
 import { BadRequestException, UnauthorizedException } from '@nestjs/common'
+import { getClientIp } from '../common/utils/ip.util'
 
 interface RequestWithUser extends Request {
   user: { userId: number; username: string; roleCode: string }
@@ -31,7 +32,7 @@ export class AuthController {
     await this.loginLogService.create({
       userId: result.user.id,
       username: result.user.username,
-      ip: req.ip || req.socket?.remoteAddress || '',
+      ip: getClientIp(req),
       userAgent: req.headers['user-agent'] || '',
       status: 'success',
       message: '注册成功',
@@ -49,7 +50,7 @@ export class AuthController {
       await this.loginLogService.create({
         userId: result.user.id,
         username: result.user.username,
-        ip: req.ip || req.socket?.remoteAddress || '',
+        ip: getClientIp(req),
         userAgent: req.headers['user-agent'] || '',
         status: 'success',
         message: '登录成功',
@@ -64,7 +65,7 @@ export class AuthController {
       } catch {}
       await this.loginLogService.create({
         username,
-        ip: req.ip || req.socket?.remoteAddress || '',
+        ip: getClientIp(req),
         userAgent: req.headers['user-agent'] || '',
         status: 'fail',
         message: error.message || '登录失败',

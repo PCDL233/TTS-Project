@@ -7,6 +7,7 @@ import { join } from 'path'
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor'
 import { OperationLogService } from './log/operation-log.service'
 import { RoleService } from './role/role.service'
+import { getClientIp } from './common/utils/ip.util'
 
 async function bootstrap() {
   const logger = new Logger('HTTP')
@@ -22,6 +23,9 @@ async function bootstrap() {
     credentials: true,
   })
 
+  // 信任代理，使 req.ip 能正确获取真实客户端 IP
+  app.set('trust proxy', true)
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -35,7 +39,7 @@ async function bootstrap() {
   // 全局请求日志中间件
   app.use((req: Request, res: Response, next: NextFunction) => {
     const start = Date.now()
-    const ip = req.ip || req.socket.remoteAddress || 'unknown'
+    const ip = getClientIp(req) || 'unknown'
     res.on('finish', () => {
       const duration = Date.now() - start
       const message = `[${ip}] ${req.method} ${req.originalUrl} ${res.statusCode} - ${duration}ms`

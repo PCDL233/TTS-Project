@@ -9,6 +9,7 @@
             <el-table-column prop="id" label="ID" width="60" />
             <el-table-column prop="name" label="名称" />
             <el-table-column prop="code" label="标识" />
+            <el-table-column prop="group" label="分组" />
             <el-table-column prop="description" label="描述" />
             <el-table-column prop="sort" label="排序" width="80" />
             <el-table-column prop="createdAt" label="创建时间">
@@ -36,6 +37,9 @@
                 </el-form-item>
                 <el-form-item label="标识">
                     <el-input v-model="form.code" placeholder="如：happy" :disabled="isEdit" />
+                </el-form-item>
+                <el-form-item label="分组">
+                    <el-input v-model="form.group" placeholder="如：basicEmotion" />
                 </el-form-item>
                 <el-form-item label="描述">
                     <el-input v-model="form.description" type="textarea" placeholder="请输入描述" />
@@ -83,7 +87,7 @@ function openCreateDialog() {
 
 function openEditDialog(row: any) {
     isEdit.value = true
-    form.value = { id: row.id, name: row.name, code: row.code, description: row.description, sort: row.sort }
+    form.value = { id: row.id, name: row.name, code: row.code, group: row.group || '', description: row.description, sort: row.sort }
     dialogVisible.value = true
 }
 
@@ -92,6 +96,7 @@ async function saveTag() {
         if (isEdit.value) {
             await adminApi.updateAudioTag(form.value.id, {
                 name: form.value.name,
+                group: form.value.group,
                 description: form.value.description,
                 sort: form.value.sort,
             })
@@ -99,6 +104,7 @@ async function saveTag() {
             await adminApi.createAudioTag({
                 name: form.value.name,
                 code: form.value.code,
+                group: form.value.group,
                 description: form.value.description,
                 sort: form.value.sort,
             })

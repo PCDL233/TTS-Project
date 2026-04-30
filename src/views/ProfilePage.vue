@@ -36,7 +36,6 @@
                         <el-avatar :size="80" :src="avatarUrl" class="cursor-pointer hover:opacity-80 transition-opacity">
                             <el-icon :size="32"><user-filled /></el-icon>
                         </el-avatar>
-                        <div class="text-xs text-gray-400 mt-2 text-center">点击更换头像</div>
                     </el-upload>
                     <div>
                         <div class="text-lg font-semibold text-gray-800">{{ authStore.user?.username }}</div>

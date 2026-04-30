@@ -14,6 +14,9 @@ export class AudioTag {
   @Column({ default: '' })
   description: string
 
+  @Column({ default: '' })
+  group: string
+
   @Column({ default: 0 })
   sort: number
 
