@@ -40,13 +40,31 @@
                         帮助
                     </el-button>
                     <el-divider direction="vertical" />
-                    <div class="flex items-center gap-2">
-                        <el-icon><user-filled /></el-icon>
-                        <span class="text-sm text-gray-700">{{ authStore.user?.username }}</span>
-                        <el-button size="small" link type="danger" @click="handleLogout">
-                            退出
-                        </el-button>
-                    </div>
+                    <el-dropdown @command="handleUserCommand">
+                        <span class="flex items-center gap-2 cursor-pointer">
+                            <el-avatar :size="28" :src="avatarUrl">
+                                <el-icon><user-filled /></el-icon>
+                            </el-avatar>
+                            <span class="text-sm text-gray-700">{{ authStore.user?.nickname || authStore.user?.username }}</span>
+                            <el-icon class="text-gray-400"><arrow-down /></el-icon>
+                        </span>
+                        <template #dropdown>
+                            <el-dropdown-menu>
+                                <el-dropdown-item command="profile">
+                                    <el-icon><user /></el-icon>
+                                    <span>个人中心</span>
+                                </el-dropdown-item>
+                                <el-dropdown-item v-if="authStore.isAdmin" command="admin">
+                                    <el-icon><set-up /></el-icon>
+                                    <span>后台管理</span>
+                                </el-dropdown-item>
+                                <el-dropdown-item divided command="logout">
+                                    <el-icon><switch-button /></el-icon>
+                                    <span>退出登录</span>
+                                </el-dropdown-item>
+                            </el-dropdown-menu>
+                        </template>
+                    </el-dropdown>
                 </div>
             </div>
         </header>
@@ -176,7 +194,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { Microphone, Setting, QuestionFilled, UserFilled } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
@@ -196,6 +214,14 @@ const router = useRouter();
 const configStore = useConfigStore();
 const historyStore = useHistoryStore();
 const authStore = useAuthStore();
+
+const avatarUrl = computed(() => {
+    const avatar = authStore.user?.avatar
+    if (!avatar) return ''
+    if (avatar.startsWith('http')) return avatar
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
+    return `${backendUrl}${avatar}`
+})
 
 const {
     loading,
@@ -267,6 +293,16 @@ function onPlayHistory(item: TTSHistoryItem) {
         // 兼容旧数据：直接使用存储的 audioUrl（仅在当前会话内有效）
         audioBlob.value = null;
         audioUrl.value = item.audioUrl;
+    }
+}
+
+function handleUserCommand(cmd: string) {
+    if (cmd === 'profile') {
+        router.push('/profile')
+    } else if (cmd === 'admin') {
+        router.push('/admin')
+    } else if (cmd === 'logout') {
+        handleLogout()
     }
 }
 

@@ -6,12 +6,18 @@ import { aesEncrypt } from '../utils/crypto'
 export interface User {
   id: number
   username: string
+  nickname: string
+  avatar: string
+  email: string
+  phone: string
+  role: { id: number; name: string; code: string } | null
 }
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string>(localStorage.getItem('token') || '')
   const user = ref<User | null>(null)
   const isLoggedIn = computed(() => !!token.value && !!user.value)
+  const isAdmin = computed(() => user.value?.role?.code === 'admin')
 
   async function fetchUser() {
     try {
@@ -38,7 +44,19 @@ export const useAuthStore = defineStore('auth', () => {
   async function register(username: string, password: string) {
     const encrypted = aesEncrypt(JSON.stringify({ username, password }))
     const res = await client.post('/auth/register', { data: encrypted })
-    // 注册成功后不自动登录，由用户手动登录
+    return res.data
+  }
+
+  async function updateProfile(data: Partial<Pick<User, 'nickname' | 'email' | 'phone'>>) {
+    const encrypted = aesEncrypt(JSON.stringify(data))
+    const res = await client.put('/auth/profile', { data: encrypted })
+    user.value = res.data
+    return res.data
+  }
+
+  async function changePassword(oldPassword: string, newPassword: string) {
+    const encrypted = aesEncrypt(JSON.stringify({ oldPassword, newPassword }))
+    const res = await client.put('/auth/password', { data: encrypted })
     return res.data
   }
 
@@ -59,10 +77,13 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     user,
     isLoggedIn,
+    isAdmin,
     login,
     register,
     logout,
     fetchUser,
+    updateProfile,
+    changePassword,
     init,
   }
 })

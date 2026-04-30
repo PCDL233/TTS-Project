@@ -7,6 +7,14 @@ import './style.css'
 import App from './App.vue'
 import router from './router'
 
+import VueECharts from 'vue-echarts'
+import { use } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
+import { LineChart, BarChart, PieChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent, LegendComponent, TitleComponent } from 'echarts/components'
+
+use([CanvasRenderer, LineChart, BarChart, PieChart, GridComponent, TooltipComponent, LegendComponent, TitleComponent])
+
 console.log('[MiMo TTS] main.ts loaded')
 console.log('[MiMo TTS] Vue version:', version)
 
@@ -18,6 +26,8 @@ try {
   for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
     app.component(key, component)
   }
+
+  app.component('v-chart', VueECharts)
 
   app.use(pinia)
   app.use(router)
