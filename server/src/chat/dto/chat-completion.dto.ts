@@ -16,6 +16,7 @@ class ChatMessageDto {
     text?: string;
     image_url?: { url: string };
     input_audio?: { data: string; format: string };
+    video_url?: { url: string; fps?: number; media_resolution?: string };
   }>;
 }
 
@@ -42,6 +43,23 @@ class ToolFunctionDto {
   parameters?: Record<string, unknown>;
 }
 
+class UserLocationDto {
+  @IsString()
+  type: 'approximate';
+
+  @IsString()
+  @IsOptional()
+  country?: string;
+
+  @IsString()
+  @IsOptional()
+  region?: string;
+
+  @IsString()
+  @IsOptional()
+  city?: string;
+}
+
 class ToolDto {
   @IsString()
   type: 'function' | 'web_search';
@@ -50,6 +68,23 @@ class ToolDto {
   @IsOptional()
   @Type(() => ToolFunctionDto)
   function?: ToolFunctionDto;
+
+  @IsNumber()
+  @IsOptional()
+  max_keyword?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  force_search?: boolean;
+
+  @IsNumber()
+  @IsOptional()
+  limit?: number;
+
+  @ValidateNested()
+  @IsOptional()
+  @Type(() => UserLocationDto)
+  user_location?: UserLocationDto;
 }
 
 export class ChatCompletionDto {

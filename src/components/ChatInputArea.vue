@@ -21,7 +21,7 @@
                 </div>
                 <div v-if="inputAudio" class="relative group flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
                     <audio
-                        :src="`data:audio/wav;base64,${inputAudio.data}`"
+                        :src="`data:audio/${inputAudio.format};base64,${inputAudio.data}`"
                         controls
                         class="h-6 w-40"
                     />
@@ -31,6 +31,24 @@
                     >
                         ×
                     </button>
+                </div>
+                <div v-if="inputVideo" class="relative group flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 max-w-xs">
+                    <video
+                        :src="inputVideo.url"
+                        controls
+                        class="h-20 w-32 rounded object-cover"
+                    />
+                    <div class="text-xs text-gray-500 truncate flex-1">视频附件</div>
+                    <button
+                        class="w-5 h-5 bg-gray-800 text-white rounded-full flex items-center justify-center text-xs shrink-0"
+                        @click="removeVideo()"
+                    >
+                        ×
+                    </button>
+                </div>
+                <div v-if="uploadingVideo" class="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
+                    <el-icon class="animate-spin text-blue-500"><loading /></el-icon>
+                    <span class="text-xs text-gray-500">上传中...</span>
                 </div>
             </div>
 
@@ -72,6 +90,25 @@
                     accept="audio/*"
                     class="hidden"
                     @change="handleAudioChange"
+                />
+
+                <!-- 上传视频 -->
+                <el-tooltip content="上传视频" placement="top">
+                    <button
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
+                        :class="inputVideo ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        @click="triggerVideoUpload"
+                    >
+                        <el-icon :size="14"><video-camera /></el-icon>
+                        <span>视频</span>
+                    </button>
+                </el-tooltip>
+                <input
+                    ref="videoInputRef"
+                    type="file"
+                    accept="video/*"
+                    class="hidden"
+                    @change="handleVideoChange"
                 />
 
                 <el-divider direction="vertical" class="!mx-1" />
@@ -192,28 +229,37 @@ import {
     MagicStick,
     VideoPause,
     Promotion,
+    VideoCamera,
+    Loading,
 } from '@element-plus/icons-vue'
 import { useChatStore } from '../stores/chat'
 import type { ChatMessage, ChatMessagePart, ChatFeatures } from '../types/chat'
 import { CHAT_MODEL_OPTIONS } from '../types/chat'
+import { uploadFile } from '../api/upload'
+import { ElMessage } from 'element-plus'
 
 const chatStore = useChatStore()
 
 const inputText = ref('')
 const inputImages = ref<string[]>([])
 const inputAudio = ref<{ data: string; format: string } | null>(null)
+const inputVideo = ref<{ url: string; file?: File } | null>(null)
+const uploadingVideo = ref(false)
 
 const imageInputRef = ref<HTMLInputElement>()
 const audioInputRef = ref<HTMLInputElement>()
+const videoInputRef = ref<HTMLInputElement>()
 
 // 使用本地响应式副本，解决 Pinia store ref 在模板中的访问问题
 const features = computed(() => chatStore.features)
 
 const canSend = computed(() => {
     if (chatStore.loading) return false
+    if (uploadingVideo.value) return false
     if (inputText.value.trim()) return true
     if (inputImages.value.length > 0) return true
     if (inputAudio.value) return true
+    if (inputVideo.value) return true
     return false
 })
 
@@ -250,6 +296,13 @@ async function handleSend() {
         })
     }
 
+    if (inputVideo.value) {
+        contentParts.push({
+            type: 'video_url',
+            video_url: { url: inputVideo.value.url },
+        })
+    }
+
     const userMessage: ChatMessage = {
         role: 'user',
         content: inputText.value.trim(),
@@ -260,6 +313,7 @@ async function handleSend() {
     inputText.value = ''
     inputImages.value = []
     inputAudio.value = null
+    inputVideo.value = null
 
     await chatStore.sendMessage(userMessage)
 }
@@ -281,6 +335,13 @@ function handleImageChange(e: Event) {
     const file = target.files?.[0]
     if (!file) return
 
+    const maxSize = 10 * 1024 * 1024
+    if (file.size > maxSize) {
+        ElMessage.warning('图片文件大小不能超过 10MB')
+        target.value = ''
+        return
+    }
+
     const reader = new FileReader()
     reader.onload = () => {
         const result = reader.result as string
@@ -295,11 +356,19 @@ function handleAudioChange(e: Event) {
     const file = target.files?.[0]
     if (!file) return
 
+    const maxSize = 10 * 1024 * 1024
+    if (file.size > maxSize) {
+        ElMessage.warning('音频文件大小不能超过 10MB')
+        target.value = ''
+        return
+    }
+
     const reader = new FileReader()
     reader.onload = () => {
         const result = reader.result as string
         const base64 = result.split(',')[1]
-        const format = file.name.endsWith('.wav') ? 'wav' : 'mp3'
+        const ext = file.name.split('.').pop()?.toLowerCase() || 'wav'
+        const format = ext === 'mp3' ? 'mp3' : ext === 'wav' ? 'wav' : ext === 'ogg' ? 'ogg' : ext === 'm4a' ? 'm4a' : 'wav'
         inputAudio.value = { data: base64, format }
     }
     reader.readAsDataURL(file)
@@ -312,6 +381,39 @@ function removeImage(index: number) {
 
 function removeAudio() {
     inputAudio.value = null
+}
+
+function triggerVideoUpload() {
+    videoInputRef.value?.click()
+}
+
+async function handleVideoChange(e: Event) {
+    const target = e.target as HTMLInputElement
+    const file = target.files?.[0]
+    if (!file) return
+
+    const maxSize = 50 * 1024 * 1024
+    if (file.size > maxSize) {
+        ElMessage.warning('视频文件大小不能超过 50MB')
+        target.value = ''
+        return
+    }
+
+    uploadingVideo.value = true
+    try {
+        const res = await uploadFile(file)
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
+        inputVideo.value = { url: `${backendUrl}${res.url}` }
+    } catch (err: any) {
+        ElMessage.error(err.response?.data?.message || '视频上传失败')
+    } finally {
+        uploadingVideo.value = false
+    }
+    target.value = ''
+}
+
+function removeVideo() {
+    inputVideo.value = null
 }
 </script>
 

@@ -119,7 +119,16 @@ export const useChatStore = defineStore('chat', () => {
     // 构建 tools
     const tools: any[] = []
     if (features.value.webSearch) {
-      tools.push({ type: 'web_search' })
+      tools.push({
+        type: 'web_search',
+        max_keyword: 3,
+        force_search: true,
+        limit: 5,
+        user_location: {
+          type: 'approximate',
+          country: 'China',
+        },
+      })
     }
     if (features.value.functionCall) {
       tools.push({

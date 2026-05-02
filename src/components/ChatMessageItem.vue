@@ -47,9 +47,17 @@
                             <!-- 音频 -->
                             <div v-if="audioPart" class="flex justify-end">
                                 <audio
-                                    :src="`data:audio/wav;base64,${audioPart.input_audio!.data}`"
+                                    :src="`data:audio/${audioPart.input_audio?.format || 'wav'};base64,${audioPart.input_audio!.data}`"
                                     controls
                                     class="h-8"
+                                />
+                            </div>
+                            <!-- 视频 -->
+                            <div v-if="videoPart" class="flex justify-end">
+                                <video
+                                    :src="videoPart.video_url?.url"
+                                    controls
+                                    class="h-32 rounded-lg border border-gray-200"
                                 />
                             </div>
                             <!-- 文本气泡 -->
@@ -238,6 +246,11 @@ const imageParts = computed(() => {
 const audioPart = computed(() => {
     if (!props.message.contentParts) return null
     return props.message.contentParts.find((p: ChatMessagePart) => p.type === 'input_audio') || null
+})
+
+const videoPart = computed(() => {
+    if (!props.message.contentParts) return null
+    return props.message.contentParts.find((p: ChatMessagePart) => p.type === 'video_url') || null
 })
 
 function copyContent() {

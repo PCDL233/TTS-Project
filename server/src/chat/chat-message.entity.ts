@@ -1,10 +1,11 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 
 export interface MessagePart {
-  type: 'text' | 'image_url' | 'input_audio';
+  type: 'text' | 'image_url' | 'input_audio' | 'video_url';
   text?: string;
   image_url?: { url: string };
   input_audio?: { data: string; format: string };
+  video_url?: { url: string; fps?: number; media_resolution?: string };
 }
 
 @Entity()
