@@ -17,6 +17,9 @@ export default defineConfig({
           if (id.includes('node_modules')) {
             if (id.includes('@element-plus/icons-vue')) return 'icons'
             if (id.includes('element-plus')) return 'element-plus'
+            if (id.includes('vue') || id.includes('pinia')) return 'vue'
+            if (id.includes('marked') || id.includes('highlight.js')) return 'markdown'
+            if (id.includes('echarts')) return 'charts'
             return 'vendor'
           }
         },

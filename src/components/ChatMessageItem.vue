@@ -159,8 +159,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { Cpu, ArrowDown, DocumentCopy, UserFilled, Avatar } from '@element-plus/icons-vue'
+import { computed, ref } from 'vue'
+import { Cpu, ArrowDown, DocumentCopy, UserFilled } from '@element-plus/icons-vue'
 import type { ChatMessage, ChatMessagePart } from '../types/chat'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
