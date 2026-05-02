@@ -1,5 +1,5 @@
 <template>
-    <div ref="listRef" class="flex-1 overflow-y-auto">
+    <div ref="listRef" class="flex-1 overflow-y-auto scroll-smooth">
         <!-- 空状态 -->
         <div
             v-if="chatStore.messages.length === 0 && !chatStore.loading"
@@ -16,7 +16,7 @@
         <template v-else>
             <ChatMessageItem
                 v-for="(msg, index) in chatStore.messages"
-                :key="index"
+                :key="msg.id || index"
                 :message="msg"
                 :is-loading="chatStore.loading && index === chatStore.messages.length - 1 && msg.role === 'assistant' && !msg.content"
             />
@@ -33,6 +33,7 @@ import ChatMessageItem from './ChatMessageItem.vue'
 const chatStore = useChatStore()
 const listRef = ref<HTMLDivElement>()
 
+// 监听消息数量变化，自动滚动到底部
 watch(
     () => chatStore.messages.length,
     () => {
@@ -43,8 +44,19 @@ watch(
     { immediate: true },
 )
 
+// 监听最后一条消息内容变化，自动滚动到底部
 watch(
     () => chatStore.messages[chatStore.messages.length - 1]?.content,
+    () => {
+        nextTick(() => {
+            scrollToBottom()
+        })
+    },
+)
+
+// 监听最后一条消息的推理内容变化
+watch(
+    () => chatStore.messages[chatStore.messages.length - 1]?.reasoningContent,
     () => {
         nextTick(() => {
             scrollToBottom()
@@ -58,3 +70,9 @@ function scrollToBottom() {
     }
 }
 </script>
+
+<style scoped>
+.scroll-smooth {
+    scroll-behavior: smooth;
+}
+</style>

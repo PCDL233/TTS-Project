@@ -76,9 +76,31 @@ export class ChatController {
     res.setHeader('Connection', 'keep-alive');
     res.status(HttpStatus.OK);
 
+    let fullContent = '';
+    let fullReasoning = '';
+    const toolCallMap = new Map<string, any>();
+    const annotationsSet = new Set<string>();
+
     try {
       const stream = this.chatService.streamChatCompletion(req.user.userId, dto);
       for await (const chunk of stream) {
+        if (chunk.content) fullContent += chunk.content;
+        if (chunk.reasoningContent) fullReasoning += chunk.reasoningContent;
+        if (chunk.toolCalls) {
+          for (const tc of chunk.toolCalls) {
+            const existing = toolCallMap.get(tc.id);
+            if (existing) {
+              existing.function.arguments += tc.function.arguments || '';
+            } else {
+              toolCallMap.set(tc.id, JSON.parse(JSON.stringify(tc)));
+            }
+          }
+        }
+        if (chunk.annotations) {
+          for (const anno of chunk.annotations) {
+            annotationsSet.add(JSON.stringify(anno));
+          }
+        }
         res.write(`data: ${JSON.stringify(chunk)}\n\n`);
       }
       res.write('data: [DONE]\n\n');
@@ -87,6 +109,27 @@ export class ChatController {
       this.logger.error(`[completions] 错误: ${(err as Error).message}`);
       res.write(`data: ${JSON.stringify({ error: (err as Error).message })}\n\n`);
     } finally {
+      // 保存对话历史
+      if (dto.conversationId) {
+        try {
+          const lastUserMessage = dto.messages[dto.messages.length - 1];
+          const fullToolCalls = Array.from(toolCallMap.values());
+          const fullAnnotations = Array.from(annotationsSet).map((s) => JSON.parse(s));
+          await this.chatService.saveChatPair(
+            dto.conversationId,
+            lastUserMessage,
+            {
+              content: fullContent,
+              reasoningContent: fullReasoning,
+              toolCalls: fullToolCalls.length > 0 ? fullToolCalls : undefined,
+              annotations: fullAnnotations.length > 0 ? fullAnnotations : undefined,
+            },
+          );
+          this.logger.log(`[completions] 会话 ${dto.conversationId} 消息已保存`);
+        } catch (saveErr) {
+          this.logger.error(`[completions] 保存消息失败: ${(saveErr as Error).message}`);
+        }
+      }
       res.end();
     }
   }

@@ -153,27 +153,31 @@ export const useChatStore = defineStore('chat', () => {
     await sendChatStream(
       params,
       (chunk) => {
+        // 必须通过数组索引访问 proxy 对象才能触发 Vue 响应式更新
+        const lastMsg = messages.value[messages.value.length - 1]
+        if (!lastMsg || lastMsg.role !== 'assistant') return
+
         if (chunk.content) {
-          assistantMessage.content += chunk.content
+          lastMsg.content += chunk.content
         }
         if (chunk.reasoningContent) {
-          assistantMessage.reasoningContent = (assistantMessage.reasoningContent || '') + chunk.reasoningContent
+          lastMsg.reasoningContent = (lastMsg.reasoningContent || '') + chunk.reasoningContent
         }
         if (chunk.toolCalls) {
-          if (!assistantMessage.toolCalls) assistantMessage.toolCalls = []
+          if (!lastMsg.toolCalls) lastMsg.toolCalls = []
           // 增量 toolCalls 合并逻辑
           for (const tc of chunk.toolCalls) {
-            const existing = assistantMessage.toolCalls.find((t) => t.id === tc.id)
+            const existing = lastMsg.toolCalls.find((t) => t.id === tc.id)
             if (existing) {
               existing.function.arguments += tc.function.arguments || ''
             } else {
-              assistantMessage.toolCalls.push(tc)
+              lastMsg.toolCalls.push(tc)
             }
           }
         }
         if (chunk.annotations) {
-          if (!assistantMessage.annotations) assistantMessage.annotations = []
-          assistantMessage.annotations.push(...chunk.annotations)
+          if (!lastMsg.annotations) lastMsg.annotations = []
+          lastMsg.annotations.push(...chunk.annotations)
         }
       },
       () => {

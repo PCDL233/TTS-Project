@@ -1,7 +1,7 @@
 <template>
-    <div class="min-h-screen bg-gray-50 flex flex-col">
+    <div class="h-screen bg-gray-50 flex flex-col overflow-hidden">
         <!-- 顶部导航 -->
-        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <header class="bg-white border-b border-gray-200 shrink-0">
             <div
                 class="max-w-screen-2xl mx-auto px-4 h-14 flex items-center justify-between"
             >
@@ -77,19 +77,19 @@
         </header>
 
         <!-- 主内容区 -->
-        <main class="flex-1 flex overflow-hidden" style="height: calc(100vh - 57px)">
+        <main class="flex-1 flex overflow-hidden">
             <!-- 左侧会话栏 -->
             <aside
-                class="w-64 bg-gray-50 border-r border-gray-200 shrink-0 overflow-hidden transition-all duration-300"
+                class="bg-gray-50 border-r border-gray-200 shrink-0 overflow-hidden transition-all duration-300"
                 :class="sidebarCollapsed ? 'w-0 opacity-0' : 'w-64 opacity-100'"
             >
                 <ChatSidebar />
             </aside>
 
             <!-- 右侧聊天区 -->
-            <div class="flex-1 flex flex-col min-w-0 bg-white">
-                <!-- 收起/展开按钮 -->
-                <div class="px-3 py-2 border-b border-gray-100 flex items-center">
+            <div class="flex-1 flex flex-col min-w-0 bg-white overflow-hidden">
+                <!-- 收起/展开按钮 + 会话标题 -->
+                <div class="px-3 py-2 border-b border-gray-100 flex items-center shrink-0">
                     <el-button text class="!p-1 !h-auto" @click="sidebarCollapsed = !sidebarCollapsed">
                         <el-icon :size="16"><expand v-if="sidebarCollapsed" /><fold v-else /></el-icon>
                     </el-button>

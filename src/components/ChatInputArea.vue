@@ -1,5 +1,5 @@
 <template>
-    <div class="border-t border-gray-200 bg-white p-4">
+    <div class="border-t border-gray-200 bg-white p-4 shrink-0">
         <div class="max-w-3xl mx-auto">
             <!-- 附件预览 -->
             <div v-if="inputImages.length > 0 || inputAudio" class="mb-3 flex flex-wrap gap-2">
@@ -34,6 +34,114 @@
                 </div>
             </div>
 
+            <!-- 工具栏（放在输入框上方） -->
+            <div class="flex items-center gap-2 mb-2 flex-wrap">
+                <!-- 上传图片 -->
+                <el-tooltip content="上传图片" placement="top">
+                    <button
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
+                        :class="inputImages.length > 0 ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        @click="triggerImageUpload"
+                    >
+                        <el-icon :size="14"><picture-rounded /></el-icon>
+                        <span>图片</span>
+                    </button>
+                </el-tooltip>
+                <input
+                    ref="imageInputRef"
+                    type="file"
+                    accept="image/*"
+                    class="hidden"
+                    @change="handleImageChange"
+                />
+
+                <!-- 上传音频 -->
+                <el-tooltip content="上传音频" placement="top">
+                    <button
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
+                        :class="inputAudio ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        @click="triggerAudioUpload"
+                    >
+                        <el-icon :size="14"><mic /></el-icon>
+                        <span>音频</span>
+                    </button>
+                </el-tooltip>
+                <input
+                    ref="audioInputRef"
+                    type="file"
+                    accept="audio/*"
+                    class="hidden"
+                    @change="handleAudioChange"
+                />
+
+                <el-divider direction="vertical" class="!mx-1" />
+
+                <!-- 深度思考 -->
+                <el-tooltip content="深度思考" placement="top">
+                    <button
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
+                        :class="features.thinking ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        @click="toggleFeature('thinking')"
+                    >
+                        <el-icon :size="14"><cpu /></el-icon>
+                        <span>深度思考</span>
+                    </button>
+                </el-tooltip>
+
+                <!-- 联网搜索 -->
+                <el-tooltip content="联网搜索" placement="top">
+                    <button
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
+                        :class="features.webSearch ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        @click="toggleFeature('webSearch')"
+                    >
+                        <el-icon :size="14"><search /></el-icon>
+                        <span>联网搜索</span>
+                    </button>
+                </el-tooltip>
+
+                <!-- 结构化输出 -->
+                <el-tooltip content="结构化输出 (JSON)" placement="top">
+                    <button
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
+                        :class="features.jsonMode ? 'bg-green-50 border-green-200 text-green-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        @click="toggleFeature('jsonMode')"
+                    >
+                        <el-icon :size="14"><document-checked /></el-icon>
+                        <span>JSON</span>
+                    </button>
+                </el-tooltip>
+
+                <!-- 函数调用 -->
+                <el-tooltip content="函数调用" placement="top">
+                    <button
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
+                        :class="features.functionCall ? 'bg-purple-50 border-purple-200 text-purple-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        @click="toggleFeature('functionCall')"
+                    >
+                        <el-icon :size="14"><magic-stick /></el-icon>
+                        <span>函数调用</span>
+                    </button>
+                </el-tooltip>
+
+                <div class="ml-auto flex items-center gap-2">
+                    <!-- 模型选择 -->
+                    <el-select
+                        v-model="chatStore.currentModel"
+                        size="small"
+                        class="w-40"
+                        @change="chatStore.updateModel"
+                    >
+                        <el-option
+                            v-for="opt in CHAT_MODEL_OPTIONS"
+                            :key="opt.value"
+                            :label="opt.label"
+                            :value="opt.value"
+                        />
+                    </el-select>
+                </div>
+            </div>
+
             <!-- 输入框 -->
             <div class="relative">
                 <el-input
@@ -46,118 +154,27 @@
                     @keydown="handleKeydown"
                 />
 
-                <!-- 底部工具栏 -->
-                <div class="flex items-center justify-between mt-2">
-                    <div class="flex items-center gap-1">
-                        <!-- 图片上传 -->
-                        <el-button text class="!p-2 !h-auto" @click="triggerImageUpload">
-                            <el-icon :size="16"><picture /></el-icon>
-                        </el-button>
-                        <input
-                            ref="imageInputRef"
-                            type="file"
-                            accept="image/*"
-                            class="hidden"
-                            @change="handleImageChange"
-                        />
-
-                        <!-- 音频上传 -->
-                        <el-button text class="!p-2 !h-auto" @click="triggerAudioUpload">
-                            <el-icon :size="16"><microphone /></el-icon>
-                        </el-button>
-                        <input
-                            ref="audioInputRef"
-                            type="file"
-                            accept="audio/*"
-                            class="hidden"
-                            @change="handleAudioChange"
-                        />
-
-                        <el-divider direction="vertical" />
-
-                        <!-- 功能开关 -->
-                        <el-tooltip content="深度思考" placement="top">
-                            <el-button
-                                text
-                                class="!p-2 !h-auto"
-                                :class="chatStore.features.thinking ? 'text-amber-500' : 'text-gray-400'"
-                                @click="chatStore.updateFeatures({ thinking: !chatStore.features.thinking })"
-                            >
-                                <el-icon :size="16"><cpu /></el-icon>
-                            </el-button>
-                        </el-tooltip>
-
-                        <el-tooltip content="联网搜索" placement="top">
-                            <el-button
-                                text
-                                class="!p-2 !h-auto"
-                                :class="chatStore.features.webSearch ? 'text-blue-500' : 'text-gray-400'"
-                                @click="chatStore.updateFeatures({ webSearch: !chatStore.features.webSearch })"
-                            >
-                                <el-icon :size="16"><search /></el-icon>
-                            </el-button>
-                        </el-tooltip>
-
-                        <el-tooltip content="结构化输出 (JSON)" placement="top">
-                            <el-button
-                                text
-                                class="!p-2 !h-auto"
-                                :class="chatStore.features.jsonMode ? 'text-green-500' : 'text-gray-400'"
-                                @click="chatStore.updateFeatures({ jsonMode: !chatStore.features.jsonMode })"
-                            >
-                                <el-icon :size="16"><document /></el-icon>
-                            </el-button>
-                        </el-tooltip>
-
-                        <el-tooltip content="函数调用" placement="top">
-                            <el-button
-                                text
-                                class="!p-2 !h-auto"
-                                :class="chatStore.features.functionCall ? 'text-purple-500' : 'text-gray-400'"
-                                @click="chatStore.updateFeatures({ functionCall: !chatStore.features.functionCall })"
-                            >
-                                <el-icon :size="16"><tools /></el-icon>
-                            </el-button>
-                        </el-tooltip>
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <!-- 模型选择 -->
-                        <el-select
-                            v-model="chatStore.currentModel"
-                            size="small"
-                            class="w-40"
-                            @change="chatStore.updateModel"
-                        >
-                            <el-option
-                                v-for="opt in CHAT_MODEL_OPTIONS"
-                                :key="opt.value"
-                                :label="opt.label"
-                                :value="opt.value"
-                            />
-                        </el-select>
-
-                        <!-- 发送/停止按钮 -->
-                        <el-button
-                            v-if="chatStore.loading"
-                            type="danger"
-                            size="small"
-                            @click="handleStop"
-                        >
-                            <el-icon class="mr-1"><video-pause /></el-icon>
-                            停止
-                        </el-button>
-                        <el-button
-                            v-else
-                            type="primary"
-                            size="small"
-                            :disabled="!canSend"
-                            @click="handleSend"
-                        >
-                            <el-icon class="mr-1"><promotion /></el-icon>
-                            发送
-                        </el-button>
-                    </div>
+                <!-- 发送/停止按钮 -->
+                <div class="absolute right-2 bottom-2">
+                    <el-button
+                        v-if="chatStore.loading"
+                        type="danger"
+                        size="small"
+                        @click="handleStop"
+                    >
+                        <el-icon class="mr-1"><video-pause /></el-icon>
+                        停止
+                    </el-button>
+                    <el-button
+                        v-else
+                        type="primary"
+                        size="small"
+                        :disabled="!canSend"
+                        @click="handleSend"
+                    >
+                        <el-icon class="mr-1"><promotion /></el-icon>
+                        发送
+                    </el-button>
                 </div>
             </div>
         </div>
@@ -167,17 +184,17 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import {
-    Picture,
-    Microphone,
+    PictureRounded,
+    Mic,
     Cpu,
     Search,
-    Document,
-    Tools,
+    DocumentChecked,
+    MagicStick,
     VideoPause,
     Promotion,
 } from '@element-plus/icons-vue'
 import { useChatStore } from '../stores/chat'
-import type { ChatMessage, ChatMessagePart } from '../types/chat'
+import type { ChatMessage, ChatMessagePart, ChatFeatures } from '../types/chat'
 import { CHAT_MODEL_OPTIONS } from '../types/chat'
 
 const chatStore = useChatStore()
@@ -188,6 +205,9 @@ const inputAudio = ref<{ data: string; format: string } | null>(null)
 
 const imageInputRef = ref<HTMLInputElement>()
 const audioInputRef = ref<HTMLInputElement>()
+
+// 使用本地响应式副本，解决 Pinia store ref 在模板中的访问问题
+const features = computed(() => chatStore.features)
 
 const canSend = computed(() => {
     if (chatStore.loading) return false
@@ -204,6 +224,10 @@ function handleKeydown(e: KeyboardEvent) {
             handleSend()
         }
     }
+}
+
+function toggleFeature(key: keyof ChatFeatures) {
+    chatStore.updateFeatures({ [key]: !chatStore.features[key] } as Partial<ChatFeatures>)
 }
 
 async function handleSend() {
@@ -295,6 +319,7 @@ function removeAudio() {
 .chat-textarea :deep(.el-textarea__inner) {
     border-radius: 0.75rem;
     padding: 0.75rem 1rem;
+    padding-right: 5rem;
     background-color: #f9fafb;
     border-color: #e5e7eb;
     resize: none;

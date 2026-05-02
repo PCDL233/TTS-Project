@@ -44,6 +44,8 @@ export class ChatService {
   }
 
   async removeConversation(userId: number, id: number): Promise<void> {
+    // 先删除关联消息
+    await this.messageRepository.delete({ conversationId: id });
     await this.conversationRepository.delete({ id, userId });
   }
 
@@ -59,6 +61,43 @@ export class ChatService {
   async saveMessage(data: Partial<ChatMessage>): Promise<ChatMessage> {
     const message = this.messageRepository.create(data);
     return this.messageRepository.save(message);
+  }
+
+  async saveChatPair(
+    conversationId: number,
+    userMessage: { role: string; content?: string; contentParts?: any[] },
+    assistantResponse: {
+      content: string;
+      reasoningContent?: string;
+      toolCalls?: any[];
+      annotations?: any[];
+    },
+  ): Promise<void> {
+    // 保存用户消息
+    if (userMessage && userMessage.role === 'user') {
+      await this.saveMessage({
+        conversationId,
+        role: 'user',
+        content: userMessage.content || '',
+        contentParts: userMessage.contentParts,
+      });
+    }
+
+    // 保存助手消息
+    await this.saveMessage({
+      conversationId,
+      role: 'assistant',
+      content: assistantResponse.content,
+      reasoningContent: assistantResponse.reasoningContent || '',
+      toolCalls: assistantResponse.toolCalls,
+      annotations: assistantResponse.annotations,
+    });
+
+    // 更新会话时间
+    await this.conversationRepository.update(
+      { id: conversationId },
+      { updatedAt: new Date() },
+    );
   }
 
   // ========== 流式对话 ==========
