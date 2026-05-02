@@ -111,7 +111,7 @@
                     @change="handleVideoChange"
                 />
 
-                <el-divider direction="vertical" class="!mx-1" />
+                <el-divider direction="vertical" class="mx-1!" />
 
                 <!-- 深度思考 -->
                 <el-tooltip content="深度思考" placement="top">

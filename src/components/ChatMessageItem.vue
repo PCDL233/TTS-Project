@@ -125,7 +125,7 @@
                                         class="w-3.5 h-3.5 rounded-sm"
                                         alt=""
                                     />
-                                    <span class="truncate max-w-[150px]">{{ anno.title || anno.site_name || '来源' }}</span>
+                                    <span class="truncate max-w-37.5">{{ anno.title || anno.site_name || '来源' }}</span>
                                 </a>
                             </div>
                         </div>
@@ -147,7 +147,7 @@
 
                         <!-- 操作按钮 -->
                         <div v-if="message.role === 'assistant' && message.content" class="mt-2 flex items-center gap-2">
-                            <el-button text class="!p-1 !h-auto" @click="copyContent">
+                            <el-button text class="p-1! h-auto!" @click="copyContent">
                                 <el-icon :size="14"><document-copy /></el-icon>
                             </el-button>
                         </div>

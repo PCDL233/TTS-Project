@@ -90,7 +90,7 @@
             <div class="flex-1 flex flex-col min-w-0 bg-white overflow-hidden">
                 <!-- 收起/展开按钮 + 会话标题 -->
                 <div class="px-3 py-2 border-b border-gray-100 flex items-center shrink-0">
-                    <el-button text class="!p-1 !h-auto" @click="sidebarCollapsed = !sidebarCollapsed">
+                    <el-button text class="p-1! h-auto!" @click="sidebarCollapsed = !sidebarCollapsed">
                         <el-icon :size="16"><expand v-if="sidebarCollapsed" /><fold v-else /></el-icon>
                     </el-button>
                     <span v-if="chatStore.currentConversation" class="ml-2 text-sm text-gray-500 truncate">

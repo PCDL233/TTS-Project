@@ -3,7 +3,7 @@
         <!-- 顶部：新对话按钮 -->
         <div class="p-3">
             <el-button
-                class="w-full !justify-start"
+                class="w-full justify-start!"
                 @click="handleNewChat"
             >
                 <el-icon class="mr-2"><plus /></el-icon>
@@ -28,7 +28,7 @@
                 <span class="flex-1 truncate">{{ conv.title }}</span>
                 <el-button
                     v-if="chatStore.currentConversationId === conv.id"
-                    class="!p-1 !h-auto opacity-0 group-hover:opacity-100 transition-opacity"
+                    class="p-1! h-auto! opacity-0 group-hover:opacity-100 transition-opacity"
                     text
                     @click.stop="handleDelete(conv.id)"
                 >
