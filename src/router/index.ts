@@ -19,8 +19,18 @@ const router = createRouter({
     },
     {
       path: '/',
-      name: 'Home',
-      component: () => import('../views/HomePage.vue'),
+      redirect: '/assistant',
+    },
+    {
+      path: '/assistant',
+      name: 'Assistant',
+      component: () => import('../views/AssistantPage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/tts',
+      name: 'TTS',
+      component: () => import('../views/TTSPage.vue'),
       meta: { requiresAuth: true },
     },
     {
@@ -61,7 +71,7 @@ router.beforeEach(async (to, _from, next) => {
     next('/')
     ElMessage.warning('无权访问后台管理')
   } else if ((to.path === '/login' || to.path === '/register') && authStore.isLoggedIn) {
-    next('/')
+    next('/assistant')
   } else {
     next()
   }

@@ -112,7 +112,7 @@ async function handleSubmit() {
     try {
         await authStore.login(form.username, form.password)
         ElMessage.success('登录成功')
-        router.push('/')
+        router.push('/assistant')
     } catch (error: any) {
         ElMessage.error(error.response?.data?.message || '登录失败')
     } finally {

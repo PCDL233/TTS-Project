@@ -1,0 +1,79 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - img [ref=e10]
+          - heading "MiMo AI 助手" [level=1] [ref=e13]
+        - generic [ref=e14]:
+          - link "智能助手" [ref=e15] [cursor=pointer]:
+            - /url: /assistant
+          - link "语音合成" [ref=e16] [cursor=pointer]:
+            - /url: /tts
+      - generic [ref=e17]:
+        - generic [ref=e19]: API Key 已设置
+        - button "API 设置" [ref=e20] [cursor=pointer]:
+          - generic [ref=e21]:
+            - img [ref=e23]
+            - text: API 设置
+        - separator [ref=e25]
+        - button "管理员" [ref=e27] [cursor=pointer]:
+          - img [ref=e29]
+          - generic [ref=e30]: 管理员
+          - img [ref=e32]
+  - main [ref=e34]:
+    - complementary [ref=e35]:
+      - generic [ref=e36]:
+        - button "新对话" [ref=e38] [cursor=pointer]:
+          - generic [ref=e39]:
+            - img [ref=e41]
+            - text: 新对话
+        - generic [ref=e44] [cursor=pointer]:
+          - img [ref=e46]
+          - generic [ref=e49]: 你好，请介绍一下自己
+          - button [ref=e50]:
+            - img [ref=e53]
+    - generic [ref=e55]:
+      - generic [ref=e56]:
+        - button [ref=e57] [cursor=pointer]:
+          - img [ref=e60]
+        - generic [ref=e62]: 你好，请介绍一下自己
+      - generic [ref=e63]:
+        - generic [ref=e65]:
+          - img [ref=e69]
+          - generic [ref=e71]:
+            - generic [ref=e72]: 我
+            - generic [ref=e74]: 你好，请介绍一下自己
+        - generic [ref=e76]:
+          - img [ref=e80]
+          - generic [ref=e82]:
+            - generic [ref=e83]: MiMo
+            - generic [ref=e85]: 你好！很高兴认识你！😊 我是**MiMo-v2.5-pro**，由**小米MiMo团队**开发的AI助手。以下是我的一些基本介绍： **关于我的能力：** - 我拥有**1万亿（1T）参数**，具备强大的理解和生成能力 - 支持**100万（1M）token的超长上下文窗口**，可以处理非常长的对话或文档 - 能够进行多轮对话、回答问题、协助写作、代码编程、逻辑推理等多种任务 **我的特点：** - 我是**中国AI模型**，严格遵守中国的法律法规 - 我会尽力提供准确、有用、安全的信息 - 我性格温和、富有好奇心，喜欢用清晰易懂的方式帮助大家 **我能帮你做什么：** - 回答各类知识问题 - 协助写作、翻译、总结 - 编程和技术支持 - 日常聊天和讨论 - 分析和解决问题 有什么我可以帮助你的吗？我很乐意为你服务！✨
+            - button [ref=e87] [cursor=pointer]:
+              - img [ref=e90]
+      - generic [ref=e94]:
+        - textbox "输入消息...（Shift+Enter 换行）" [active] [ref=e96]
+        - generic [ref=e97]:
+          - generic [ref=e98]:
+            - button [ref=e99] [cursor=pointer]
+            - button [ref=e102] [cursor=pointer]:
+              - img [ref=e105]
+            - separator [ref=e107]
+            - button [ref=e108] [cursor=pointer]:
+              - img [ref=e111]
+            - button [ref=e114] [cursor=pointer]:
+              - img [ref=e117]
+            - button [ref=e119] [cursor=pointer]:
+              - img [ref=e122]
+            - button [ref=e124] [cursor=pointer]:
+              - img [ref=e127]
+          - generic [ref=e129]:
+            - generic [ref=e131] [cursor=pointer]:
+              - generic:
+                - combobox [ref=e133]
+                - generic: MiMo-V2.5-Pro
+              - img [ref=e136]
+            - button "发送" [disabled] [ref=e138]:
+              - generic [ref=e139]:
+                - img [ref=e141]
+                - text: 发送

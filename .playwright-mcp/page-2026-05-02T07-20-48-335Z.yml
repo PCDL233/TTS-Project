@@ -1,0 +1,69 @@
+- generic [ref=e315]:
+  - banner [ref=e316]:
+    - generic [ref=e317]:
+      - generic [ref=e318]:
+        - generic [ref=e319]:
+          - img [ref=e322]
+          - heading "MiMo AI 助手" [level=1] [ref=e325]
+        - generic [ref=e326]:
+          - link "智能助手" [ref=e327] [cursor=pointer]:
+            - /url: /assistant
+          - link "语音合成" [ref=e328] [cursor=pointer]:
+            - /url: /tts
+      - generic [ref=e329]:
+        - generic [ref=e331]: API Key 已设置
+        - button "API 设置" [ref=e332] [cursor=pointer]:
+          - generic [ref=e333]:
+            - img [ref=e335]
+            - text: API 设置
+        - separator [ref=e337]
+        - button "管理员" [ref=e339] [cursor=pointer]:
+          - img [ref=e342]
+          - generic [ref=e344]: 管理员
+          - img [ref=e346]
+  - main [ref=e348]:
+    - complementary [ref=e349]:
+      - generic [ref=e350]:
+        - button "新对话" [ref=e352] [cursor=pointer]:
+          - generic [ref=e353]:
+            - img [ref=e355]
+            - text: 新对话
+        - generic [ref=e358]: 暂无历史对话
+    - generic [ref=e359]:
+      - button [ref=e361] [cursor=pointer]:
+        - img [ref=e364]
+      - generic [ref=e367]:
+        - img [ref=e370]
+        - generic [ref=e373]: 有什么可以帮你的？
+        - generic [ref=e374]: 输入问题，开始与 MiMo 对话
+      - alert [ref=e375]:
+        - img [ref=e377]
+        - generic [ref=e379]:
+          - generic [ref=e380]: 加载会话列表失败
+          - img [ref=e382] [cursor=pointer]
+      - generic [ref=e386]:
+        - textbox "输入消息...（Shift+Enter 换行）" [ref=e388]
+        - generic [ref=e389]:
+          - generic [ref=e390]:
+            - button [ref=e391] [cursor=pointer]
+            - button [ref=e394] [cursor=pointer]:
+              - img [ref=e397]
+            - separator [ref=e399]
+            - button [ref=e400] [cursor=pointer]:
+              - img [ref=e403]
+            - button [ref=e406] [cursor=pointer]:
+              - img [ref=e409]
+            - button [ref=e411] [cursor=pointer]:
+              - img [ref=e414]
+            - button [ref=e416] [cursor=pointer]:
+              - img [ref=e419]
+          - generic [ref=e421]:
+            - generic [ref=e423] [cursor=pointer]:
+              - generic:
+                - combobox [ref=e425]
+                - generic: MiMo-V2.5-Pro
+              - img [ref=e428]
+            - button "发送" [disabled] [ref=e430]:
+              - generic [ref=e431]:
+                - img [ref=e433]
+                - text: 发送

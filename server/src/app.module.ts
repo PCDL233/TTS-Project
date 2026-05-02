@@ -14,6 +14,7 @@ import { AdminModule } from './admin/admin.module';
 import { SystemConfigModule } from './system-config/system-config.module';
 import { AudioTagModule } from './audio-tag/audio-tag.module';
 import { UploadModule } from './common/upload/upload.module';
+import { ChatModule } from './chat/chat.module';
 import { AudioTag } from './audio-tag/audio-tag.entity';
 import { Config } from './config/config.entity';
 import { History } from './history/history.entity';
@@ -22,6 +23,8 @@ import { OperationLog } from './log/operation-log.entity';
 import { Role } from './role/role.entity';
 import { SystemConfig } from './system-config/system-config.entity';
 import { User } from './user/user.entity';
+import { ChatConversation } from './chat/chat-conversation.entity';
+import { ChatMessage } from './chat/chat-message.entity';
 
 const entities = [
   AudioTag,
@@ -32,6 +35,8 @@ const entities = [
   Role,
   SystemConfig,
   User,
+  ChatConversation,
+  ChatMessage,
 ];
 
 @Module({
@@ -54,6 +59,7 @@ const entities = [
     SystemConfigModule,
     AudioTagModule,
     UploadModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],
