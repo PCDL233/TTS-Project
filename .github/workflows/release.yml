@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+
+      - name: Install system dependencies for native modules
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential python3 make g++
+
+      # ---------- Frontend ----------
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Archive frontend dist
+        run: |
+          cd dist
+          zip -r ../frontend-dist.zip .
+
+      # ---------- Backend ----------
+      - name: Install backend dependencies
+        working-directory: ./server
+        run: npm ci
+
+      - name: Build backend
+        working-directory: ./server
+        run: npm run build
+
+      - name: Archive backend dist
+        run: |
+          cd server/dist
+          zip -r ../../backend-dist.zip .
+
+      - name: Run backend tests
+        working-directory: ./server
+        env:
+          NODE_ENV: test
+          JWT_SECRET: ci-test-jwt-secret
+          AES_SECRET_KEY: ci-test-aes-secret-key-32bytes!!
+          PORT: '3001'
+        run: npm run test
+
+      # ---------- Create Release ----------
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            frontend-dist.zip
+            backend-dist.zip
+          generate_release_notes: true

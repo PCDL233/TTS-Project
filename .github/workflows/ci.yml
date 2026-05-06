@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+
+      - name: Install system dependencies for native modules
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential python3 make g++
+
+      # ---------- Frontend ----------
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Upload frontend build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist/
+          retention-days: 7
+
+      # ---------- Backend ----------
+      - name: Install backend dependencies
+        working-directory: ./server
+        run: npm ci
+
+      - name: Build backend
+        working-directory: ./server
+        run: npm run build
+
+      - name: Upload backend build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dist
+          path: server/dist/
+          retention-days: 7
+
+      - name: Run backend tests
+        working-directory: ./server
+        env:
+          NODE_ENV: test
+          JWT_SECRET: ci-test-jwt-secret
+          AES_SECRET_KEY: ci-test-aes-secret-key-32bytes!!
+          PORT: '3001'
+        run: npm run test
