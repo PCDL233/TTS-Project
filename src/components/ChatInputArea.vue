@@ -158,7 +158,7 @@
                         @change="chatStore.updateModel"
                     >
                         <el-option
-                            v-for="opt in CHAT_MODEL_OPTIONS"
+                            v-for="opt in availableModelOptions"
                             :key="opt.value"
                             :label="opt.label"
                             :value="opt.value"
@@ -207,7 +207,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
     PictureRounded,
     Mic,
@@ -220,8 +220,9 @@ import {
     Loading,
 } from '@element-plus/icons-vue'
 import { useChatStore } from '../stores/chat'
+import { useConfigStore } from '../stores/config'
 import type { ChatMessage, ChatMessagePart, ChatFeatures } from '../types/chat'
-import { CHAT_MODEL_OPTIONS } from '../types/chat'
+import { CHAT_MODEL_OPTIONS, TOKEN_PLAN_CHAT_MODELS } from '../types/chat'
 import { uploadFile } from '../api/upload'
 import { BACKEND_URL } from '../api/client'
 import { ElMessage } from 'element-plus'
@@ -229,6 +230,23 @@ import { ElMessage } from 'element-plus'
 const SUPPORTED_AUDIO_FORMATS = new Set(['mp3', 'wav', 'ogg', 'm4a'])
 
 const chatStore = useChatStore()
+const configStore = useConfigStore()
+
+const availableModelOptions = computed(() => {
+  const preset = configStore.config.baseUrlPreset
+  if (preset && preset.startsWith('token-plan')) {
+    return CHAT_MODEL_OPTIONS.filter(opt => TOKEN_PLAN_CHAT_MODELS.has(opt.value))
+  }
+  return CHAT_MODEL_OPTIONS
+})
+
+// 如果当前模型不在可用列表中，自动切换到第一个可用模型
+watch(availableModelOptions, (options) => {
+  const values = options.map(o => o.value)
+  if (!values.includes(chatStore.currentModel) && values.length > 0) {
+    chatStore.updateModel(values[0])
+  }
+}, { immediate: true })
 
 const inputText = ref('')
 const inputImages = ref<string[]>([])

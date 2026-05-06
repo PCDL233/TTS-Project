@@ -126,6 +126,14 @@ export class ChatService {
     const baseUrl = this.getEffectiveBaseUrl(config);
     this.logger.log(`[streamChatCompletion] 请求 MiMo API: ${baseUrl}/chat/completions`);
 
+    // Token Plan 仅支持 8 款模型，mimo-v2-flash 不在支持列表中
+    const tokenPlanUnsupportedModels = ['mimo-v2-flash'];
+    if (tokenPlanUnsupportedModels.includes(dto.model) && config.baseUrlPreset?.startsWith('token-plan')) {
+      throw new BadRequestException(
+        `当前 API 配置（Token Plan）不支持 ${dto.model} 模型。Token Plan 仅支持 MiMo-V2.5-Pro、MiMo-V2.5、MiMo-V2-Pro、MiMo-V2-Omni 及 TTS 系列模型，请切换为普通 API 端点或选择其他模型。`
+      );
+    }
+
     // 构造 MiMo API 消息格式
     const apiMessages = dto.messages.map((msg) => {
       if (msg.contentParts && msg.contentParts.length > 0) {

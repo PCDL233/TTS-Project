@@ -82,3 +82,11 @@ export const CHAT_MODEL_OPTIONS = [
   { value: 'mimo-v2-omni', label: 'MiMo-V2-Omni', description: '多模态模型' },
   { value: 'mimo-v2-flash', label: 'MiMo-V2-Flash', description: '轻量高速模型' },
 ]
+
+/** Token Plan 支持的聊天模型（共8款，不含 mimo-v2-flash） */
+export const TOKEN_PLAN_CHAT_MODELS = new Set([
+  'mimo-v2.5-pro',
+  'mimo-v2.5',
+  'mimo-v2-pro',
+  'mimo-v2-omni',
+])
