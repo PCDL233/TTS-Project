@@ -1,33 +1,17 @@
-import axios from 'axios'
+import { client } from './client'
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-
-export function uploadAvatar(file: File): Promise<{ url: string; filename: string }> {
+async function uploadFormData<T>(url: string, file: File): Promise<T> {
   const formData = new FormData()
   formData.append('file', file)
-  const token = localStorage.getItem('token')
+  return client.post<T>(url, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then((res) => res.data)
+}
 
-  return axios
-    .post(`${BACKEND_URL}/api/upload/avatar`, formData, {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-        'Content-Type': 'multipart/form-data',
-      },
-    })
-    .then((res) => res.data)
+export function uploadAvatar(file: File): Promise<{ url: string; filename: string }> {
+  return uploadFormData('/upload/avatar', file)
 }
 
 export function uploadFile(file: File): Promise<{ url: string; filename: string; mimetype: string; size: number }> {
-  const formData = new FormData()
-  formData.append('file', file)
-  const token = localStorage.getItem('token')
-
-  return axios
-    .post(`${BACKEND_URL}/api/upload/file`, formData, {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-        'Content-Type': 'multipart/form-data',
-      },
-    })
-    .then((res) => res.data)
+  return uploadFormData('/upload/file', file)
 }

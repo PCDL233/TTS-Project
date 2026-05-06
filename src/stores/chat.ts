@@ -21,7 +21,6 @@ export const useChatStore = defineStore('chat', () => {
     thinking: false,
     webSearch: false,
     functionCall: false,
-    jsonMode: false,
   })
   const abortController = ref<AbortController | null>(null)
 
@@ -155,7 +154,6 @@ export const useChatStore = defineStore('chat', () => {
       thinking: features.value.thinking ? { type: 'enabled' as const } : { type: 'disabled' as const },
       tools: tools.length > 0 ? tools : undefined,
       tool_choice: tools.length > 0 ? 'auto' : undefined,
-      response_format: features.value.jsonMode ? { type: 'json_object' as const } : undefined,
       conversationId: currentConversationId.value!,
     }
 

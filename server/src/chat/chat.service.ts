@@ -73,27 +73,28 @@ export class ChatService {
       annotations?: any[];
     },
   ): Promise<void> {
-    // 保存用户消息
+    const savePromises: Promise<unknown>[] = [];
+
     if (userMessage && userMessage.role === 'user') {
-      await this.saveMessage({
+      savePromises.push(this.saveMessage({
         conversationId,
         role: 'user',
         content: userMessage.content || '',
         contentParts: userMessage.contentParts,
-      });
+      }));
     }
 
-    // 保存助手消息
-    await this.saveMessage({
+    savePromises.push(this.saveMessage({
       conversationId,
       role: 'assistant',
       content: assistantResponse.content,
       reasoningContent: assistantResponse.reasoningContent || '',
       toolCalls: assistantResponse.toolCalls,
       annotations: assistantResponse.annotations,
-    });
+    }));
 
-    // 更新会话时间
+    await Promise.all(savePromises);
+
     await this.conversationRepository.update(
       { id: conversationId },
       { updatedAt: new Date() },

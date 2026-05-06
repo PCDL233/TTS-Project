@@ -92,7 +92,7 @@ export class ChatController {
             if (existing) {
               existing.function.arguments += tc.function.arguments || '';
             } else {
-              toolCallMap.set(tc.id, JSON.parse(JSON.stringify(tc)));
+              toolCallMap.set(tc.id, { ...tc, function: { ...tc.function } });
             }
           }
         }
@@ -109,8 +109,7 @@ export class ChatController {
       this.logger.error(`[completions] 错误: ${(err as Error).message}`);
       res.write(`data: ${JSON.stringify({ error: (err as Error).message })}\n\n`);
     } finally {
-      // 保存对话历史
-      if (dto.conversationId) {
+      if (dto.conversationId && (fullContent || fullReasoning)) {
         try {
           const lastUserMessage = dto.messages[dto.messages.length - 1];
           const fullToolCalls = Array.from(toolCallMap.values());

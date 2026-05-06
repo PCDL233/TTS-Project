@@ -33,35 +33,14 @@ import ChatMessageItem from './ChatMessageItem.vue'
 const chatStore = useChatStore()
 const listRef = ref<HTMLDivElement>()
 
-// 监听消息数量变化，自动滚动到底部
 watch(
-    () => chatStore.messages.length,
-    () => {
-        nextTick(() => {
-            scrollToBottom()
-        })
-    },
+    [
+        () => chatStore.messages.length,
+        () => chatStore.messages[chatStore.messages.length - 1]?.content,
+        () => chatStore.messages[chatStore.messages.length - 1]?.reasoningContent,
+    ],
+    () => nextTick(scrollToBottom),
     { immediate: true },
-)
-
-// 监听最后一条消息内容变化，自动滚动到底部
-watch(
-    () => chatStore.messages[chatStore.messages.length - 1]?.content,
-    () => {
-        nextTick(() => {
-            scrollToBottom()
-        })
-    },
-)
-
-// 监听最后一条消息的推理内容变化
-watch(
-    () => chatStore.messages[chatStore.messages.length - 1]?.reasoningContent,
-    () => {
-        nextTick(() => {
-            scrollToBottom()
-        })
-    },
 )
 
 function scrollToBottom() {

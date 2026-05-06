@@ -101,8 +101,15 @@
 
                         <!-- 主内容 -->
                         <div class="prose prose-sm max-w-none text-gray-800">
+                            <!-- Loading 状态 - 三点弹跳动画 -->
+                            <div v-if="isLoading && !message.content" class="flex items-center gap-1.5 py-2">
+                                <span class="bounce-dot w-2 h-2 bg-gray-400 rounded-full"></span>
+                                <span class="bounce-dot w-2 h-2 bg-gray-400 rounded-full" style="animation-delay: 0.15s"></span>
+                                <span class="bounce-dot w-2 h-2 bg-gray-400 rounded-full" style="animation-delay: 0.3s"></span>
+                            </div>
+                            <!-- 正常内容 -->
                             <div
-                                v-if="message.content || isLoading"
+                                v-else-if="message.content"
                                 class="markdown-body"
                                 v-html="renderedHtml"
                             />
@@ -164,6 +171,7 @@ import { Cpu, ArrowDown, DocumentCopy, UserFilled } from '@element-plus/icons-vu
 import type { ChatMessage, ChatMessagePart } from '../types/chat'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
+import { BACKEND_URL } from '../api/client'
 import { marked } from 'marked'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github.css'
@@ -211,16 +219,12 @@ const avatarSrc = computed(() => {
         const avatar = authStore.user?.avatar
         if (!avatar) return ''
         if (avatar.startsWith('http')) return avatar
-        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-        return `${backendUrl}${avatar}`
+        return `${BACKEND_URL}${avatar}`
     }
-    // 助手头像使用默认空字符串，通过 icon 显示
     return ''
 })
 
-const avatarIcon = computed(() => {
-    return UserFilled as any
-})
+const avatarIcon = computed(() => UserFilled)
 
 const avatarClass = computed(() => {
     return props.message.role === 'user'
@@ -367,12 +371,12 @@ function copyContent() {
     margin: 1em 0;
 }
 
-@keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-4px); }
+.bounce-dot {
+    animation: bounceDot 1.2s ease-in-out infinite;
 }
 
-.animate-bounce {
-    animation: bounce 1s infinite;
+@keyframes bounceDot {
+    0%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-8px); }
 }
 </style>

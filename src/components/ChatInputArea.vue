@@ -117,7 +117,7 @@
                 <el-tooltip content="深度思考" placement="top">
                     <button
                         class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
-                        :class="features.thinking ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        :class="chatStore.features.thinking ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
                         @click="toggleFeature('thinking')"
                     >
                         <el-icon :size="14"><cpu /></el-icon>
@@ -129,7 +129,7 @@
                 <el-tooltip content="联网搜索" placement="top">
                     <button
                         class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
-                        :class="features.webSearch ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        :class="chatStore.features.webSearch ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
                         @click="toggleFeature('webSearch')"
                     >
                         <el-icon :size="14"><search /></el-icon>
@@ -137,23 +137,11 @@
                     </button>
                 </el-tooltip>
 
-                <!-- 结构化输出 -->
-                <el-tooltip content="结构化输出 (JSON)" placement="top">
-                    <button
-                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
-                        :class="features.jsonMode ? 'bg-green-50 border-green-200 text-green-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
-                        @click="toggleFeature('jsonMode')"
-                    >
-                        <el-icon :size="14"><document-checked /></el-icon>
-                        <span>JSON</span>
-                    </button>
-                </el-tooltip>
-
                 <!-- 函数调用 -->
                 <el-tooltip content="函数调用" placement="top">
                     <button
                         class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
-                        :class="features.functionCall ? 'bg-purple-50 border-purple-200 text-purple-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        :class="chatStore.features.functionCall ? 'bg-purple-50 border-purple-200 text-purple-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
                         @click="toggleFeature('functionCall')"
                     >
                         <el-icon :size="14"><magic-stick /></el-icon>
@@ -166,7 +154,7 @@
                     <el-select
                         v-model="chatStore.currentModel"
                         size="small"
-                        class="w-40"
+                        style="width: 200px"
                         @change="chatStore.updateModel"
                     >
                         <el-option
@@ -225,7 +213,6 @@ import {
     Mic,
     Cpu,
     Search,
-    DocumentChecked,
     MagicStick,
     VideoPause,
     Promotion,
@@ -236,7 +223,10 @@ import { useChatStore } from '../stores/chat'
 import type { ChatMessage, ChatMessagePart, ChatFeatures } from '../types/chat'
 import { CHAT_MODEL_OPTIONS } from '../types/chat'
 import { uploadFile } from '../api/upload'
+import { BACKEND_URL } from '../api/client'
 import { ElMessage } from 'element-plus'
+
+const SUPPORTED_AUDIO_FORMATS = new Set(['mp3', 'wav', 'ogg', 'm4a'])
 
 const chatStore = useChatStore()
 
@@ -249,9 +239,6 @@ const uploadingVideo = ref(false)
 const imageInputRef = ref<HTMLInputElement>()
 const audioInputRef = ref<HTMLInputElement>()
 const videoInputRef = ref<HTMLInputElement>()
-
-// 使用本地响应式副本，解决 Pinia store ref 在模板中的访问问题
-const features = computed(() => chatStore.features)
 
 const canSend = computed(() => {
     if (chatStore.loading) return false
@@ -273,7 +260,7 @@ function handleKeydown(e: KeyboardEvent) {
 }
 
 function toggleFeature(key: keyof ChatFeatures) {
-    chatStore.updateFeatures({ [key]: !chatStore.features[key] } as Partial<ChatFeatures>)
+    chatStore.updateFeatures({ [key]: !chatStore.features[key] })
 }
 
 async function handleSend() {
@@ -330,14 +317,20 @@ function triggerAudioUpload() {
     audioInputRef.value?.click()
 }
 
+function validateFileSize(file: File, maxBytes: number, label: string): boolean {
+    if (file.size > maxBytes) {
+        ElMessage.warning(`${label}文件大小不能超过 ${maxBytes / 1024 / 1024}MB`)
+        return false
+    }
+    return true
+}
+
 function handleImageChange(e: Event) {
     const target = e.target as HTMLInputElement
     const file = target.files?.[0]
     if (!file) return
 
-    const maxSize = 10 * 1024 * 1024
-    if (file.size > maxSize) {
-        ElMessage.warning('图片文件大小不能超过 10MB')
+    if (!validateFileSize(file, 10 * 1024 * 1024, '图片')) {
         target.value = ''
         return
     }
@@ -356,9 +349,7 @@ function handleAudioChange(e: Event) {
     const file = target.files?.[0]
     if (!file) return
 
-    const maxSize = 10 * 1024 * 1024
-    if (file.size > maxSize) {
-        ElMessage.warning('音频文件大小不能超过 10MB')
+    if (!validateFileSize(file, 10 * 1024 * 1024, '音频')) {
         target.value = ''
         return
     }
@@ -368,7 +359,7 @@ function handleAudioChange(e: Event) {
         const result = reader.result as string
         const base64 = result.split(',')[1]
         const ext = file.name.split('.').pop()?.toLowerCase() || 'wav'
-        const format = ext === 'mp3' ? 'mp3' : ext === 'wav' ? 'wav' : ext === 'ogg' ? 'ogg' : ext === 'm4a' ? 'm4a' : 'wav'
+        const format = SUPPORTED_AUDIO_FORMATS.has(ext) ? ext : 'wav'
         inputAudio.value = { data: base64, format }
     }
     reader.readAsDataURL(file)
@@ -392,9 +383,7 @@ async function handleVideoChange(e: Event) {
     const file = target.files?.[0]
     if (!file) return
 
-    const maxSize = 50 * 1024 * 1024
-    if (file.size > maxSize) {
-        ElMessage.warning('视频文件大小不能超过 50MB')
+    if (!validateFileSize(file, 50 * 1024 * 1024, '视频')) {
         target.value = ''
         return
     }
@@ -402,10 +391,10 @@ async function handleVideoChange(e: Event) {
     uploadingVideo.value = true
     try {
         const res = await uploadFile(file)
-        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-        inputVideo.value = { url: `${backendUrl}${res.url}` }
-    } catch (err: any) {
-        ElMessage.error(err.response?.data?.message || '视频上传失败')
+        inputVideo.value = { url: `${BACKEND_URL}${res.url}` }
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : '视频上传失败'
+        ElMessage.error(message)
     } finally {
         uploadingVideo.value = false
     }

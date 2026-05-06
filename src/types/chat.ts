@@ -43,7 +43,6 @@ export interface ChatFeatures {
   thinking?: boolean
   webSearch?: boolean
   functionCall?: boolean
-  jsonMode?: boolean
 }
 
 export interface StreamChunk {
