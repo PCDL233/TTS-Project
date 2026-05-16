@@ -108,6 +108,7 @@ const menuItems = [
     { path: "/admin/dashboard", label: "数据看板", icon: "DataLine" },
     { path: "/admin/users", label: "用户管理", icon: "User" },
     { path: "/admin/roles", label: "角色管理", icon: "Medal" },
+    { path: "/admin/chat", label: "智能助手管理", icon: "ChatDotSquare" },
     { path: "/admin/login-logs", label: "登录日志", icon: "Document" },
     { path: "/admin/operation-logs", label: "操作日志", icon: "Document" },
     { path: "/admin/system-config", label: "系统配置", icon: "SetUp" },

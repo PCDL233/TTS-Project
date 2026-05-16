@@ -89,4 +89,27 @@ export const adminApi = {
   deleteAudioTag(id: number) {
     return client.delete(`/audio-tags/${id}`)
   },
+
+  // 智能助手管理
+  getChatConversations(params?: { page?: number; pageSize?: number; username?: string }) {
+    return client.get('/admin/chat/conversations', { params })
+  },
+  getChatMessages(conversationId: number) {
+    return client.get(`/admin/chat/conversations/${conversationId}/messages`)
+  },
+  deleteChatConversation(id: number) {
+    return client.delete(`/admin/chat/conversations/${id}`)
+  },
+  getChatModels() {
+    return client.get('/admin/chat-config/models')
+  },
+  updateChatModels(data: { defaultModel: string }) {
+    return client.put('/admin/chat-config/models', data)
+  },
+  getChatFeatures() {
+    return client.get('/admin/chat-config/features')
+  },
+  updateChatFeatures(data: Record<string, boolean>) {
+    return client.put('/admin/chat-config/features', data)
+  },
 }

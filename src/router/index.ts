@@ -52,6 +52,7 @@ const router = createRouter({
         { path: 'operation-logs', name: 'AdminOperationLogs', component: () => import('../views/admin/OperationLogsPage.vue') },
         { path: 'system-config', name: 'AdminSystemConfig', component: () => import('../views/admin/SystemConfigPage.vue') },
         { path: 'audio-tags', name: 'AdminAudioTags', component: () => import('../views/admin/AudioTagsPage.vue') },
+        { path: 'chat', name: 'AdminChat', component: () => import('../views/admin/ChatManagementPage.vue') },
       ],
     },
     {
