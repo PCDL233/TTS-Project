@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { User } from '../user/user.entity';
 
 @Entity()
 export class ChatConversation {
@@ -7,6 +8,10 @@ export class ChatConversation {
 
   @Column({ nullable: true })
   userId: number;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'userId' })
+  user: User;
 
   @Column({ default: '新对话' })
   title: string;

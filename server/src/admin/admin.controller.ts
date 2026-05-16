@@ -19,6 +19,8 @@ import { OperationLogService } from '../log/operation-log.service'
 import { History } from '../history/history.entity'
 import { User } from '../user/user.entity'
 import { LoginLog } from '../log/login-log.entity'
+import { ChatConversation } from '../chat/chat-conversation.entity'
+import { ChatMessage } from '../chat/chat-message.entity'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository, Between } from 'typeorm'
 import type { RequestWithUser } from '../common/interfaces/request-with-user.interface'
@@ -37,6 +39,10 @@ export class AdminController {
     private userRepository: Repository<User>,
     @InjectRepository(LoginLog)
     private loginLogRepository: Repository<LoginLog>,
+    @InjectRepository(ChatConversation)
+    private conversationRepository: Repository<ChatConversation>,
+    @InjectRepository(ChatMessage)
+    private messageRepository: Repository<ChatMessage>,
   ) {}
 
   // ========== 用户管理 ==========
@@ -220,5 +226,44 @@ export class AdminController {
       map.set(h.mode, (map.get(h.mode) || 0) + 1)
     }
     return Array.from(map.entries()).map(([name, value]) => ({ name, value }))
+  }
+
+  // ========== 智能助手管理 ==========
+  @Get('chat/conversations')
+  async getChatConversations(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('username') username?: string,
+  ) {
+    const pageNum = Number(page) || 1
+    const pageSizeNum = Number(pageSize) || 20
+
+    const qb = this.conversationRepository.createQueryBuilder('conv')
+      .leftJoinAndSelect('conv.user', 'user')
+      .orderBy('conv.updatedAt', 'DESC')
+      .skip((pageNum - 1) * pageSizeNum)
+      .take(pageSizeNum)
+
+    if (username) {
+      qb.andWhere('user.username LIKE :username', { username: `%${username}%` })
+    }
+
+    const [items, total] = await qb.getManyAndCount()
+    return [items, total]
+  }
+
+  @Get('chat/conversations/:id/messages')
+  async getChatMessages(@Param('id') id: string) {
+    return this.messageRepository.find({
+      where: { conversationId: Number(id) },
+      order: { createdAt: 'ASC' },
+    })
+  }
+
+  @Delete('chat/conversations/:id')
+  async deleteChatConversation(@Param('id') id: string) {
+    await this.messageRepository.delete({ conversationId: Number(id) })
+    await this.conversationRepository.delete(Number(id))
+    return { success: true }
   }
 }
