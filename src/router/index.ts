@@ -48,8 +48,17 @@ const router = createRouter({
         { path: 'dashboard', name: 'AdminDashboard', component: () => import('../views/admin/DashboardPage.vue') },
         { path: 'users', name: 'AdminUsers', component: () => import('../views/admin/UserManagementPage.vue') },
         { path: 'roles', name: 'AdminRoles', component: () => import('../views/admin/RoleManagementPage.vue') },
-        { path: 'login-logs', name: 'AdminLoginLogs', component: () => import('../views/admin/LoginLogsPage.vue') },
-        { path: 'operation-logs', name: 'AdminOperationLogs', component: () => import('../views/admin/OperationLogsPage.vue') },
+        {
+          path: 'logs',
+          redirect: { name: 'AdminLoginLogs' },
+          children: [
+            { path: 'login-logs', name: 'AdminLoginLogs', component: () => import('../views/admin/LoginLogsPage.vue') },
+            { path: 'operation-logs', name: 'AdminOperationLogs', component: () => import('../views/admin/OperationLogsPage.vue') },
+          ],
+        },
+        // 兼容旧路径
+        { path: 'login-logs', redirect: { name: 'AdminLoginLogs' } },
+        { path: 'operation-logs', redirect: { name: 'AdminOperationLogs' } },
         { path: 'system-config', name: 'AdminSystemConfig', component: () => import('../views/admin/SystemConfigPage.vue') },
         { path: 'audio-tags', name: 'AdminAudioTags', component: () => import('../views/admin/AudioTagsPage.vue') },
         { path: 'chat', name: 'AdminChat', component: () => import('../views/admin/ChatManagementPage.vue') },

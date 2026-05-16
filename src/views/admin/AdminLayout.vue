@@ -8,20 +8,57 @@
             </div>
 
             <nav class="flex-1 py-3 overflow-y-auto">
-                <router-link
-                    v-for="item in menuItems"
-                    :key="item.path"
-                    :to="item.path"
-                    class="flex items-center px-5 py-3 text-sm hover:bg-gray-700 transition-colors"
-                    :class="{
-                        'bg-gray-700 text-blue-400': isActive(item.path),
-                    }"
-                >
-                    <el-icon class="mr-3"
-                        ><component :is="item.icon"
-                    /></el-icon>
-                    {{ item.label }}
-                </router-link>
+                <template v-for="item in menuItems" :key="item.path || item.label">
+                    <!-- 叶子菜单项 -->
+                    <router-link
+                        v-if="!('children' in item)"
+                        :to="item.path"
+                        class="flex items-center px-5 py-3 text-sm hover:bg-gray-700 transition-colors"
+                        :class="{
+                            'bg-gray-700 text-blue-400': isActive(item.path),
+                        }"
+                    >
+                        <el-icon class="mr-3"
+                            ><component :is="item.icon"
+                        /></el-icon>
+                        {{ item.label }}
+                    </router-link>
+
+                    <!-- 分组菜单项 -->
+                    <div v-else>
+                        <div
+                            class="flex items-center px-5 py-3 text-sm hover:bg-gray-700 transition-colors cursor-pointer select-none"
+                            :class="{
+                                'bg-gray-700 text-blue-400': isGroupActive(item),
+                            }"
+                            @click="toggleGroup(item.label)"
+                        >
+                            <el-icon class="mr-3"
+                                ><component :is="item.icon"
+                            /></el-icon>
+                            <span class="flex-1">{{ item.label }}</span>
+                            <el-icon class="transition-transform" :class="expandedGroups.includes(item.label) ? 'rotate-180' : ''">
+                                <arrow-down />
+                            </el-icon>
+                        </div>
+                        <div
+                            v-show="expandedGroups.includes(item.label)"
+                            class="bg-gray-800/50"
+                        >
+                            <router-link
+                                v-for="child in item.children"
+                                :key="child.path"
+                                :to="child.path"
+                                class="flex items-center pl-12 pr-5 py-2.5 text-sm hover:bg-gray-700 transition-colors"
+                                :class="{
+                                    'bg-gray-700 text-blue-400': isActive(child.path),
+                                }"
+                            >
+                                {{ child.label }}
+                            </router-link>
+                        </div>
+                    </div>
+                </template>
             </nav>
 
             <div
@@ -81,7 +118,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../../stores/auth";
 import {
@@ -104,25 +141,70 @@ const avatarUrl = computed(() => {
     return `${backendUrl}${avatar}`;
 });
 
-const menuItems = [
+type LeafMenuItem = { path: string; label: string; icon: string };
+type GroupMenuItem = { label: string; icon: string; children: { path: string; label: string }[] };
+type MenuItem = LeafMenuItem | GroupMenuItem;
+
+const menuItems: MenuItem[] = [
     { path: "/admin/dashboard", label: "数据看板", icon: "DataLine" },
     { path: "/admin/users", label: "用户管理", icon: "User" },
     { path: "/admin/roles", label: "角色管理", icon: "Medal" },
     { path: "/admin/chat", label: "智能助手管理", icon: "ChatDotSquare" },
-    { path: "/admin/login-logs", label: "登录日志", icon: "Document" },
-    { path: "/admin/operation-logs", label: "操作日志", icon: "Document" },
+    {
+        label: "日志监控",
+        icon: "Document",
+        children: [
+            { path: "/admin/logs/login-logs", label: "登录日志" },
+            { path: "/admin/logs/operation-logs", label: "操作日志" },
+        ],
+    },
     { path: "/admin/system-config", label: "系统配置", icon: "SetUp" },
     { path: "/admin/audio-tags", label: "音频标签", icon: "CollectionTag" },
 ];
 
-const currentTitle = computed(() => {
-    const item = menuItems.find((i) => route.path.startsWith(i.path));
-    return item?.label || "后台管理";
-});
+const expandedGroups = ref<string[]>([]);
 
 function isActive(path: string) {
     return route.path === path || route.path.startsWith(path + "/");
 }
+
+function isGroupActive(item: GroupMenuItem) {
+    return item.children.some((c) => isActive(c.path));
+}
+
+function toggleGroup(label: string) {
+    const idx = expandedGroups.value.indexOf(label);
+    if (idx > -1) {
+        expandedGroups.value.splice(idx, 1);
+    } else {
+        expandedGroups.value.push(label);
+    }
+}
+
+const currentTitle = computed(() => {
+    for (const item of menuItems) {
+        if (!("children" in item)) {
+            if (route.path === item.path) {
+                return item.label;
+            }
+        } else {
+            const child = item.children.find((c) => route.path === c.path);
+            if (child) return child.label;
+        }
+    }
+    return "后台管理";
+});
+
+onMounted(() => {
+    // 自动展开包含当前路由的分组
+    for (const item of menuItems) {
+        if ("children" in item && item.children.some((c) => isActive(c.path))) {
+            if (!expandedGroups.value.includes(item.label)) {
+                expandedGroups.value.push(item.label);
+            }
+        }
+    }
+});
 
 function handleCommand(cmd: string) {
     if (cmd === "profile") {
