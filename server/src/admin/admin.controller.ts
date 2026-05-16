@@ -128,6 +128,36 @@ export class AdminController {
     )
   }
 
+  @Delete('login-logs/:id')
+  async deleteLoginLog(@Param('id') id: string) {
+    await this.loginLogService.delete(Number(id))
+    return { success: true }
+  }
+
+  @Delete('login-logs')
+  async deleteLoginLogs(@Body('ids') ids: number[]) {
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new BadRequestException('ids 不能为空')
+    }
+    await this.loginLogService.deleteMany(ids)
+    return { success: true }
+  }
+
+  @Delete('operation-logs/:id')
+  async deleteOperationLog(@Param('id') id: string) {
+    await this.operationLogService.delete(Number(id))
+    return { success: true }
+  }
+
+  @Delete('operation-logs')
+  async deleteOperationLogs(@Body('ids') ids: number[]) {
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new BadRequestException('ids 不能为空')
+    }
+    await this.operationLogService.deleteMany(ids)
+    return { success: true }
+  }
+
   // ========== 统计 API ==========
   @Get('stats/overview')
   async getOverview() {

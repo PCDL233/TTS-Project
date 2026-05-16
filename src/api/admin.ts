@@ -44,8 +44,20 @@ export const adminApi = {
   getLoginLogs(params?: PageQuery) {
     return client.get('/admin/login-logs', { params })
   },
+  deleteLoginLog(id: number) {
+    return client.delete(`/admin/login-logs/${id}`)
+  },
+  deleteLoginLogs(ids: number[]) {
+    return client.delete('/admin/login-logs', { data: { ids } })
+  },
   getOperationLogs(params?: PageQuery) {
     return client.get('/admin/operation-logs', { params })
+  },
+  deleteOperationLog(id: number) {
+    return client.delete(`/admin/operation-logs/${id}`)
+  },
+  deleteOperationLogs(ids: number[]) {
+    return client.delete('/admin/operation-logs', { data: { ids } })
   },
 
   // 统计

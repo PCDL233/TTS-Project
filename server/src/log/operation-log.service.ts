@@ -48,4 +48,12 @@ export class OperationLogService {
 
     return query.getManyAndCount()
   }
+
+  async delete(id: number): Promise<void> {
+    await this.operationLogRepository.delete(id)
+  }
+
+  async deleteMany(ids: number[]): Promise<void> {
+    await this.operationLogRepository.delete(ids)
+  }
 }
