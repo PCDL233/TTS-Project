@@ -58,7 +58,8 @@ async function bootstrap() {
 
   // 注册全局拦截器
   const operationLogService = app.get(OperationLogService)
-  app.useGlobalInterceptors(new LoggingInterceptor(operationLogService))
+  const reflector = app.get(Reflector)
+  app.useGlobalInterceptors(new LoggingInterceptor(operationLogService, reflector))
 
   // 角色种子数据
   const roleService = app.get(RoleService)

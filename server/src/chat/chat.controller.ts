@@ -19,6 +19,7 @@ import type { RequestWithUser } from '../common/interfaces/request-with-user.int
 import { ChatService } from './chat.service';
 import { ChatCompletionDto } from './dto/chat-completion.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { LogOperation } from '../common/decorators/log-operation.decorator';
 
 @Controller('chat')
 @UseGuards(JwtAuthGuard)
@@ -36,6 +37,7 @@ export class ChatController {
   }
 
   @Post('conversations')
+  @LogOperation('chat', 'create-conversation')
   async createConversation(
     @Req() req: RequestWithUser,
     @Body() body: { title?: string; model?: string; features?: any },
@@ -59,6 +61,7 @@ export class ChatController {
   }
 
   @Delete('conversations/:id')
+  @LogOperation('chat', 'delete-conversation')
   async deleteConversation(@Req() req: RequestWithUser, @Param('id') id: string) {
     this.logger.log(`[deleteConversation] 用户 ${req.user.userId} 删除会话 ${id}`);
     await this.chatService.removeConversation(req.user.userId, Number(id));
@@ -78,6 +81,7 @@ export class ChatController {
   // ========== 流式对话接口 ==========
 
   @Post('completions')
+  @LogOperation('chat', 'completions')
   async completions(
     @Req() req: RequestWithUser,
     @Body() dto: ChatCompletionDto,

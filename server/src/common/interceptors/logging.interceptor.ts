@@ -5,18 +5,33 @@ import {
   CallHandler,
   Logger,
 } from '@nestjs/common'
+import { Reflector } from '@nestjs/core'
 import { Observable } from 'rxjs'
 import { tap } from 'rxjs/operators'
 import { OperationLogService } from '../../log/operation-log.service'
 import { getClientIp } from '../utils/ip.util'
+import { LOG_OPERATION_KEY, LogOperationOptions } from '../decorators/log-operation.decorator'
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
-  private readonly logger = new Logger(LoggingInterceptor.name);
+  private readonly logger = new Logger(LoggingInterceptor.name)
 
-  constructor(private readonly operationLogService: OperationLogService) {}
+  constructor(
+    private readonly operationLogService: OperationLogService,
+    private readonly reflector: Reflector,
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    const logOptions = this.reflector.get<LogOperationOptions>(
+      LOG_OPERATION_KEY,
+      context.getHandler(),
+    )
+
+    // 没有 @LogOperation 装饰器的请求不记录
+    if (!logOptions) {
+      return next.handle()
+    }
+
     const req = context.switchToHttp().getRequest()
     const res = context.switchToHttp().getResponse()
     const start = Date.now()
@@ -27,29 +42,7 @@ export class LoggingInterceptor implements NestInterceptor {
     const ip = getClientIp(req)
     const userAgent = req.headers['user-agent'] || ''
 
-    // 推断模块名
-    const controllerName = context.getClass().name
-    let module = 'unknown'
-    if (controllerName.includes('Auth')) module = 'auth'
-    else if (controllerName.includes('User')) module = 'user'
-    else if (controllerName.includes('Config')) module = 'config'
-    else if (controllerName.includes('History')) module = 'history'
-    else if (controllerName.includes('Tts')) module = 'tts'
-    else if (controllerName.includes('Admin')) module = 'admin'
-    else if (controllerName.includes('Role')) module = 'role'
-    else if (controllerName.includes('SystemConfig')) module = 'system-config'
-    else if (controllerName.includes('AudioTag')) module = 'audio-tag'
-
-    // 推断动作
-    const handlerName = context.getHandler().name
-    let action = 'unknown'
-    if (handlerName.startsWith('create') || handlerName.startsWith('add')) action = 'create'
-    else if (handlerName.startsWith('update') || handlerName.startsWith('edit')) action = 'update'
-    else if (handlerName.startsWith('delete') || handlerName.startsWith('remove')) action = 'delete'
-    else if (handlerName.startsWith('find') || handlerName.startsWith('get') || handlerName.startsWith('list')) action = 'query'
-    else if (handlerName.startsWith('login')) action = 'login'
-    else if (handlerName.startsWith('register')) action = 'register'
-    else action = handlerName
+    const { module, action } = logOptions
 
     // 脱敏处理参数
     let params = ''
@@ -65,14 +58,9 @@ export class LoggingInterceptor implements NestInterceptor {
       params = ''
     }
 
-    // 跳过不需要记录的操作
-    const skipPaths = ['/api/auth/login', '/api/auth/register']
-    const shouldSkip = skipPaths.some((p) => path.startsWith(p))
-
     return next.handle().pipe(
       tap({
         next: () => {
-          if (shouldSkip) return
           const duration = Date.now() - start
           this.operationLogService.create({
             userId: user?.userId || null,
@@ -92,7 +80,6 @@ export class LoggingInterceptor implements NestInterceptor {
           })
         },
         error: (err) => {
-          if (shouldSkip) return
           const duration = Date.now() - start
           this.operationLogService.create({
             userId: user?.userId || null,

@@ -13,6 +13,7 @@ import type { RequestWithUser } from '../common/interfaces/request-with-user.int
 import { TtsService } from './tts.service';
 import { GenerateTtsDto } from './dto/generate-tts.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { LogOperation } from '../common/decorators/log-operation.decorator';
 
 @Controller('tts')
 @UseGuards(JwtAuthGuard)
@@ -22,6 +23,7 @@ export class TtsController {
   constructor(private readonly ttsService: TtsService) {}
 
   @Post('generate')
+  @LogOperation('tts', 'generate')
   async generate(@Req() req: RequestWithUser, @Body() dto: GenerateTtsDto): Promise<{ data: string }> {
     this.logger.log(`[generate] model=${dto.model} voice=${dto.audio?.voice ?? 'default'}`);
     const data = await this.ttsService.generate(req.user.userId, dto);
@@ -30,6 +32,7 @@ export class TtsController {
   }
 
   @Post('generate-stream')
+  @LogOperation('tts', 'generate')
   async generateStream(@Req() req: RequestWithUser, @Body() dto: GenerateTtsDto, @Res() res: Response) {
     this.logger.log(`[generate-stream] model=${dto.model} voice=${dto.audio?.voice ?? 'default'}`);
     res.setHeader('Content-Type', 'text/event-stream');

@@ -3,6 +3,7 @@ import { ConfigService } from './config.service';
 import { Config } from './config.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { RequestWithUser } from '../common/interfaces/request-with-user.interface';
+import { LogOperation } from '../common/decorators/log-operation.decorator';
 
 @Controller('config')
 @UseGuards(JwtAuthGuard)
@@ -20,6 +21,7 @@ export class ConfigController {
   }
 
   @Put()
+  @LogOperation('config', 'update')
   async updateConfig(@Req() req: RequestWithUser, @Body() body: Partial<Config>): Promise<Config> {
     this.logger.log(`[updateConfig] 用户 ${req.user.userId} 更新配置`);
     const config = await this.configService.updateConfig(req.user.userId, body);
