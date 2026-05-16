@@ -15,6 +15,7 @@ import { SystemConfigModule } from './system-config/system-config.module';
 import { AudioTagModule } from './audio-tag/audio-tag.module';
 import { UploadModule } from './common/upload/upload.module';
 import { ChatModule } from './chat/chat.module';
+import { ChatConfigModule } from './chat-config/chat-config.module';
 import { AudioTag } from './audio-tag/audio-tag.entity';
 import { Config } from './config/config.entity';
 import { History } from './history/history.entity';
@@ -25,6 +26,7 @@ import { SystemConfig } from './system-config/system-config.entity';
 import { User } from './user/user.entity';
 import { ChatConversation } from './chat/chat-conversation.entity';
 import { ChatMessage } from './chat/chat-message.entity';
+import { ChatConfig } from './chat-config/chat-config.entity';
 
 const entities = [
   AudioTag,
@@ -37,6 +39,7 @@ const entities = [
   User,
   ChatConversation,
   ChatMessage,
+  ChatConfig,
 ];
 
 @Module({
@@ -60,6 +63,7 @@ const entities = [
     AudioTagModule,
     UploadModule,
     ChatModule,
+    ChatConfigModule,
   ],
   controllers: [AppController],
   providers: [AppService],
