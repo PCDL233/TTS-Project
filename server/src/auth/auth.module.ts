@@ -7,24 +7,27 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { UserModule } from '../user/user.module';
 import { LogModule } from '../log/log.module';
-import { CryptoService } from '../common/crypto.service';
+import { CryptoModule } from '../common/crypto.module';
+import { SystemConfigModule } from '../system-config/system-config.module';
 
 @Module({
   imports: [
     UserModule,
     LogModule,
+    SystemConfigModule,
+    CryptoModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET', 'default-jwt-secret-change-me'),
+        secret: configService.getOrThrow<string>('JWT_SECRET'),
         signOptions: { expiresIn: '7d' },
       }),
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, JwtStrategy, CryptoService],
+  providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
-  exports: [AuthService, CryptoService],
+  exports: [AuthService],
 })
 export class AuthModule {}

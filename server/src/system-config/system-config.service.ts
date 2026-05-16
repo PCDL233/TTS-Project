@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { SystemConfig } from './system-config.entity'
@@ -37,7 +37,7 @@ export class SystemConfigService {
   async update(key: string, value: string): Promise<SystemConfig | null> {
     const config = await this.findByKey(key)
     if (!config) {
-      throw new Error('配置项不存在')
+      throw new NotFoundException('配置项不存在')
     }
     await this.systemConfigRepository.update(config.id, { value })
     return this.findByKey(key)

@@ -2,15 +2,18 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { TTSHistoryItem } from '../types/tts'
 import { client } from '../api/client'
+import { ElMessage } from 'element-plus'
 
 export const useHistoryStore = defineStore('history', () => {
   const items = ref<TTSHistoryItem[]>([])
   const loaded = ref(false)
 
-  async function loadHistory() {
+  async function loadHistory(page = 1, pageSize = 50) {
     try {
-      const res = await client.get('/history')
-      items.value = res.data.map((item: any) => ({
+      const res = await client.get('/history', { params: { page, pageSize } })
+      const data = res.data
+      const list = Array.isArray(data) ? data : data.items || []
+      items.value = list.map((item: any) => ({
         id: item.id,
         text: item.text,
         mode: item.mode,
@@ -22,7 +25,7 @@ export const useHistoryStore = defineStore('history', () => {
         createdAt: item.createdAt,
       }))
     } catch {
-      // ignore
+      ElMessage.error('加载历史记录失败')
     } finally {
       loaded.value = true
     }
@@ -37,7 +40,7 @@ export const useHistoryStore = defineStore('history', () => {
         createdAt: res.data.createdAt,
       })
     } catch {
-      // ignore
+      ElMessage.error('保存历史记录失败')
     }
   }
 
@@ -46,7 +49,7 @@ export const useHistoryStore = defineStore('history', () => {
       await client.delete(`/history/${id}`)
       items.value = items.value.filter(i => String(i.id) !== String(id))
     } catch {
-      // ignore
+      ElMessage.error('删除历史记录失败')
     }
   }
 
@@ -55,7 +58,7 @@ export const useHistoryStore = defineStore('history', () => {
       await client.delete('/history')
       items.value = []
     } catch {
-      // ignore
+      ElMessage.error('清空历史记录失败')
     }
   }
 

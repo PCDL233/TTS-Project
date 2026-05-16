@@ -3,6 +3,7 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
+  Logger,
 } from '@nestjs/common'
 import { Observable } from 'rxjs'
 import { tap } from 'rxjs/operators'
@@ -11,6 +12,8 @@ import { getClientIp } from '../utils/ip.util'
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
+  private readonly logger = new Logger(LoggingInterceptor.name);
+
   constructor(private readonly operationLogService: OperationLogService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
@@ -84,7 +87,9 @@ export class LoggingInterceptor implements NestInterceptor {
             duration,
             status: res.statusCode >= 400 ? 'fail' : 'success',
             message: '',
-          }).catch(() => {})
+          }).catch((logErr) => {
+            this.logger.warn(`操作日志写入失败: ${logErr.message}`)
+          })
         },
         error: (err) => {
           if (shouldSkip) return
@@ -102,7 +107,9 @@ export class LoggingInterceptor implements NestInterceptor {
             duration,
             status: 'fail',
             message: err.message || String(err),
-          }).catch(() => {})
+          }).catch((logErr) => {
+            this.logger.warn(`操作日志写入失败: ${logErr.message}`)
+          })
         },
       }),
     )

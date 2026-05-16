@@ -12,13 +12,15 @@ export class HistoryService {
     private historyRepository: Repository<History>,
   ) {}
 
-  async findAll(userId: number): Promise<History[]> {
-    this.logger.debug(`[findAll] 查询用户 ${userId} 的数据库记录`);
-    return this.historyRepository.find({
+  async findAll(userId: number, page = 1, pageSize = 50): Promise<{ items: History[]; total: number }> {
+    this.logger.debug(`[findAll] 查询用户 ${userId} 的数据库记录, page=${page}, pageSize=${pageSize}`);
+    const [items, total] = await this.historyRepository.findAndCount({
       where: { userId },
       order: { createdAt: 'DESC' },
-      take: 50,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     });
+    return { items, total };
   }
 
   async create(userId: number, data: Omit<History, 'id' | 'createdAt' | 'userId'>): Promise<History> {

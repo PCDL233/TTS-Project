@@ -49,6 +49,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { Close } from '@element-plus/icons-vue'
+import { ElMessageBox } from 'element-plus'
 import { useHistoryStore } from '../stores/history'
 import type { TTSHistoryItem } from '../types/tts'
 
@@ -68,13 +69,31 @@ function deleteItem(id: number | string) {
   historyStore.removeItem(id)
 }
 
-function clearHistory() {
-  historyStore.clearHistory()
-  emit('clear')
+async function clearHistory() {
+  try {
+    await ElMessageBox.confirm('确定要清空所有历史记录吗？此操作不可恢复。', '确认清空', {
+      confirmButtonText: '确定清空',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+    historyStore.clearHistory()
+    emit('clear')
+  } catch {
+    // 用户取消
+  }
 }
 
 function formatTime(timestamp: number): string {
   const date = new Date(timestamp)
-  return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+  const now = new Date()
+  const isToday = date.toDateString() === now.toDateString()
+  const hours = date.getHours().toString().padStart(2, '0')
+  const minutes = date.getMinutes().toString().padStart(2, '0')
+  if (isToday) {
+    return `${hours}:${minutes}`
+  }
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const day = date.getDate().toString().padStart(2, '0')
+  return `${month}-${day} ${hours}:${minutes}`
 }
 </script>

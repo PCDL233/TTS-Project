@@ -8,11 +8,8 @@ import {
   Logger,
   UseGuards,
 } from '@nestjs/common';
-import type { Response, Request } from 'express';
-
-interface RequestWithUser extends Request {
-  user: { userId: number; username: string };
-}
+import type { Response } from 'express';
+import type { RequestWithUser } from '../common/interfaces/request-with-user.interface';
 import { TtsService } from './tts.service';
 import { GenerateTtsDto } from './dto/generate-tts.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';

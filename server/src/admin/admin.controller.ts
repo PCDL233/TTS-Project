@@ -21,11 +21,7 @@ import { User } from '../user/user.entity'
 import { LoginLog } from '../log/login-log.entity'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository, Between } from 'typeorm'
-import { Request } from 'express'
-
-interface RequestWithUser extends Request {
-  user: { userId: number; username: string; roleCode: string }
-}
+import type { RequestWithUser } from '../common/interfaces/request-with-user.interface'
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)

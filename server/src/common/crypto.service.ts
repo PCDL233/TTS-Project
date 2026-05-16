@@ -7,7 +7,7 @@ export class CryptoService {
   private readonly secret: string;
 
   constructor(private configService: ConfigService) {
-    this.secret = this.configService.get<string>('AES_SECRET_KEY', 'default-secret-key-change-me-please');
+    this.secret = this.configService.getOrThrow<string>('AES_SECRET_KEY');
   }
 
   private getKey(): Buffer {

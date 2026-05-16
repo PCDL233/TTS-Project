@@ -1,12 +1,8 @@
-import { Controller, Get, Post, Body, Delete, Param, Logger, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Delete, Param, Query, Logger, UseGuards, Req } from '@nestjs/common';
 import { HistoryService } from './history.service';
 import { History } from './history.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { Request } from 'express';
-
-interface RequestWithUser extends Request {
-  user: { userId: number; username: string };
-}
+import type { RequestWithUser } from '../common/interfaces/request-with-user.interface';
 
 @Controller('history')
 @UseGuards(JwtAuthGuard)
@@ -16,10 +12,16 @@ export class HistoryController {
   constructor(private readonly historyService: HistoryService) {}
 
   @Get()
-  async findAll(@Req() req: RequestWithUser): Promise<History[]> {
-    this.logger.log(`[findAll] 用户 ${req.user.userId} 查询历史记录`);
-    const result = await this.historyService.findAll(req.user.userId);
-    this.logger.log(`[findAll] 返回 ${result.length} 条记录`);
+  async findAll(
+    @Req() req: RequestWithUser,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    const p = Math.max(1, Number(page) || 1);
+    const ps = Math.min(100, Math.max(1, Number(pageSize) || 50));
+    this.logger.log(`[findAll] 用户 ${req.user.userId} 查询历史记录, page=${p}, pageSize=${ps}`);
+    const result = await this.historyService.findAll(req.user.userId, p, ps);
+    this.logger.log(`[findAll] 返回 ${result.items.length} 条记录，共 ${result.total} 条`);
     return result;
   }
 

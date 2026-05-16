@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import type { TTSConfig, TTSMode, PresetVoice, BaseUrlPreset } from '../types/tts'
 import { BASE_URL_OPTIONS, MODEL_MAP } from '../types/tts'
 import { client } from '../api/client'
+import { ElMessage } from 'element-plus'
 
 function getDefaultConfig(): TTSConfig {
   return {
@@ -34,18 +35,22 @@ export const useConfigStore = defineStore('config', () => {
         config.value.model = MODEL_MAP[(config.value.mode as TTSMode) || 'preset']
       }
     } catch {
-      // ignore
+      ElMessage.error('加载配置失败，使用默认配置')
     } finally {
       loaded.value = true
     }
   }
 
+  let saveTimer: ReturnType<typeof setTimeout> | null = null
   async function saveConfig() {
-    try {
-      await client.put('/config', config.value)
-    } catch {
-      // ignore
-    }
+    if (saveTimer) clearTimeout(saveTimer)
+    saveTimer = setTimeout(async () => {
+      try {
+        await client.put('/config', config.value)
+      } catch {
+        ElMessage.error('保存配置失败')
+      }
+    }, 500)
   }
 
   function updateApiKey(key: string) {

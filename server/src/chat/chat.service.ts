@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ChatConversation } from './chat-conversation.entity';
@@ -44,9 +44,12 @@ export class ChatService {
   }
 
   async removeConversation(userId: number, id: number): Promise<void> {
-    // 先删除关联消息
+    const conversation = await this.findConversation(userId, id);
+    if (!conversation) {
+      throw new ForbiddenException('无权删除该会话');
+    }
     await this.messageRepository.delete({ conversationId: id });
-    await this.conversationRepository.delete({ id, userId });
+    await this.conversationRepository.delete({ id });
   }
 
   // ========== 消息 CRUD ==========
@@ -123,7 +126,7 @@ export class ChatService {
       throw new BadRequestException('API Key 未配置，请先在「API 设置」中填写有效的 API Key');
     }
 
-    const baseUrl = this.getEffectiveBaseUrl(config);
+    const baseUrl = this.configService.getEffectiveBaseUrl(config);
     this.logger.log(`[streamChatCompletion] 请求 MiMo API: ${baseUrl}/chat/completions`);
 
     // Token Plan 仅支持 8 款模型，mimo-v2-flash 不在支持列表中
@@ -215,8 +218,8 @@ export class ChatService {
                 usage: data.usage || null,
               };
             }
-          } catch {
-            // ignore parse errors
+          } catch (parseErr) {
+            this.logger.debug(`[streamChatCompletion] SSE 数据解析失败: ${dataStr}`);
           }
         }
       }
@@ -226,16 +229,4 @@ export class ChatService {
     }
   }
 
-  private getEffectiveBaseUrl(config: { baseUrlPreset: string; baseUrlCustom: string }): string {
-    if (config.baseUrlPreset === 'custom') {
-      return config.baseUrlCustom || 'https://api.xiaomimimo.com/v1';
-    }
-    const presets: Record<string, string> = {
-      default: 'https://api.xiaomimimo.com/v1',
-      'token-plan-cn': 'https://token-plan-cn.xiaomimimo.com/v1',
-      'token-plan-sgp': 'https://token-plan-sgp.xiaomimimo.com/v1',
-      'token-plan-ams': 'https://token-plan-ams.xiaomimimo.com/v1',
-    };
-    return presets[config.baseUrlPreset] || 'https://api.xiaomimimo.com/v1';
-  }
 }

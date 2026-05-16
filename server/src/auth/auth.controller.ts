@@ -8,10 +8,7 @@ import { CryptoService } from '../common/crypto.service'
 import { LoginLogService } from '../log/login-log.service'
 import { BadRequestException, UnauthorizedException } from '@nestjs/common'
 import { getClientIp } from '../common/utils/ip.util'
-
-interface RequestWithUser extends Request {
-  user: { userId: number; username: string; roleCode: string }
-}
+import type { RequestWithUser } from '../common/interfaces/request-with-user.interface'
 
 @Controller('auth')
 export class AuthController {
@@ -62,7 +59,9 @@ export class AuthController {
         const decrypted = this.cryptoService.aesDecrypt(data)
         const payload = JSON.parse(decrypted)
         username = payload.username || ''
-      } catch {}
+      } catch {
+        this.logger.debug('[login] 无法解密请求获取用户名')
+      }
       await this.loginLogService.create({
         username,
         ip: getClientIp(req),

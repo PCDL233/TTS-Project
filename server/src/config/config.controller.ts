@@ -2,11 +2,7 @@ import { Controller, Get, Body, Put, Logger, UseGuards, Req } from '@nestjs/comm
 import { ConfigService } from './config.service';
 import { Config } from './config.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { Request } from 'express';
-
-interface RequestWithUser extends Request {
-  user: { userId: number; username: string };
-}
+import type { RequestWithUser } from '../common/interfaces/request-with-user.interface';
 
 @Controller('config')
 @UseGuards(JwtAuthGuard)

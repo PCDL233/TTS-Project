@@ -175,6 +175,7 @@ import { BACKEND_URL } from '../api/client'
 import { marked } from 'marked'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github.css'
+import DOMPurify from 'dompurify'
 
 const props = defineProps<{
     message: ChatMessage
@@ -206,7 +207,8 @@ function renderMarkdown(content: string): string {
     if (!content) return ''
     try {
         const result = marked.parse(content, { async: false })
-        return typeof result === 'string' ? result : String(result)
+        const html = typeof result === 'string' ? result : String(result)
+        return DOMPurify.sanitize(html)
     } catch {
         return content
     }

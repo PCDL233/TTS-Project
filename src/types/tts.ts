@@ -159,33 +159,3 @@ export interface TTSConfig {
   styleText: string
   audioFormat: AudioFormat
 }
-
-export const STYLE_TAGS = {
-  basicEmotion: ['开心', '悲伤', '愤怒', '恐惧', '惊讶', '兴奋', '委屈', '平静', '冷漠'],
-  complexEmotion: ['怅然', '欣慰', '无奈', '愧疚', '释然', '嫉妒', '厌倦', '忐忑', '动情'],
-  tone: ['温柔', '高冷', '活泼', '严肃', '慵懒', '俏皮', '深沉', '干练', '凌厉'],
-  voiceQuality: ['磁性', '醇厚', '清亮', '空灵', '稚嫩', '苍老', '甜美', '沙哑', '醇雅'],
-  character: ['夹子音', '御姐音', '正太音', '大叔音', '台湾腔'],
-  dialect: ['东北话', '四川话', '河南话', '粤语'],
-  roleplay: ['孙悟空', '林黛玉'],
-  audioEffect: [
-    '吸气', '深呼吸', '叹气', '长叹一口气', '喘息', '屏息',
-    '紧张', '害怕', '激动', '疲惫', '委屈', '撒娇', '心虚', '震惊', '不耐烦',
-    '颤抖', '声音颤抖', '变调', '破音', '鼻音', '气声', '沙哑',
-    '笑', '轻笑', '大笑', '冷笑', '抽泣', '呜咽', '哽咽', '嚎啕大哭'
-  ],
-}
-
-export const STYLE_TAG_GROUPS = [
-  { key: 'basicEmotion' as const, label: '基础情绪' },
-  { key: 'complexEmotion' as const, label: '复合情绪' },
-  { key: 'tone' as const, label: '整体语调' },
-  { key: 'voiceQuality' as const, label: '音色定位' },
-  { key: 'character' as const, label: '人设腔调' },
-  { key: 'dialect' as const, label: '方言' },
-  { key: 'roleplay' as const, label: '角色扮演' },
-]
-
-export const AUDIO_TAG_GROUPS = [
-  { key: 'audioEffect' as const, label: '音频效果' },
-]

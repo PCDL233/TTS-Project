@@ -10,12 +10,10 @@ import {
   HttpStatus,
   Logger,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
-import type { Response, Request } from 'express';
-
-interface RequestWithUser extends Request {
-  user: { userId: number; username: string };
-}
+import type { Response } from 'express';
+import type { RequestWithUser } from '../common/interfaces/request-with-user.interface';
 
 import { ChatService } from './chat.service';
 import { ChatCompletionDto } from './dto/chat-completion.dto';
@@ -59,6 +57,10 @@ export class ChatController {
   @Get('conversations/:id/messages')
   async getMessages(@Req() req: RequestWithUser, @Param('id') id: string) {
     this.logger.log(`[getMessages] 用户 ${req.user.userId} 查询会话 ${id} 消息`);
+    const conversation = await this.chatService.findConversation(req.user.userId, Number(id));
+    if (!conversation) {
+      throw new ForbiddenException('无权访问该会话');
+    }
     return this.chatService.findMessages(Number(id));
   }
 

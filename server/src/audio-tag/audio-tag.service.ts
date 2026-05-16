@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository, Like } from 'typeorm'
 import { AudioTag } from './audio-tag.entity'
+import { escapeLike } from '../common/utils/escape-like.util'
 
 const AUDIO_TAG_PRESETS: { name: string; code: string; group: string; description: string }[] = [
   // 基础情绪
@@ -124,10 +125,10 @@ export class AudioTagService {
       .take(pageSize)
 
     if (query?.name) {
-      qb.andWhere('tag.name LIKE :name', { name: `%${query.name}%` })
+      qb.andWhere('tag.name LIKE :name ESCAPE \'\\\'', { name: `%${escapeLike(query.name)}%` })
     }
     if (query?.code) {
-      qb.andWhere('tag.code LIKE :code', { code: `%${query.code}%` })
+      qb.andWhere('tag.code LIKE :code ESCAPE \'\\\'', { code: `%${escapeLike(query.code)}%` })
     }
     if (query?.group) {
       qb.andWhere('tag.group = :group', { group: query.group })

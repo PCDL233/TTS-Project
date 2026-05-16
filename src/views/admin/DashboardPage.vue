@@ -1,5 +1,5 @@
 <template>
-    <div class="space-y-6">
+    <div v-loading="loading" class="space-y-6">
         <!-- 统计卡片 -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="bg-white rounded-xl border border-gray-200 p-5">
@@ -70,6 +70,7 @@ import { ref, onMounted, computed } from 'vue'
 import { adminApi } from '../../api/admin'
 import { ElMessage } from 'element-plus'
 
+const loading = ref(true)
 const overview = ref({ totalUsers: 0, todayUsers: 0, totalTts: 0, todayTts: 0 })
 const userTrend = ref<{ date: string; count: number }[]>([])
 const ttsTrend = ref<{ date: string; count: number }[]>([])
@@ -144,6 +145,8 @@ onMounted(async () => {
         ttsByMode.value = ttsModeRes.data
     } catch {
         ElMessage.error('加载统计数据失败')
+    } finally {
+        loading.value = false
     }
 })
 </script>

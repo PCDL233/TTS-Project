@@ -1,10 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
 
 @Entity()
 export class Config {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Index({ unique: true })
   @Column({ nullable: true })
   userId: number;
 
@@ -43,4 +44,10 @@ export class Config {
 
   @Column({ default: 'wav' })
   audioFormat: string;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

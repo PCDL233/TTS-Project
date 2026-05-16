@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { User } from './user.entity'
 import { RoleService } from '../role/role.service'
+import { escapeLike } from '../common/utils/escape-like.util'
 
 @Injectable()
 export class UserService {
@@ -28,7 +29,7 @@ export class UserService {
       .take(pageSize)
 
     if (username) {
-      query.andWhere('user.username LIKE :username', { username: `%${username}%` })
+      query.andWhere('user.username LIKE :username ESCAPE \'\\\'', { username: `%${escapeLike(username)}%` })
     }
     if (roleId) {
       query.andWhere('user.roleId = :roleId', { roleId })

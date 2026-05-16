@@ -17,7 +17,7 @@ export class TtsService {
       this.logger.warn('[generate] API Key 未配置');
       throw new BadRequestException('API Key 未配置，请先在「API 设置」中填写有效的 API Key');
     }
-    const baseUrl = this.getEffectiveBaseUrl(config);
+    const baseUrl = this.configService.getEffectiveBaseUrl(config);
     this.logger.log(`[generate] 请求 MiMo API: ${baseUrl}/chat/completions`);
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -59,7 +59,7 @@ export class TtsService {
       this.logger.warn('[generateStream] API Key 未配置');
       throw new BadRequestException('API Key 未配置，请先在「API 设置」中填写有效的 API Key');
     }
-    const baseUrl = this.getEffectiveBaseUrl(config);
+    const baseUrl = this.configService.getEffectiveBaseUrl(config);
     this.logger.log(`[generateStream] 请求 MiMo API (流式): ${baseUrl}/chat/completions`);
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -115,8 +115,8 @@ export class TtsService {
               yield audioData;
               chunkCount++;
             }
-          } catch {
-            // ignore parse errors
+          } catch (parseErr) {
+            this.logger.debug(`[generateStream] SSE 数据解析失败: ${dataStr}`);
           }
         }
       }
@@ -126,17 +126,4 @@ export class TtsService {
     }
   }
 
-  private getEffectiveBaseUrl(config: { baseUrlPreset: string; baseUrlCustom: string }): string {
-    if (config.baseUrlPreset === 'custom') {
-      return config.baseUrlCustom || 'https://api.xiaomimimo.com/v1';
-    }
-    const presets: Record<string, string> = {
-      default: 'https://api.xiaomimimo.com/v1',
-      'token-plan-cn': 'https://token-plan-cn.xiaomimimo.com/v1',
-      'token-plan-sgp': 'https://token-plan-sgp.xiaomimimo.com/v1',
-      'token-plan-ams': 'https://token-plan-ams.xiaomimimo.com/v1',
-    };
-    const url = presets[config.baseUrlPreset] || 'https://api.xiaomimimo.com/v1';
-    return url;
-  }
 }

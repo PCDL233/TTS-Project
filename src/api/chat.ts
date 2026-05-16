@@ -1,7 +1,5 @@
-import { client } from './client'
+import { client, BACKEND_URL } from './client'
 import type { ChatConversation, ChatMessage, ChatCompletionParams, StreamChunk } from '../types/chat'
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
 
 export async function fetchConversations(): Promise<ChatConversation[]> {
   const response = await client.get<ChatConversation[]>('/chat/conversations')

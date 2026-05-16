@@ -1,8 +1,9 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common'
+import { Injectable, UnauthorizedException, BadRequestException, ForbiddenException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import * as bcrypt from 'bcryptjs'
 import { UserService } from '../user/user.service'
 import { CryptoService } from '../common/crypto.service'
+import { SystemConfigService } from '../system-config/system-config.service'
 import { Request } from 'express'
 
 @Injectable()
@@ -11,9 +12,14 @@ export class AuthService {
     private userService: UserService,
     private jwtService: JwtService,
     private cryptoService: CryptoService,
+    private systemConfigService: SystemConfigService,
   ) {}
 
   async register(encryptedPayload: string) {
+    const allowRegister = await this.systemConfigService.findByKey('allow_register')
+    if (allowRegister && allowRegister.value === 'false') {
+      throw new ForbiddenException('注册功能已关闭')
+    }
     let payload: { username: string; password: string }
     try {
       const decrypted = this.cryptoService.aesDecrypt(encryptedPayload)

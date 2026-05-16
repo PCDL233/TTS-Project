@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { OperationLog } from './operation-log.entity'
+import { escapeLike } from '../common/utils/escape-like.util'
 
 @Injectable()
 export class OperationLogService {
@@ -30,7 +31,7 @@ export class OperationLogService {
       .take(pageSize)
 
     if (username) {
-      query.andWhere('log.username LIKE :username', { username: `%${username}%` })
+      query.andWhere('log.username LIKE :username ESCAPE \'\\\'', { username: `%${escapeLike(username)}%` })
     }
     if (module) {
       query.andWhere('log.module = :module', { module })
