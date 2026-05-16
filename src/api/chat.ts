@@ -19,6 +19,11 @@ export async function deleteConversation(id: number): Promise<void> {
   await client.delete(`/chat/conversations/${id}`)
 }
 
+export async function updateConversation(id: number, data: { title?: string }): Promise<ChatConversation> {
+  const response = await client.patch<ChatConversation>(`/chat/conversations/${id}`, data)
+  return response.data
+}
+
 export async function fetchMessages(conversationId: number): Promise<ChatMessage[]> {
   const response = await client.get<ChatMessage[]>(`/chat/conversations/${conversationId}/messages`)
   return response.data

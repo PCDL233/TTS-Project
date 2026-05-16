@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Delete,
   Param,
@@ -45,6 +46,16 @@ export class ChatController {
       model: body.model || 'mimo-v2.5-pro',
       features: body.features || {},
     });
+  }
+
+  @Patch('conversations/:id')
+  async updateConversation(
+    @Req() req: RequestWithUser,
+    @Param('id') id: string,
+    @Body() body: { title?: string },
+  ) {
+    this.logger.log(`[updateConversation] 用户 ${req.user.userId} 更新会话 ${id}`);
+    return this.chatService.updateConversation(req.user.userId, Number(id), body);
   }
 
   @Delete('conversations/:id')

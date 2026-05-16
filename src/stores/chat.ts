@@ -5,6 +5,7 @@ import {
   fetchConversations as apiFetchConversations,
   createConversation as apiCreateConversation,
   deleteConversation as apiDeleteConversation,
+  updateConversation as apiUpdateConversation,
   fetchMessages as apiFetchMessages,
   sendChatStream,
 } from '../api/chat'
@@ -90,6 +91,21 @@ export const useChatStore = defineStore('chat', () => {
       if (!conversation) {
         loading.value = false
         return
+      }
+    }
+
+    // 如果当前会话标题是"新对话"，用第一条消息内容更新标题
+    if (currentConversation.value?.title === '新对话' && userMessage.content) {
+      const newTitle = userMessage.content.slice(0, 20)
+      if (newTitle) {
+        const convId = currentConversationId.value!
+        try {
+          await apiUpdateConversation(convId, { title: newTitle })
+          const conv = conversations.value.find((c) => c.id === convId)
+          if (conv) conv.title = newTitle
+        } catch {
+          // 标题更新失败不影响消息发送
+        }
       }
     }
 
