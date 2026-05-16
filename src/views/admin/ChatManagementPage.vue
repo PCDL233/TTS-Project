@@ -91,10 +91,6 @@
             <el-switch v-model="featureConfig.functionCall" />
             <span class="ml-2 text-sm text-gray-500">允许AI调用外部函数</span>
           </el-form-item>
-          <el-form-item label="JSON模式">
-            <el-switch v-model="featureConfig.jsonMode" />
-            <span class="ml-2 text-sm text-gray-500">强制AI输出JSON格式</span>
-          </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="saveFeatureConfig">保存</el-button>
           </el-form-item>
@@ -124,7 +120,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { adminApi } from '../../api/admin'
+import { useChatStore } from '../../stores/chat'
 import { ElMessage } from 'element-plus'
+
+const chatStore = useChatStore()
 
 const activeTab = ref('conversations')
 const loading = ref(false)
@@ -145,7 +144,6 @@ const featureConfig = ref({
   thinking: true,
   webSearch: true,
   functionCall: true,
-  jsonMode: false,
 })
 
 async function loadConversations() {
@@ -201,6 +199,7 @@ async function saveModelConfig() {
   try {
     await adminApi.updateChatModels({ defaultModel: modelConfig.value.defaultModel })
     ElMessage.success('保存成功')
+    chatStore.loadChatConfig()
   } catch {
     ElMessage.error('保存失败')
   }
@@ -219,6 +218,7 @@ async function saveFeatureConfig() {
   try {
     await adminApi.updateChatFeatures(featureConfig.value)
     ElMessage.success('保存成功')
+    chatStore.loadChatConfig()
   } catch {
     ElMessage.error('保存失败')
   }

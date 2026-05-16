@@ -8,7 +8,9 @@ import {
   updateConversation as apiUpdateConversation,
   fetchMessages as apiFetchMessages,
   sendChatStream,
+  fetchChatConfig,
 } from '../api/chat'
+import { CHAT_MODEL_OPTIONS, resolveModelOptions } from '../types/chat'
 
 export const useChatStore = defineStore('chat', () => {
   // State
@@ -18,12 +20,28 @@ export const useChatStore = defineStore('chat', () => {
   const loading = ref(false)
   const error = ref('')
   const currentModel = ref('mimo-v2.5-pro')
-  const features = ref<ChatFeatures>({
+  // 管理员全局功能开关（控制 UI 按钮可见性）
+  const adminFeatures = ref<ChatFeatures>({
     thinking: false,
     webSearch: false,
     functionCall: false,
   })
+  // 用户本地开关偏好（仅对 adminFeatures 中开启的功能生效）
+  const userToggledFeatures = ref<ChatFeatures>({
+    thinking: false,
+    webSearch: false,
+    functionCall: false,
+  })
+  // 最终生效的功能（admin 关闭则整体关闭，admin 开启则取决于用户本地开关）
+  const features = computed<ChatFeatures>(() => ({
+    thinking: adminFeatures.value.thinking && userToggledFeatures.value.thinking,
+    webSearch: adminFeatures.value.webSearch && userToggledFeatures.value.webSearch,
+    functionCall: adminFeatures.value.functionCall && userToggledFeatures.value.functionCall,
+  }))
   const abortController = ref<AbortController | null>(null)
+  const chatConfigLoaded = ref(false)
+  const userSelectedModel = ref(false) // 标记用户是否手动选过模型
+  const availableModelOptions = ref(CHAT_MODEL_OPTIONS) // 默认使用硬编码回退值
 
   // Getters
   const currentConversation = computed(() =>
@@ -221,11 +239,50 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function updateFeatures(newFeatures: Partial<ChatFeatures>) {
-    features.value = { ...features.value, ...newFeatures }
+    for (const [key, value] of Object.entries(newFeatures)) {
+      const k = key as keyof ChatFeatures
+      // 仅允许切换管理员已开启的功能
+      if (adminFeatures.value[k]) {
+        userToggledFeatures.value[k] = value
+      }
+    }
   }
 
   function updateModel(model: string) {
+    userSelectedModel.value = true
     currentModel.value = model
+  }
+
+  async function loadChatConfig() {
+    try {
+      const config = await fetchChatConfig()
+      // 用后端返回的模型列表生成 option 对象
+      if (config.models && config.models.length > 0) {
+        availableModelOptions.value = resolveModelOptions(config.models)
+      }
+      // 用后端返回的默认模型设置 currentModel（仅用户未手动选过时）
+      if (!userSelectedModel.value && config.defaultModel) {
+        currentModel.value = config.defaultModel
+      }
+      // 用后端返回的功能开关更新 adminFeatures
+      if (config.features) {
+        adminFeatures.value = {
+          thinking: config.features.thinking ?? false,
+          webSearch: config.features.webSearch ?? false,
+          functionCall: config.features.functionCall ?? false,
+        }
+        // 同步 userToggledFeatures：admin 关闭的功能强制关闭，
+        // admin 开启的功能保持用户原选择（默认不自动开启，由用户自己决定）
+        userToggledFeatures.value = {
+          thinking: adminFeatures.value.thinking && userToggledFeatures.value.thinking,
+          webSearch: adminFeatures.value.webSearch && userToggledFeatures.value.webSearch,
+          functionCall: adminFeatures.value.functionCall && userToggledFeatures.value.functionCall,
+        }
+      }
+      chatConfigLoaded.value = true
+    } catch {
+      // 加载失败时保留硬编码默认值，静默处理
+    }
   }
 
   function clearError() {
@@ -240,6 +297,10 @@ export const useChatStore = defineStore('chat', () => {
     error,
     currentModel,
     features,
+    adminFeatures,
+    userToggledFeatures,
+    chatConfigLoaded,
+    availableModelOptions,
     currentConversation,
     loadConversations,
     createNewChat,
@@ -249,6 +310,7 @@ export const useChatStore = defineStore('chat', () => {
     stopGeneration,
     updateFeatures,
     updateModel,
+    loadChatConfig,
     clearError,
   }
 })

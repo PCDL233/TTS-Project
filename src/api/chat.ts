@@ -1,5 +1,18 @@
 import { client, BACKEND_URL } from './client'
-import type { ChatConversation, ChatMessage, ChatCompletionParams, StreamChunk } from '../types/chat'
+import type { ChatConversation, ChatMessage, ChatCompletionParams, StreamChunk, ChatFeatures } from '../types/chat'
+
+/** 从后端动态加载聊天配置（模型列表 + 功能开关） */
+export async function fetchChatConfig(): Promise<{
+  models: string[]
+  defaultModel: string
+  features: ChatFeatures
+}> {
+  const [modelsRes, featuresRes] = await Promise.all([
+    client.get<{ models: string[]; defaultModel: string }>('/chat/config/models'),
+    client.get<ChatFeatures>('/chat/config/features'),
+  ])
+  return { ...modelsRes.data, features: featuresRes.data }
+}
 
 export async function fetchConversations(): Promise<ChatConversation[]> {
   const response = await client.get<ChatConversation[]>('/chat/conversations')

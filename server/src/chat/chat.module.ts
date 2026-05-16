@@ -4,11 +4,13 @@ import { ChatConversation } from './chat-conversation.entity';
 import { ChatMessage } from './chat-message.entity';
 import { ChatService } from './chat.service';
 import { ChatController } from './chat.controller';
+import { ChatConfigPublicController } from './chat-config-public.controller';
 import { ConfigModule } from '../config/config.module';
+import { ChatConfigModule } from '../chat-config/chat-config.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ChatConversation, ChatMessage]), ConfigModule],
+  imports: [TypeOrmModule.forFeature([ChatConversation, ChatMessage]), ConfigModule, ChatConfigModule],
   providers: [ChatService],
-  controllers: [ChatController],
+  controllers: [ChatController, ChatConfigPublicController],
 })
 export class ChatModule {}

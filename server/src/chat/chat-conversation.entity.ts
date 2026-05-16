@@ -24,7 +24,6 @@ export class ChatConversation {
     thinking?: boolean;
     webSearch?: boolean;
     functionCall?: boolean;
-    jsonMode?: boolean;
   };
 
   @CreateDateColumn({ type: 'datetime' })

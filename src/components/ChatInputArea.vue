@@ -111,10 +111,10 @@
                     @change="handleVideoChange"
                 />
 
-                <el-divider direction="vertical" class="mx-1!" />
+                <el-divider v-if="chatStore.adminFeatures.thinking || chatStore.adminFeatures.webSearch || chatStore.adminFeatures.functionCall" direction="vertical" class="mx-1!" />
 
                 <!-- 深度思考 -->
-                <el-tooltip content="深度思考" placement="top">
+                <el-tooltip v-if="chatStore.adminFeatures.thinking" content="深度思考" placement="top">
                     <button
                         class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
                         :class="chatStore.features.thinking ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
@@ -126,7 +126,7 @@
                 </el-tooltip>
 
                 <!-- 联网搜索 -->
-                <el-tooltip content="联网搜索" placement="top">
+                <el-tooltip v-if="chatStore.adminFeatures.webSearch" content="联网搜索" placement="top">
                     <button
                         class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
                         :class="chatStore.features.webSearch ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
@@ -138,7 +138,7 @@
                 </el-tooltip>
 
                 <!-- 函数调用 -->
-                <el-tooltip content="函数调用" placement="top">
+                <el-tooltip v-if="chatStore.adminFeatures.functionCall" content="函数调用" placement="top">
                     <button
                         class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
                         :class="chatStore.features.functionCall ? 'bg-purple-50 border-purple-200 text-purple-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
@@ -222,7 +222,7 @@ import {
 import { useChatStore } from '../stores/chat'
 import { useConfigStore } from '../stores/config'
 import type { ChatMessage, ChatMessagePart, ChatFeatures } from '../types/chat'
-import { CHAT_MODEL_OPTIONS, TOKEN_PLAN_CHAT_MODELS } from '../types/chat'
+import { TOKEN_PLAN_CHAT_MODELS } from '../types/chat'
 import { uploadFile } from '../api/upload'
 import { BACKEND_URL } from '../api/client'
 import { ElMessage } from 'element-plus'
@@ -235,9 +235,9 @@ const configStore = useConfigStore()
 const availableModelOptions = computed(() => {
   const preset = configStore.config.baseUrlPreset
   if (preset && preset.startsWith('token-plan')) {
-    return CHAT_MODEL_OPTIONS.filter(opt => TOKEN_PLAN_CHAT_MODELS.has(opt.value))
+    return chatStore.availableModelOptions.filter(opt => TOKEN_PLAN_CHAT_MODELS.has(opt.value))
   }
-  return CHAT_MODEL_OPTIONS
+  return chatStore.availableModelOptions
 })
 
 // 如果当前模型不在可用列表中，自动切换到第一个可用模型

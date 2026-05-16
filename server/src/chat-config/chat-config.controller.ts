@@ -30,7 +30,9 @@ export class ChatConfigController {
   async updateFeatures(@Body() body: Record<string, boolean>) {
     const updates: Record<string, string> = {}
     for (const [key, value] of Object.entries(body)) {
-      updates[`feature_${key}`] = String(value)
+      // 将驼峰命名转换为下划线命名，确保与 getFeatures 查询的 key 一致
+      const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase()
+      updates[`feature_${snakeKey}`] = String(value)
     }
     await this.chatConfigService.updateMultiple(updates)
     return { success: true }

@@ -189,5 +189,6 @@ async function handleLogout() {
 onMounted(() => {
     configStore.loadConfig()
     chatStore.loadConversations()
+    chatStore.loadChatConfig()
 })
 </script>

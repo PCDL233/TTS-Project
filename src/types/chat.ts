@@ -83,6 +83,21 @@ export const CHAT_MODEL_OPTIONS = [
   { value: 'mimo-v2-flash', label: 'MiMo-V2-Flash', description: '轻量高速模型' },
 ]
 
+/** 模型元数据映射表：value → { label, description } */
+export const MODEL_META: Record<string, { label: string; description: string }> = Object.fromEntries(
+  CHAT_MODEL_OPTIONS.map((opt) => [opt.value, { label: opt.label, description: opt.description }]),
+)
+
+/** 根据模型 value 生成带 label/description 的 option 对象 */
+export function resolveModelOptions(modelValues: string[]) {
+  return modelValues.map((value) => {
+    const meta = MODEL_META[value]
+    return meta
+      ? { value, label: meta.label, description: meta.description }
+      : { value, label: value, description: '' }
+  })
+}
+
 /** Token Plan 支持的聊天模型（共8款，不含 mimo-v2-flash） */
 export const TOKEN_PLAN_CHAT_MODELS = new Set([
   'mimo-v2.5-pro',

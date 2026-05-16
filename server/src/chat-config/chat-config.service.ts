@@ -41,11 +41,7 @@ export class ChatConfigService {
         value: 'true',
         description: '函数调用开关',
       },
-      {
-        key: 'feature_json_mode',
-        value: 'false',
-        description: 'JSON模式开关',
-      },
+
     ];
 
     for (const preset of presets) {
@@ -108,13 +104,11 @@ export class ChatConfigService {
       'feature_thinking',
       'feature_web_search',
       'feature_function_call',
-      'feature_json_mode',
     ]);
     return {
       thinking: configs.feature_thinking === 'true',
       webSearch: configs.feature_web_search === 'true',
       functionCall: configs.feature_function_call === 'true',
-      jsonMode: configs.feature_json_mode === 'true',
     };
   }
 }
