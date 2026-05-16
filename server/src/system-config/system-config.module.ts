@@ -3,9 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 import { SystemConfig } from './system-config.entity'
 import { SystemConfigService } from './system-config.service'
 import { SystemConfigController } from './system-config.controller'
+import { ConfigModule } from '../config/config.module'
 
 @Module({
-  imports: [TypeOrmModule.forFeature([SystemConfig])],
+  imports: [TypeOrmModule.forFeature([SystemConfig]), ConfigModule],
   providers: [SystemConfigService],
   controllers: [SystemConfigController],
   exports: [SystemConfigService],

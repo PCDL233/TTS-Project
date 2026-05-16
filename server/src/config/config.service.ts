@@ -56,4 +56,21 @@ export class ConfigService {
     };
     return presets[config.baseUrlPreset] || 'https://api.xiaomimimo.com/v1';
   }
+
+  async createConfig(userId: number, defaults?: Partial<Config>): Promise<Config> {
+    const config = this.configRepository.create({
+      userId,
+      ...defaults,
+    })
+    return this.configRepository.save(config)
+  }
+
+  async updateAllUsersBaseUrlPreset(preset: string): Promise<void> {
+    await this.configRepository
+      .createQueryBuilder()
+      .update()
+      .set({ baseUrlPreset: preset })
+      .where('baseUrlPreset != :custom', { custom: 'custom' })
+      .execute()
+  }
 }

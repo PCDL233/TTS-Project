@@ -9,12 +9,14 @@ import { UserModule } from '../user/user.module';
 import { LogModule } from '../log/log.module';
 import { CryptoModule } from '../common/crypto.module';
 import { SystemConfigModule } from '../system-config/system-config.module';
+import { ConfigModule as AppConfigModule } from '../config/config.module';
 
 @Module({
   imports: [
     UserModule,
     LogModule,
     SystemConfigModule,
+    AppConfigModule,
     CryptoModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({

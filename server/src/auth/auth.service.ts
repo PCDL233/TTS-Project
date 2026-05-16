@@ -4,6 +4,7 @@ import * as bcrypt from 'bcryptjs'
 import { UserService } from '../user/user.service'
 import { CryptoService } from '../common/crypto.service'
 import { SystemConfigService } from '../system-config/system-config.service'
+import { ConfigService } from '../config/config.service'
 import { Request } from 'express'
 
 @Injectable()
@@ -13,6 +14,7 @@ export class AuthService {
     private jwtService: JwtService,
     private cryptoService: CryptoService,
     private systemConfigService: SystemConfigService,
+    private configService: ConfigService,
   ) {}
 
   async register(encryptedPayload: string) {
@@ -41,6 +43,29 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(password, 10)
     const user = await this.userService.create(username, passwordHash)
+
+    // 创建用户配置，使用系统默认值
+    const [defaultBaseUrl, defaultModel, defaultAudioFormat, defaultStyleMode] = await Promise.all([
+      this.systemConfigService.findByKey('default_base_url'),
+      this.systemConfigService.findByKey('default_model'),
+      this.systemConfigService.findByKey('default_audio_format'),
+      this.systemConfigService.findByKey('default_style_mode'),
+    ])
+
+    const baseUrlPresetMap: Record<string, string> = {
+      'https://api.xiaomimimo.com/v1': 'default',
+      'https://token-plan-cn.xiaomimimo.com/v1': 'token-plan-cn',
+      'https://token-plan-sgp.xiaomimimo.com/v1': 'token-plan-sgp',
+      'https://token-plan-ams.xiaomimimo.com/v1': 'token-plan-ams',
+    }
+    const baseUrlValue = defaultBaseUrl?.value || 'https://api.xiaomimimo.com/v1'
+
+    await this.configService.createConfig(user.id, {
+      baseUrlPreset: baseUrlPresetMap[baseUrlValue] || 'default',
+      model: defaultModel?.value || 'mimo-v2.5-pro',
+      audioFormat: defaultAudioFormat?.value || 'wav',
+      styleMode: defaultStyleMode?.value || 'natural',
+    })
 
     const token = this.jwtService.sign({ sub: user.id, username: user.username })
     return {
