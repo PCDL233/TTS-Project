@@ -258,6 +258,121 @@ export class AdminController {
     return Array.from(map.entries()).map(([name, value]) => ({ name, value }))
   }
 
+  // ========== 智能助手统计 ==========
+
+  @Get('stats/chat-overview')
+  async getChatOverview() {
+    const now = new Date()
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
+
+    const totalConversations = await this.conversationRepository.count()
+    const todayConversations = await this.conversationRepository.count({
+      where: { createdAt: Between(todayStart, todayEnd) },
+    })
+    const totalMessages = await this.messageRepository.count()
+    const todayMessages = await this.messageRepository.count({
+      where: { createdAt: Between(todayStart, todayEnd) },
+    })
+
+    const activeUsersResult = await this.conversationRepository
+      .createQueryBuilder('conv')
+      .select('COUNT(DISTINCT conv.userId)', 'count')
+      .where('conv.createdAt BETWEEN :start AND :end', { start: todayStart, end: todayEnd })
+      .getRawOne()
+    const activeUsers = Number(activeUsersResult?.count || 0)
+
+    return { totalConversations, todayConversations, totalMessages, todayMessages, activeUsers }
+  }
+
+  @Get('stats/chat-conversation-trend')
+  async getChatConversationTrend(@Query('days') days?: string) {
+    const d = Number(days) || 30
+    const result: { date: string; count: number }[] = []
+    const now = new Date()
+
+    for (let i = d - 1; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
+      const nextDate = new Date(date.getTime() + 24 * 60 * 60 * 1000)
+      const count = await this.conversationRepository.count({
+        where: { createdAt: Between(date, nextDate) },
+      })
+      result.push({
+        date: date.toISOString().slice(0, 10),
+        count,
+      })
+    }
+    return result
+  }
+
+  @Get('stats/chat-message-trend')
+  async getChatMessageTrend(@Query('days') days?: string) {
+    const d = Number(days) || 30
+    const result: { date: string; count: number }[] = []
+    const now = new Date()
+
+    for (let i = d - 1; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
+      const nextDate = new Date(date.getTime() + 24 * 60 * 60 * 1000)
+      const count = await this.messageRepository.count({
+        where: { createdAt: Between(date, nextDate) },
+      })
+      result.push({
+        date: date.toISOString().slice(0, 10),
+        count,
+      })
+    }
+    return result
+  }
+
+  @Get('stats/chat-model-distribution')
+  async getChatModelDistribution() {
+    const conversations = await this.conversationRepository.find()
+    const map = new Map<string, number>()
+    for (const c of conversations) {
+      map.set(c.model, (map.get(c.model) || 0) + 1)
+    }
+    return Array.from(map.entries()).map(([name, value]) => ({ name, value }))
+  }
+
+  @Get('stats/chat-feature-distribution')
+  async getChatFeatureDistribution() {
+    const conversations = await this.conversationRepository.find()
+    const map = new Map<string, number>([
+      ['thinking', 0],
+      ['webSearch', 0],
+      ['functionCall', 0],
+    ])
+    for (const c of conversations) {
+      const f = c.features || {}
+      if (f.thinking) map.set('thinking', (map.get('thinking') || 0) + 1)
+      if (f.webSearch) map.set('webSearch', (map.get('webSearch') || 0) + 1)
+      if (f.functionCall) map.set('functionCall', (map.get('functionCall') || 0) + 1)
+    }
+    const labelMap: Record<string, string> = {
+      thinking: '深度思考',
+      webSearch: '联网搜索',
+      functionCall: 'Function Call',
+    }
+    return Array.from(map.entries()).map(([key, value]) => ({ name: labelMap[key] || key, value }))
+  }
+
+  @Get('stats/chat-role-distribution')
+  async getChatRoleDistribution() {
+    const messages = await this.messageRepository.find()
+    const map = new Map<string, number>()
+    for (const m of messages) {
+      map.set(m.role, (map.get(m.role) || 0) + 1)
+    }
+    const labelMap: Record<string, string> = {
+      user: '用户消息',
+      assistant: '助手消息',
+      system: '系统消息',
+      tool: '工具消息',
+    }
+    return Array.from(map.entries()).map(([key, value]) => ({ name: labelMap[key] || key, value }))
+  }
+
   // ========== 智能助手管理 ==========
   @Get('chat/conversations')
   async getChatConversations(

@@ -80,6 +80,26 @@ export const adminApi = {
     return client.get('/admin/stats/tts-by-mode')
   },
 
+  // 智能助手统计
+  getChatOverview() {
+    return client.get('/admin/stats/chat-overview')
+  },
+  getChatConversationTrend(days?: number) {
+    return client.get('/admin/stats/chat-conversation-trend', { params: { days } })
+  },
+  getChatMessageTrend(days?: number) {
+    return client.get('/admin/stats/chat-message-trend', { params: { days } })
+  },
+  getChatModelDistribution() {
+    return client.get('/admin/stats/chat-model-distribution')
+  },
+  getChatFeatureDistribution() {
+    return client.get('/admin/stats/chat-feature-distribution')
+  },
+  getChatRoleDistribution() {
+    return client.get('/admin/stats/chat-role-distribution')
+  },
+
   // 系统配置
   getSystemConfigs() {
     return client.get('/admin/system-config')
