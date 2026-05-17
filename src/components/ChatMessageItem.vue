@@ -167,6 +167,19 @@
 
                         <!-- 操作按钮 -->
                         <div v-if="message.role === 'assistant' && message.content" class="mt-2 flex items-center gap-2">
+                            <el-tooltip :content="tts.isPlaying.value ? '暂停朗读' : '朗读'" placement="top">
+                                <el-button
+                                    text
+                                    class="p-1! h-auto!"
+                                    :loading="tts.isLoading.value"
+                                    @click="tts.speak(ttsText)"
+                                >
+                                    <el-icon :size="14">
+                                        <video-pause v-if="tts.isPlaying.value" />
+                                        <headset v-else />
+                                    </el-icon>
+                                </el-button>
+                            </el-tooltip>
                             <el-button text class="p-1! h-auto!" @click="copyContent">
                                 <el-icon :size="14"><document-copy /></el-icon>
                             </el-button>
@@ -180,10 +193,11 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Cpu, ArrowDown, DocumentCopy, UserFilled } from '@element-plus/icons-vue'
+import { Cpu, ArrowDown, DocumentCopy, UserFilled, Headset, VideoPause } from '@element-plus/icons-vue'
 import type { ChatMessage, ChatMessagePart } from '../types/chat'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
+import { useChatTTS } from '../composables/useChatTTS'
 import { BACKEND_URL } from '../api/client'
 import { marked } from 'marked'
 import hljs from 'highlight.js'
@@ -197,6 +211,21 @@ const props = defineProps<{
 
 const authStore = useAuthStore()
 const showReasoning = ref(false)
+const tts = useChatTTS()
+
+// 提取纯文本用于语音朗读（去掉 markdown 格式）
+const plainTextContent = computed(() => {
+  if (!props.message.content) return ''
+  const div = document.createElement('div')
+  div.innerHTML = renderedHtml.value
+  return (div.textContent || '').replace(/\s+/g, ' ').trim()
+})
+
+// 朗读内容截断（MiMo TTS 对文本长度有限制）
+const ttsText = computed(() => {
+  const text = plainTextContent.value
+  return text.length > 3000 ? text.slice(0, 3000) : text
+})
 
 // 配置 marked
 const renderer = new marked.Renderer()
