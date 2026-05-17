@@ -78,27 +78,24 @@ export class ChatService {
       annotations?: any[];
     },
   ): Promise<void> {
-    const savePromises: Promise<unknown>[] = [];
-
+    // 顺序保存，确保用户消息的 createdAt 早于助手消息
     if (userMessage && userMessage.role === 'user') {
-      savePromises.push(this.saveMessage({
+      await this.saveMessage({
         conversationId,
         role: 'user',
         content: userMessage.content || '',
         contentParts: userMessage.contentParts,
-      }));
+      });
     }
 
-    savePromises.push(this.saveMessage({
+    await this.saveMessage({
       conversationId,
       role: 'assistant',
       content: assistantResponse.content,
       reasoningContent: assistantResponse.reasoningContent || '',
       toolCalls: assistantResponse.toolCalls,
       annotations: assistantResponse.annotations,
-    }));
-
-    await Promise.all(savePromises);
+    });
 
     await this.conversationRepository.update(
       { id: conversationId },
