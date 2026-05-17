@@ -121,4 +121,9 @@ export class KnowledgeBaseController {
     if (!doc) throw new BadRequestException('文档不存在');
     return doc;
   }
+
+  @Get(':id/documents/:docId/chunks')
+  async getChunks(@Param('id') id: string, @Param('docId') docId: string) {
+    return this.kbService.getChunks(Number(id), Number(docId));
+  }
 }

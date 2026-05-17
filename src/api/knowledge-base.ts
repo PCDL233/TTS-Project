@@ -25,6 +25,16 @@ export interface KnowledgeDocument {
   createdAt: string
 }
 
+export interface KnowledgeChunk {
+  id: number
+  documentId: number
+  knowledgeBaseId: number
+  content: string
+  chunkIndex: number
+  metadata: Record<string, any> | null
+  createdAt: string
+}
+
 export async function createKnowledgeBase(data: {
   name: string
   description?: string
@@ -67,5 +77,10 @@ export async function deleteDocument(kbId: number, docId: number): Promise<void>
 
 export async function getDocumentStatus(kbId: number, docId: number): Promise<KnowledgeDocument> {
   const res = await client.get<KnowledgeDocument>(`/knowledge-base/${kbId}/documents/${docId}/status`)
+  return res.data
+}
+
+export async function fetchChunks(kbId: number, docId: number): Promise<KnowledgeChunk[]> {
+  const res = await client.get<KnowledgeChunk[]>(`/knowledge-base/${kbId}/documents/${docId}/chunks`)
   return res.data
 }

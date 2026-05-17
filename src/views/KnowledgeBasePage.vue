@@ -138,6 +138,8 @@
                                     v-for="doc in documents"
                                     :key="doc.id"
                                     class="px-4 py-3 flex items-center justify-between hover:bg-gray-50"
+                                    :class="doc.status === 'completed' ? 'cursor-pointer' : ''"
+                                    @click="handleViewChunks(doc)"
                                 >
                                     <div class="flex items-center gap-3 min-w-0">
                                         <el-icon :size="18" class="text-gray-400 shrink-0"><document /></el-icon>
@@ -190,6 +192,38 @@
                 <el-button type="primary" @click="handleCreate">创建</el-button>
             </template>
         </el-dialog>
+
+        <!-- 分片详情抽屉 -->
+        <el-drawer
+            v-model="showChunksDrawer"
+            :title="chunksDoc ? `分片详情 - ${chunksDoc.originalName}` : '分片详情'"
+            size="560px"
+        >
+            <div v-if="chunksLoading" class="flex items-center justify-center py-12">
+                <el-icon class="is-loading" :size="24"><loading /></el-icon>
+                <span class="ml-2 text-gray-500">加载中...</span>
+            </div>
+            <div v-else-if="chunks.length === 0" class="text-center py-12 text-gray-400">
+                暂无分片数据
+            </div>
+            <div v-else class="space-y-3">
+                <div class="text-sm text-gray-500 mb-4">共 {{ chunks.length }} 个分片</div>
+                <div
+                    v-for="chunk in chunks"
+                    :key="chunk.id"
+                    class="border border-gray-200 rounded-lg p-4 bg-white"
+                >
+                    <div class="flex items-center justify-between mb-2">
+                        <el-tag size="small" type="info">#{{ chunk.chunkIndex + 1 }}</el-tag>
+                        <span class="text-xs text-gray-400">ID: {{ chunk.id }}</span>
+                    </div>
+                    <p class="text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">{{ chunk.content }}</p>
+                    <div v-if="chunk.metadata && Object.keys(chunk.metadata).length > 0" class="mt-2 pt-2 border-t border-gray-100">
+                        <span class="text-xs text-gray-400">元数据: {{ JSON.stringify(chunk.metadata) }}</span>
+                    </div>
+                </div>
+            </div>
+        </el-drawer>
     </div>
 </template>
 
@@ -198,14 +232,14 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
     ChatDotSquare, Plus, Collection, Upload, Document,
-    Delete, Warning, UserFilled, ArrowDown, User, SetUp, SwitchButton,
+    Delete, Warning, UserFilled, ArrowDown, User, SetUp, SwitchButton, Loading,
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import {
     createKnowledgeBase, fetchKnowledgeBases, deleteKnowledgeBase,
-    uploadDocument, fetchDocuments, deleteDocument, getDocumentStatus,
-    type KnowledgeBase, type KnowledgeDocument,
+    uploadDocument, fetchDocuments, deleteDocument, getDocumentStatus, fetchChunks,
+    type KnowledgeBase, type KnowledgeDocument, type KnowledgeChunk,
 } from '../api/knowledge-base'
 
 const router = useRouter()
@@ -218,6 +252,10 @@ const showCreateDialog = ref(false)
 const createForm = ref({ name: '', description: '' })
 const fileInput = ref<HTMLInputElement | null>(null)
 const statusPollingTimers = ref<Map<number, number>>(new Map())
+const showChunksDrawer = ref(false)
+const chunksLoading = ref(false)
+const chunksDoc = ref<KnowledgeDocument | null>(null)
+const chunks = ref<KnowledgeChunk[]>([])
 
 const avatarUrl = computed(() => {
     const avatar = authStore.user?.avatar
@@ -374,6 +412,21 @@ async function uploadFile(file: File) {
         await loadKnowledgeBases()
     } catch (err: any) {
         ElMessage.error(err.response?.data?.message || `上传 ${file.name} 失败`)
+    }
+}
+
+async function handleViewChunks(doc: KnowledgeDocument) {
+    if (doc.status !== 'completed' || !selectedKb.value) return
+    chunksDoc.value = doc
+    showChunksDrawer.value = true
+    chunksLoading.value = true
+    chunks.value = []
+    try {
+        chunks.value = await fetchChunks(selectedKb.value.id, doc.id)
+    } catch (err: any) {
+        ElMessage.error(err.response?.data?.message || '加载分片失败')
+    } finally {
+        chunksLoading.value = false
     }
 }
 

@@ -149,6 +149,13 @@ export class KnowledgeBaseService {
     });
   }
 
+  async getChunks(knowledgeBaseId: number, documentId: number): Promise<KnowledgeChunk[]> {
+    return this.chunkRepository.find({
+      where: { knowledgeBaseId, documentId },
+      order: { chunkIndex: 'ASC' },
+    });
+  }
+
   // ========== 私有方法 ==========
 
   private async updateKnowledgeBaseStats(knowledgeBaseId: number): Promise<void> {
