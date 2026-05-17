@@ -33,7 +33,7 @@ export async function deleteConversation(id: number): Promise<void> {
   await client.delete(`/chat/conversations/${id}`)
 }
 
-export async function updateConversation(id: number, data: { title?: string }): Promise<ChatConversation> {
+export async function updateConversation(id: number, data: { title?: string; knowledgeBaseId?: number | null }): Promise<ChatConversation> {
   const response = await client.patch<ChatConversation>(`/chat/conversations/${id}`, data)
   return response.data
 }

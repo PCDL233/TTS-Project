@@ -44,6 +44,7 @@ export interface ChatFeatures {
   thinking?: boolean
   webSearch?: boolean
   functionCall?: boolean
+  knowledgeBase?: boolean
 }
 
 export interface StreamChunk {

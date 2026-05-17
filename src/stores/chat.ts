@@ -25,19 +25,21 @@ export const useChatStore = defineStore('chat', () => {
     thinking: false,
     webSearch: false,
     functionCall: false,
+    knowledgeBase: false,
   })
   // 用户本地开关偏好（仅对 adminFeatures 中开启的功能生效）
   const userToggledFeatures = ref<ChatFeatures>({
     thinking: false,
     webSearch: false,
     functionCall: false,
+    knowledgeBase: false,
   })
-  const selectedKnowledgeBaseId = ref<number | null>(null)
   // 最终生效的功能（admin 关闭则整体关闭，admin 开启则取决于用户本地开关）
   const features = computed<ChatFeatures>(() => ({
     thinking: adminFeatures.value.thinking && userToggledFeatures.value.thinking,
     webSearch: adminFeatures.value.webSearch && userToggledFeatures.value.webSearch,
     functionCall: adminFeatures.value.functionCall && userToggledFeatures.value.functionCall,
+    knowledgeBase: adminFeatures.value.knowledgeBase && userToggledFeatures.value.knowledgeBase,
   }))
   const abortController = ref<AbortController | null>(null)
   const chatConfigLoaded = ref(false)
@@ -64,7 +66,7 @@ export const useChatStore = defineStore('chat', () => {
         title: title || '新对话',
         model: currentModel.value,
         features: features.value,
-        knowledgeBaseId: knowledgeBaseId ?? selectedKnowledgeBaseId.value ?? undefined,
+        knowledgeBaseId: knowledgeBaseId ?? undefined,
       })
       conversations.value.unshift(conversation)
       currentConversationId.value = conversation.id
@@ -273,6 +275,7 @@ export const useChatStore = defineStore('chat', () => {
           thinking: config.features.thinking ?? false,
           webSearch: config.features.webSearch ?? false,
           functionCall: config.features.functionCall ?? false,
+          knowledgeBase: config.features.knowledgeBase ?? false,
         }
         // 同步 userToggledFeatures：admin 关闭的功能强制关闭，
         // admin 开启的功能保持用户原选择（默认不自动开启，由用户自己决定）
@@ -280,6 +283,7 @@ export const useChatStore = defineStore('chat', () => {
           thinking: adminFeatures.value.thinking && userToggledFeatures.value.thinking,
           webSearch: adminFeatures.value.webSearch && userToggledFeatures.value.webSearch,
           functionCall: adminFeatures.value.functionCall && userToggledFeatures.value.functionCall,
+          knowledgeBase: adminFeatures.value.knowledgeBase && userToggledFeatures.value.knowledgeBase,
         }
       }
       chatConfigLoaded.value = true
@@ -305,7 +309,6 @@ export const useChatStore = defineStore('chat', () => {
     chatConfigLoaded,
     availableModelOptions,
     currentConversation,
-    selectedKnowledgeBaseId,
     loadConversations,
     createNewChat,
     selectConversation,

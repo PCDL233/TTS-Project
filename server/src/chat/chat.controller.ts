@@ -55,10 +55,13 @@ export class ChatController {
   async updateConversation(
     @Req() req: RequestWithUser,
     @Param('id') id: string,
-    @Body() body: { title?: string },
+    @Body() body: { title?: string; knowledgeBaseId?: number | null },
   ) {
     this.logger.log(`[updateConversation] 用户 ${req.user.userId} 更新会话 ${id}`);
-    return this.chatService.updateConversation(req.user.userId, Number(id), body);
+    return this.chatService.updateConversation(req.user.userId, Number(id), {
+      title: body.title,
+      knowledgeBaseId: body.knowledgeBaseId ?? undefined,
+    });
   }
 
   @Delete('conversations/:id')

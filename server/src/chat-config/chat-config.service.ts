@@ -41,6 +41,11 @@ export class ChatConfigService {
         value: 'true',
         description: '函数调用开关',
       },
+      {
+        key: 'feature_knowledge_base',
+        value: 'true',
+        description: '知识库开关',
+      },
 
     ];
 
@@ -104,11 +109,13 @@ export class ChatConfigService {
       'feature_thinking',
       'feature_web_search',
       'feature_function_call',
+      'feature_knowledge_base',
     ]);
     return {
       thinking: configs.feature_thinking === 'true',
       webSearch: configs.feature_web_search === 'true',
       functionCall: configs.feature_function_call === 'true',
+      knowledgeBase: configs.feature_knowledge_base === 'true',
     };
   }
 }

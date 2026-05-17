@@ -11,28 +11,6 @@
             </el-button>
         </div>
 
-        <!-- 知识库选择器 -->
-        <div class="px-3 pb-2">
-            <el-select
-                v-model="chatStore.selectedKnowledgeBaseId"
-                placeholder="选择知识库（可选）"
-                clearable
-                size="small"
-                class="w-full"
-            >
-                <template #prefix>
-                    <el-icon><collection /></el-icon>
-                </template>
-                <el-option
-                    v-for="kb in knowledgeBases"
-                    :key="kb.id"
-                    :label="kb.name"
-                    :value="kb.id"
-                />
-            </el-select>
-            <p class="text-xs text-gray-400 mt-1 px-1">选中后，新对话将自动关联该知识库</p>
-        </div>
-
         <!-- 会话列表 -->
         <div class="flex-1 overflow-y-auto px-2 pb-2 space-y-1">
             <div
@@ -70,22 +48,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { Plus, ChatDotRound, Delete, Collection } from '@element-plus/icons-vue'
 import { useChatStore } from '../stores/chat'
-import { fetchKnowledgeBases, type KnowledgeBase } from '../api/knowledge-base'
 import { ElMessageBox } from 'element-plus'
 
 const chatStore = useChatStore()
-const knowledgeBases = ref<KnowledgeBase[]>([])
-
-onMounted(async () => {
-    try {
-        knowledgeBases.value = await fetchKnowledgeBases()
-    } catch {
-        // 静默失败
-    }
-})
 
 async function handleNewChat() {
     await chatStore.createNewChat()

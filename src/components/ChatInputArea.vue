@@ -111,7 +111,7 @@
                     @change="handleVideoChange"
                 />
 
-                <el-divider v-if="chatStore.adminFeatures.thinking || chatStore.adminFeatures.webSearch || chatStore.adminFeatures.functionCall" direction="vertical" class="mx-1!" />
+                <el-divider v-if="chatStore.adminFeatures.thinking || chatStore.adminFeatures.webSearch || chatStore.adminFeatures.functionCall || chatStore.adminFeatures.knowledgeBase" direction="vertical" class="mx-1!" />
 
                 <!-- 深度思考 -->
                 <el-tooltip v-if="chatStore.adminFeatures.thinking" content="深度思考" placement="top">
@@ -147,6 +147,31 @@
                         <el-icon :size="14"><magic-stick /></el-icon>
                         <span>函数调用</span>
                     </button>
+                </el-tooltip>
+
+                <!-- 知识库选择 -->
+                <el-tooltip v-if="chatStore.adminFeatures.knowledgeBase" content="选择知识库进行检索增强" placement="top">
+                    <div>
+                        <el-select
+                            v-model="selectedKbId"
+                            placeholder="知识库"
+                            clearable
+                            size="small"
+                            style="width: 160px"
+                            :class="selectedKbId ? 'kb-select-active' : 'kb-select-inactive'"
+                            @change="handleKnowledgeBaseChange"
+                        >
+                            <template #prefix>
+                                <el-icon><collection /></el-icon>
+                            </template>
+                            <el-option
+                                v-for="kb in knowledgeBases"
+                                :key="kb.id"
+                                :label="kb.name"
+                                :value="kb.id"
+                            />
+                        </el-select>
+                    </div>
                 </el-tooltip>
 
                 <div class="ml-auto flex items-center gap-2">
@@ -218,6 +243,7 @@ import {
     Promotion,
     VideoCamera,
     Loading,
+    Collection,
 } from '@element-plus/icons-vue'
 import { useChatStore } from '../stores/chat'
 import { useConfigStore } from '../stores/config'
@@ -226,11 +252,54 @@ import { TOKEN_PLAN_CHAT_MODELS } from '../types/chat'
 import { uploadFile } from '../api/upload'
 import { BACKEND_URL } from '../api/client'
 import { ElMessage } from 'element-plus'
+import { fetchKnowledgeBases, type KnowledgeBase } from '../api/knowledge-base'
+import { updateConversation } from '../api/chat'
 
 const SUPPORTED_AUDIO_FORMATS = new Set(['mp3', 'wav', 'ogg', 'm4a'])
 
 const chatStore = useChatStore()
 const configStore = useConfigStore()
+
+// 知识库列表
+const knowledgeBases = ref<KnowledgeBase[]>([])
+const selectedKbId = ref<number | null>(null)
+
+// 加载知识库列表
+async function loadKnowledgeBases() {
+    try {
+        knowledgeBases.value = await fetchKnowledgeBases()
+    } catch {
+        // 静默失败
+    }
+}
+
+// 同步当前会话的知识库选择
+watch(() => chatStore.currentConversationId, () => {
+    selectedKbId.value = chatStore.currentConversation?.knowledgeBaseId ?? null
+}, { immediate: true })
+
+// 切换知识库
+async function handleKnowledgeBaseChange(val: number | null) {
+    if (!chatStore.currentConversationId) return
+    try {
+        await updateConversation(chatStore.currentConversationId, { knowledgeBaseId: val })
+        // 同步更新本地 store 数据
+        const conv = chatStore.conversations.find(c => c.id === chatStore.currentConversationId)
+        if (conv) {
+            if (val) {
+                conv.knowledgeBaseId = val
+            } else {
+                delete conv.knowledgeBaseId
+            }
+        }
+    } catch {
+        ElMessage.error('更新知识库失败')
+        // 回滚
+        selectedKbId.value = chatStore.currentConversation?.knowledgeBaseId ?? null
+    }
+}
+
+loadKnowledgeBases()
 
 const availableModelOptions = computed(() => {
   const preset = configStore.config.baseUrlPreset
@@ -438,5 +507,19 @@ function removeVideo() {
     background-color: #ffffff;
     border-color: #d1d5db;
     box-shadow: 0 0 0 1px #d1d5db;
+}
+
+.kb-select-active :deep(.el-input__wrapper) {
+    background-color: #ecfdf5;
+    box-shadow: 0 0 0 1px #10b981 inset;
+}
+
+.kb-select-active :deep(.el-input__inner) {
+    color: #059669;
+}
+
+.kb-select-inactive :deep(.el-input__wrapper) {
+    background-color: #ffffff;
+    box-shadow: 0 0 0 1px #e5e7eb inset;
 }
 </style>

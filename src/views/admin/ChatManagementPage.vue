@@ -91,6 +91,10 @@
             <el-switch v-model="featureConfig.functionCall" />
             <span class="ml-2 text-sm text-gray-500">允许AI调用外部函数</span>
           </el-form-item>
+          <el-form-item label="知识库">
+            <el-switch v-model="featureConfig.knowledgeBase" />
+            <span class="ml-2 text-sm text-gray-500">允许在会话中使用知识库检索</span>
+          </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="saveFeatureConfig">保存</el-button>
           </el-form-item>
@@ -144,6 +148,7 @@ const featureConfig = ref({
   thinking: true,
   webSearch: true,
   functionCall: true,
+  knowledgeBase: true,
 })
 
 async function loadConversations() {
