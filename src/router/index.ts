@@ -28,6 +28,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/knowledge-base',
+      name: 'KnowledgeBase',
+      component: () => import('../views/KnowledgeBasePage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/tts',
       name: 'TTS',
       component: () => import('../views/TTSPage.vue'),

@@ -131,4 +131,8 @@ export class ChatCompletionDto {
   @IsNumber()
   @IsOptional()
   conversationId?: number;
+
+  @IsNumber()
+  @IsOptional()
+  knowledgeBaseId?: number;
 }

@@ -35,6 +35,7 @@ export interface ChatConversation {
   title: string
   model: string
   features: ChatFeatures
+  knowledgeBaseId?: number
   createdAt?: string
   updatedAt?: string
 }

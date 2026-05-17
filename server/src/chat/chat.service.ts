@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { ChatConversation } from './chat-conversation.entity';
 import { ChatMessage } from './chat-message.entity';
 import { ConfigService } from '../config/config.service';
+import { RagService } from '../knowledge-base/rag.service';
 
 @Injectable()
 export class ChatService {
@@ -15,6 +16,7 @@ export class ChatService {
     @InjectRepository(ChatMessage)
     private messageRepository: Repository<ChatMessage>,
     private readonly configService: ConfigService,
+    private readonly ragService: RagService,
   ) {}
 
   // ========== 会话 CRUD ==========
@@ -118,12 +120,33 @@ export class ChatService {
       response_format?: { type: 'text' | 'json_object' };
       temperature?: number;
       max_completion_tokens?: number;
+      knowledgeBaseId?: number;
     },
   ): AsyncGenerator<any, void, unknown> {
     const config = await this.configService.getConfig(userId);
     if (!config.apiKey) {
       this.logger.warn('[streamChatCompletion] API Key 未配置');
       throw new BadRequestException('API Key 未配置，请先在「API 设置」中填写有效的 API Key');
+    }
+
+    // RAG 增强：如果指定了知识库，注入上下文
+    let messages = dto.messages;
+    if (dto.knowledgeBaseId) {
+      try {
+        const lastUserMessage = dto.messages.filter((m) => m.role === 'user').pop();
+        if (lastUserMessage?.content) {
+          const context = await this.ragService.retrieveContext(
+            lastUserMessage.content,
+            dto.knowledgeBaseId,
+          );
+          if (context) {
+            messages = this.ragService.buildAugmentedMessages(dto.messages, context);
+            this.logger.log(`[streamChatCompletion] 已注入 RAG 上下文，知识库=${dto.knowledgeBaseId}`);
+          }
+        }
+      } catch (ragErr) {
+        this.logger.warn(`[streamChatCompletion] RAG 检索失败，降级处理: ${(ragErr as Error).message}`);
+      }
     }
 
     const baseUrl = this.configService.getEffectiveBaseUrl(config);
@@ -138,7 +161,7 @@ export class ChatService {
     }
 
     // 构造 MiMo API 消息格式
-    const apiMessages = dto.messages.map((msg) => {
+    const apiMessages = messages.map((msg) => {
       if (msg.contentParts && msg.contentParts.length > 0) {
         return {
           role: msg.role,

@@ -29,6 +29,9 @@ export class ChatConversation {
   @CreateDateColumn({ type: 'datetime' })
   createdAt: Date;
 
+  @Column({ nullable: true })
+  knowledgeBaseId: number;
+
   @UpdateDateColumn({ type: 'datetime' })
   updatedAt: Date;
 }

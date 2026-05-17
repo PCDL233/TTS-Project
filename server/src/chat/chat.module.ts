@@ -7,9 +7,10 @@ import { ChatController } from './chat.controller';
 import { ChatConfigPublicController } from './chat-config-public.controller';
 import { ConfigModule } from '../config/config.module';
 import { ChatConfigModule } from '../chat-config/chat-config.module';
+import { KnowledgeBaseModule } from '../knowledge-base/knowledge-base.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ChatConversation, ChatMessage]), ConfigModule, ChatConfigModule],
+  imports: [TypeOrmModule.forFeature([ChatConversation, ChatMessage]), ConfigModule, ChatConfigModule, KnowledgeBaseModule],
   providers: [ChatService],
   controllers: [ChatController, ChatConfigPublicController],
 })

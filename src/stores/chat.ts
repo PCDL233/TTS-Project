@@ -32,6 +32,7 @@ export const useChatStore = defineStore('chat', () => {
     webSearch: false,
     functionCall: false,
   })
+  const selectedKnowledgeBaseId = ref<number | null>(null)
   // 最终生效的功能（admin 关闭则整体关闭，admin 开启则取决于用户本地开关）
   const features = computed<ChatFeatures>(() => ({
     thinking: adminFeatures.value.thinking && userToggledFeatures.value.thinking,
@@ -57,12 +58,13 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  async function createNewChat(title?: string) {
+  async function createNewChat(title?: string, knowledgeBaseId?: number | null) {
     try {
       const conversation = await apiCreateConversation({
         title: title || '新对话',
         model: currentModel.value,
         features: features.value,
+        knowledgeBaseId: knowledgeBaseId ?? selectedKnowledgeBaseId.value ?? undefined,
       })
       conversations.value.unshift(conversation)
       currentConversationId.value = conversation.id
@@ -189,6 +191,7 @@ export const useChatStore = defineStore('chat', () => {
       tools: tools.length > 0 ? tools : undefined,
       tool_choice: tools.length > 0 ? 'auto' : undefined,
       conversationId: currentConversationId.value!,
+      knowledgeBaseId: currentConversation.value?.knowledgeBaseId,
     }
 
     await sendChatStream(
@@ -302,6 +305,7 @@ export const useChatStore = defineStore('chat', () => {
     chatConfigLoaded,
     availableModelOptions,
     currentConversation,
+    selectedKnowledgeBaseId,
     loadConversations,
     createNewChat,
     selectConversation,

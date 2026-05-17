@@ -26,6 +26,13 @@
                             智能助手
                         </router-link>
                         <router-link
+                            to="/knowledge-base"
+                            class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
+                            :class="$route.path === '/knowledge-base' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                        >
+                            知识库
+                        </router-link>
+                        <router-link
                             to="/tts"
                             class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
                             :class="$route.path === '/tts' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"

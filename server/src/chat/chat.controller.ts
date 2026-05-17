@@ -40,13 +40,14 @@ export class ChatController {
   @LogOperation('chat', 'create-conversation')
   async createConversation(
     @Req() req: RequestWithUser,
-    @Body() body: { title?: string; model?: string; features?: any },
+    @Body() body: { title?: string; model?: string; features?: any; knowledgeBaseId?: number },
   ) {
     this.logger.log(`[createConversation] 用户 ${req.user.userId}`);
     return this.chatService.createConversation(req.user.userId, {
       title: body.title || '新对话',
       model: body.model || 'mimo-v2.5-pro',
       features: body.features || {},
+      knowledgeBaseId: body.knowledgeBaseId,
     });
   }
 
@@ -87,7 +88,7 @@ export class ChatController {
     @Body() dto: ChatCompletionDto,
     @Res() res: Response,
   ) {
-    this.logger.log(`[completions] 用户 ${req.user.userId} 请求对话，model=${dto.model}`);
+    this.logger.log(`[completions] 用户 ${req.user.userId} 请求对话，model=${dto.model}, kb=${dto.knowledgeBaseId || 'none'}`);
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
