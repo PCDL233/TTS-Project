@@ -8,7 +8,7 @@
             </div>
 
             <nav class="flex-1 py-3 overflow-y-auto">
-                <template v-for="item in menuItems" :key="item.path || item.label">
+                <template v-for="item in menuItems" :key="'path' in item ? item.path : item.label">
                     <!-- 叶子菜单项 -->
                     <router-link
                         v-if="!('children' in item)"

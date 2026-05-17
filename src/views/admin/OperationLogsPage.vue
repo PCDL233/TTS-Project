@@ -22,7 +22,6 @@
         </div>
 
         <el-table
-            ref="tableRef"
             :data="logs"
             v-loading="loading"
             border
@@ -76,7 +75,6 @@
 import { ref, onMounted } from 'vue'
 import { adminApi } from '../../api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import type { TableInstance } from 'element-plus'
 
 const logs = ref<any[]>([])
 const loading = ref(false)
@@ -86,7 +84,6 @@ const total = ref(0)
 const searchUsername = ref('')
 const searchModule = ref('')
 const searchStatus = ref('')
-const tableRef = ref<TableInstance>()
 const selectedRows = ref<any[]>([])
 
 function handleSelectionChange(rows: any[]) {

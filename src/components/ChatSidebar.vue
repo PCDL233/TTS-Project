@@ -48,7 +48,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
 import { Plus, ChatDotRound, Delete, Collection } from '@element-plus/icons-vue'
 import { useChatStore } from '../stores/chat'
 import { ElMessageBox } from 'element-plus'

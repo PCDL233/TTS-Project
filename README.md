@@ -1,6 +1,6 @@
 # MiMo TTS 语音合成
 
-基于小米 MiMo TTS API 的全栈 Web 语音合成应用，集成 AI 智能助手聊天与后台管理系统。支持预置音色合成、文本描述音色设计、音频样本音色复刻三种模式。
+基于小米 MiMo API 的全栈 Web 应用，集成 TTS 语音合成、AI 智能助手聊天、知识库检索与后台管理系统。支持预置音色合成、文本描述音色设计、音频样本音色复刻三种模式，以及基于 RAG 的知识库问答。
 
 ![Tech Stack](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vuedotjs)
 ![Tech Stack](https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript)
@@ -50,6 +50,14 @@
 - 支持 5 种聊天模型切换：MiMo-V2.5-Pro、MiMo-V2.5、MiMo-V2-Pro、MiMo-V2-Omni、MiMo-V2-Flash
 - **Token Plan 兼容性**：自动过滤 Token Plan 不支持的模型（如 `mimo-v2-flash`）
 - 历史会话记录持久化到 SQLite
+- **功能开关**：深度思考、联网搜索、函数调用、知识库检索均可由管理员在后台统一控制
+
+### 知识库（RAG）
+
+- 支持创建多个知识库，上传 PDF / Word / TXT 等文档
+- 自动文档切分与向量化存储
+- 会话内独立选择是否关联知识库，每个会话互不影响
+- 基于 RAG 的检索增强生成，自动注入相关上下文到对话中
 
 ### 历史记录
 
@@ -210,6 +218,7 @@ TTS-Project/
 │   │   ├── history/           # TTS 生成历史记录
 │   │   ├── tts/               # TTS 代理模块（MiMo API 封装 + SSE 流式）
 │   │   ├── chat/              # AI 聊天代理（SSE 流式对话 + 会话历史）
+│   │   ├── knowledge-base/    # 知识库管理（文档上传、RAG 检索、向量化）
 │   │   ├── admin/             # 后台管理聚合 API（统计、图表数据）
 │   │   ├── log/               # 登录日志 + 操作日志
 │   │   ├── system-config/     # 系统级配置管理
