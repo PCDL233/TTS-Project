@@ -26,7 +26,15 @@ export class ConfigService {
       try {
         config.apiKey = this.cryptoService.aesDecrypt(config.apiKey);
       } catch {
-        this.logger.warn(`[getConfig] 用户 ${userId} API Key 解密失败，可能为明文存储`);
+        // 密文格式为 iv:ciphertext，如果不包含分隔符则判定为明文旧数据
+        if (config.apiKey.includes(':')) {
+          this.logger.warn(`[getConfig] 用户 ${userId} API Key 解密失败，密文格式异常`);
+        } else {
+          // 明文存储的旧数据，自动加密迁移
+          const encrypted = this.cryptoService.aesEncrypt(config.apiKey);
+          await this.configRepository.update(config.id, { apiKey: encrypted });
+          this.logger.log(`[getConfig] 用户 ${userId} 明文 API Key 已自动加密`);
+        }
       }
     }
     return config;
