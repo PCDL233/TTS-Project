@@ -26,6 +26,15 @@ export interface ChatMessage {
     logo_url: string
     publish_time: string
   }>
+  usage?: {
+    completion_tokens?: number
+    prompt_tokens?: number
+    total_tokens?: number
+    web_search_usage?: {
+      tool_usage?: number
+      page_usage?: number
+    }
+  }
   createdAt?: number | string
 }
 
@@ -69,12 +78,17 @@ export interface ChatCompletionParams {
   tools?: Array<{
     type: 'function' | 'web_search'
     function?: { name: string; description?: string; parameters?: Record<string, unknown> }
+    max_keyword?: number
+    force_search?: boolean
+    limit?: number
+    user_location?: { type: 'approximate'; country?: string; region?: string; city?: string }
   }>
   tool_choice?: string
   response_format?: { type: 'text' | 'json_object' }
   temperature?: number
   max_completion_tokens?: number
   conversationId?: number
+  knowledgeBaseId?: number
 }
 
 export const CHAT_MODEL_OPTIONS = [

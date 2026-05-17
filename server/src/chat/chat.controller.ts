@@ -92,6 +92,9 @@ export class ChatController {
     @Res() res: Response,
   ) {
     this.logger.log(`[completions] 用户 ${req.user.userId} 请求对话，model=${dto.model}, kb=${dto.knowledgeBaseId || 'none'}`);
+    if (dto.tools && dto.tools.length > 0) {
+      this.logger.log(`[completions] tools 参数: ${JSON.stringify(dto.tools)}`);
+    }
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -121,6 +124,7 @@ export class ChatController {
           for (const anno of chunk.annotations) {
             annotationsSet.add(JSON.stringify(anno));
           }
+          this.logger.debug(`[completions] 收到 ${chunk.annotations.length} 条 annotations`);
         }
         res.write(`data: ${JSON.stringify(chunk)}\n\n`);
       }

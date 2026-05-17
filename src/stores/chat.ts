@@ -156,16 +156,7 @@ export const useChatStore = defineStore('chat', () => {
     // 构建 tools
     const tools: any[] = []
     if (features.value.webSearch) {
-      tools.push({
-        type: 'web_search',
-        max_keyword: 3,
-        force_search: true,
-        limit: 5,
-        user_location: {
-          type: 'approximate',
-          country: 'China',
-        },
-      })
+      tools.push({ type: 'web_search' })
     }
     if (features.value.functionCall) {
       tools.push({
@@ -223,7 +214,14 @@ export const useChatStore = defineStore('chat', () => {
         }
         if (chunk.annotations) {
           if (!lastMsg.annotations) lastMsg.annotations = []
-          lastMsg.annotations.push(...chunk.annotations)
+          const existingUrls = new Set(lastMsg.annotations.map((a: any) => a.url))
+          const newAnnotations = chunk.annotations.filter((a: any) => a.url && !existingUrls.has(a.url))
+          if (newAnnotations.length > 0) {
+            lastMsg.annotations.push(...newAnnotations)
+          }
+        }
+        if (chunk.usage) {
+          lastMsg.usage = chunk.usage
         }
       },
       () => {

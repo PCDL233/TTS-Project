@@ -160,6 +160,14 @@ export class ChatService {
       );
     }
 
+    // Token Plan 端点不支持联网搜索（web_search）
+    const hasWebSearch = dto.tools?.some((t: any) => t.type === 'web_search');
+    if (hasWebSearch && config.baseUrlPreset?.startsWith('token-plan')) {
+      throw new BadRequestException(
+        '当前 API 配置（Token Plan）不支持联网搜索（web_search）功能。Token Plan 与普通 API 是两个独立计费体系，即使已在普通 API 开通联网服务，Token Plan 端点仍无法使用。请切换为「默认」或「国内加速」API 端点，或关闭联网搜索后重试。'
+      );
+    }
+
     // 构造 MiMo API 消息格式
     const apiMessages = messages.map((msg) => {
       if (msg.contentParts && msg.contentParts.length > 0) {
@@ -196,6 +204,8 @@ export class ChatService {
       body: JSON.stringify(body),
     });
 
+    this.logger.debug(`[streamChatCompletion] 请求体 tools: ${JSON.stringify(body.tools || 'none')}`);
+
     if (!response.ok) {
       const text = await response.text();
       this.logger.error(`[streamChatCompletion] MiMo API 返回 ${response.status}: ${text}`);
@@ -210,6 +220,7 @@ export class ChatService {
     const decoder = new TextDecoder();
     let buffer = '';
     let chunkCount = 0;
+    const yieldedAnnotationUrls = new Set<string>();
 
     try {
       while (true) {
@@ -229,15 +240,41 @@ export class ChatService {
 
           try {
             const data = JSON.parse(dataStr);
-            const delta = data.choices?.[0]?.delta;
+            const choice = data.choices?.[0];
+            const delta = choice?.delta;
             if (delta) {
               chunkCount++;
+              // annotations 可能出现在多个位置：delta / choice / message / 顶层
+              let annotations =
+                delta.annotations ||
+                choice?.annotations ||
+                choice?.message?.annotations ||
+                data.annotations ||
+                null;
+              // 去重：防止同一 annotation 在多个 chunk 中重复出现
+              if (annotations) {
+                const uniqueAnnotations = annotations.filter((a: any) => {
+                  if (!a.url || yieldedAnnotationUrls.has(a.url)) return false;
+                  yieldedAnnotationUrls.add(a.url);
+                  return true;
+                });
+                annotations = uniqueAnnotations.length > 0 ? uniqueAnnotations : null;
+                if (annotations) {
+                  this.logger.debug(`[streamChatCompletion] 收到 annotations: ${JSON.stringify(annotations)}`);
+                }
+              }
+              // 记录联网搜索用量
+              if (data.usage?.web_search_usage) {
+                this.logger.log(
+                  `[streamChatCompletion] 联网搜索用量: tool_usage=${data.usage.web_search_usage.tool_usage}, page_usage=${data.usage.web_search_usage.page_usage}`
+                );
+              }
               yield {
                 content: delta.content || '',
                 reasoningContent: delta.reasoning_content || '',
                 toolCalls: delta.tool_calls || null,
-                annotations: delta.annotations || null,
-                finishReason: data.choices?.[0]?.finish_reason || null,
+                annotations: annotations,
+                finishReason: choice?.finish_reason || null,
                 usage: data.usage || null,
               };
             }

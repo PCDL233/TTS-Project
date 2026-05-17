@@ -117,23 +117,36 @@
 
                         <!-- 联网搜索引用 -->
                         <div v-if="message.annotations && message.annotations.length > 0" class="mt-3">
-                            <div class="text-xs text-gray-500 mb-1.5">搜索来源：</div>
+                            <div class="text-xs text-gray-500 mb-1.5 flex items-center gap-1.5">
+                                <span>搜索来源</span>
+                                <span v-if="webSearchUsage" class="text-gray-400">
+                                    · 调用 {{ webSearchUsage.tool_usage }} 次，返回 {{ webSearchUsage.page_usage }} 个网页
+                                </span>
+                            </div>
                             <div class="flex flex-wrap gap-2">
-                                <a
+                                <el-tooltip
                                     v-for="(anno, idx) in message.annotations"
                                     :key="idx"
-                                    :href="anno.url"
-                                    target="_blank"
-                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-gray-200 rounded-md text-xs text-gray-600 hover:bg-gray-50 transition-colors"
+                                    :disabled="!anno.summary"
+                                    :content="anno.summary"
+                                    placement="top"
+                                    :show-after="300"
                                 >
-                                    <img
-                                        v-if="anno.logo_url"
-                                        :src="anno.logo_url"
-                                        class="w-3.5 h-3.5 rounded-sm"
-                                        alt=""
-                                    />
-                                    <span class="truncate max-w-37.5">{{ anno.title || anno.site_name || '来源' }}</span>
-                                </a>
+                                    <a
+                                        :href="anno.url"
+                                        target="_blank"
+                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-gray-200 rounded-md text-xs text-gray-600 hover:bg-gray-50 transition-colors"
+                                    >
+                                        <img
+                                            v-if="anno.logo_url"
+                                            :src="anno.logo_url"
+                                            class="w-3.5 h-3.5 rounded-sm"
+                                            alt=""
+                                        />
+                                        <span class="truncate max-w-37.5">{{ anno.title || anno.site_name || '来源' }}</span>
+                                        <span v-if="anno.publish_time" class="text-gray-400">· {{ formatDate(anno.publish_time) }}</span>
+                                    </a>
+                                </el-tooltip>
                             </div>
                         </div>
 
@@ -258,6 +271,29 @@ const videoPart = computed(() => {
     if (!props.message.contentParts) return null
     return props.message.contentParts.find((p: ChatMessagePart) => p.type === 'video_url') || null
 })
+
+const webSearchUsage = computed(() => {
+    return props.message.usage?.web_search_usage || null
+})
+
+function formatDate(dateStr: string): string {
+    if (!dateStr) return ''
+    try {
+        const date = new Date(dateStr)
+        if (isNaN(date.getTime())) return dateStr
+        const now = new Date()
+        const diffMs = now.getTime() - date.getTime()
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+        if (diffDays < 1) return '今天'
+        if (diffDays < 2) return '昨天'
+        if (diffDays < 7) return `${diffDays}天前`
+        if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前`
+        if (diffDays < 365) return `${Math.floor(diffDays / 30)}个月前`
+        return `${Math.floor(diffDays / 365)}年前`
+    } catch {
+        return dateStr
+    }
+}
 
 function copyContent() {
     navigator.clipboard.writeText(props.message.content).then(() => {
