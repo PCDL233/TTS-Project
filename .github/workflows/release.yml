@@ -37,11 +37,6 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-      - name: Archive frontend dist
-        run: |
-          cd dist
-          zip -r ../frontend-dist.zip .
-
       # ---------- Backend ----------
       - name: Install backend dependencies
         working-directory: ./server
@@ -50,11 +45,6 @@ jobs:
       - name: Build backend
         working-directory: ./server
         run: npm run build
-
-      - name: Archive backend dist
-        run: |
-          cd server/dist
-          zip -r ../../backend-dist.zip .
 
       - name: Run backend tests
         working-directory: ./server
@@ -65,11 +55,18 @@ jobs:
           PORT: '3001'
         run: npm run test -- --passWithNoTests
 
+      # ---------- Archive ----------
+      - name: Archive combined dist
+        run: |
+          mkdir -p release/frontend release/backend
+          cp -r dist/. release/frontend/
+          cp -r server/dist/. release/backend/
+          cd release
+          zip -r ../release.zip .
+
       # ---------- Create Release ----------
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            frontend-dist.zip
-            backend-dist.zip
+          files: release.zip
           generate_release_notes: true

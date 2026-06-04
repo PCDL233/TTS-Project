@@ -2,6 +2,7 @@ import { ref, onUnmounted } from 'vue'
 import { generateTTS } from '../api/tts'
 import { useConfigStore } from '../stores/config'
 import { base64ToBlob } from '../utils/audio'
+import type { TTSRequestParams } from '../types/tts'
 
 export function useChatTTS() {
   const configStore = useConfigStore()
@@ -43,7 +44,7 @@ export function useChatTTS() {
     try {
       const { config } = configStore
 
-      const params = {
+      const params: TTSRequestParams = {
         model: config.model || 'mimo-v2.5-tts',
         messages: [{ role: 'assistant', content: text.trim() }],
         audio: {
