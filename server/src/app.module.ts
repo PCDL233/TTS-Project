@@ -17,6 +17,7 @@ import { UploadModule } from './common/upload/upload.module';
 import { ChatModule } from './chat/chat.module';
 import { ChatConfigModule } from './chat-config/chat-config.module';
 import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
+import { McpModule } from './mcp/mcp.module';
 import { AudioTag } from './audio-tag/audio-tag.entity';
 import { Config } from './config/config.entity';
 import { History } from './history/history.entity';
@@ -31,6 +32,7 @@ import { ChatConfig } from './chat-config/chat-config.entity';
 import { KnowledgeBase } from './knowledge-base/knowledge-base.entity';
 import { KnowledgeDocument } from './knowledge-base/knowledge-document.entity';
 import { KnowledgeChunk } from './knowledge-base/knowledge-chunk.entity';
+import { McpServerConfig } from './mcp/mcp-server-config.entity';
 
 const entities = [
   AudioTag,
@@ -47,6 +49,7 @@ const entities = [
   KnowledgeBase,
   KnowledgeDocument,
   KnowledgeChunk,
+  McpServerConfig,
 ];
 
 @Module({
@@ -72,6 +75,7 @@ const entities = [
     ChatModule,
     ChatConfigModule,
     KnowledgeBaseModule,
+    McpModule,
   ],
   controllers: [AppController],
   providers: [AppService],

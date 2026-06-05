@@ -36,6 +36,11 @@ export interface ChatMessage {
     }
   }
   createdAt?: number | string
+  // MCP Agent 临时事件（不持久化到数据库）
+  mcpEvents?: Array<
+    | { type: 'tool_call_start'; toolCalls: any[] }
+    | { type: 'tool_call_result'; toolCallId: string; name: string; status: 'success' | 'error'; result?: string; error?: string }
+  >
 }
 
 export interface ChatConversation {
@@ -64,6 +69,12 @@ export interface StreamChunk {
   finishReason?: string | null
   usage?: any
   error?: string
+  // MCP Agent 新增
+  type?: 'tool_call_start' | 'tool_call_result'
+  toolCallId?: string
+  name?: string
+  status?: 'success' | 'error'
+  result?: string
 }
 
 export interface ChatCompletionParams {
@@ -89,6 +100,7 @@ export interface ChatCompletionParams {
   max_completion_tokens?: number
   conversationId?: number
   knowledgeBaseId?: number
+  mcpEnabled?: boolean
 }
 
 export const CHAT_MODEL_OPTIONS = [

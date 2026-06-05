@@ -20,13 +20,17 @@ import { ChatService } from './chat.service';
 import { ChatCompletionDto } from './dto/chat-completion.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { LogOperation } from '../common/decorators/log-operation.decorator';
+import { AgentChatService } from './agent-chat.service';
 
 @Controller('chat')
 @UseGuards(JwtAuthGuard)
 export class ChatController {
   private readonly logger = new Logger(ChatController.name);
 
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly agentChatService: AgentChatService,
+  ) {}
 
   // ========== 会话接口 ==========
 
@@ -91,7 +95,7 @@ export class ChatController {
     @Body() dto: ChatCompletionDto,
     @Res() res: Response,
   ) {
-    this.logger.log(`[completions] 用户 ${req.user.userId} 请求对话，model=${dto.model}, kb=${dto.knowledgeBaseId || 'none'}`);
+    this.logger.log(`[completions] 用户 ${req.user.userId} 请求对话，model=${dto.model}, kb=${dto.knowledgeBaseId || 'none'}, mcp=${dto.mcpEnabled ?? false}`);
     if (dto.tools && dto.tools.length > 0) {
       this.logger.log(`[completions] tools 参数: ${JSON.stringify(dto.tools)}`);
     }
@@ -104,10 +108,37 @@ export class ChatController {
     let fullReasoning = '';
     const toolCallMap = new Map<string, any>();
     const annotationsSet = new Set<string>();
+    // MCP Agent 模式额外收集 tool 调用状态
+    const mcpToolCalls: any[] = [];
 
     try {
-      const stream = this.chatService.streamChatCompletion(req.user.userId, dto);
+      const useAgent = dto.mcpEnabled === true;
+      const stream = useAgent
+        ? this.agentChatService.streamAgentCompletion(req.user.userId, {
+            model: dto.model,
+            messages: dto.messages,
+            thinking: dto.thinking,
+            temperature: dto.temperature,
+            max_completion_tokens: dto.max_completion_tokens,
+            knowledgeBaseId: dto.knowledgeBaseId,
+            mcpEnabled: true,
+            webSearchEnabled: dto.tools?.some((t: any) => t.type === 'web_search'),
+          })
+        : this.chatService.streamChatCompletion(req.user.userId, dto);
+
       for await (const chunk of stream) {
+        // MCP Agent 特殊 chunk 类型
+        if (chunk.type === 'tool_call_start') {
+          mcpToolCalls.push({ phase: 'start', ...chunk });
+          res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+          continue;
+        }
+        if (chunk.type === 'tool_call_result') {
+          mcpToolCalls.push({ phase: 'result', ...chunk });
+          res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+          continue;
+        }
+
         if (chunk.content) fullContent += chunk.content;
         if (chunk.reasoningContent) fullReasoning += chunk.reasoningContent;
         if (chunk.toolCalls) {

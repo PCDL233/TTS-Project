@@ -135,4 +135,8 @@ export class ChatCompletionDto {
   @IsNumber()
   @IsOptional()
   knowledgeBaseId?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  mcpEnabled?: boolean;
 }

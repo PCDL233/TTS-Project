@@ -105,12 +105,13 @@ export class ChatService {
 
   // ========== 流式对话 ==========
 
-  async *streamChatCompletion(
+  // ========== 内部：构建 API 请求参数（供流式和非流式复用） ==========
+
+  private async buildApiRequest(
     userId: number,
     dto: {
       model: string;
       messages: Array<{ role: string; content?: string; contentParts?: any[] }>;
-      stream?: boolean;
       thinking?: { type: 'enabled' | 'disabled' };
       tools?: any[];
       tool_choice?: string;
@@ -119,10 +120,14 @@ export class ChatService {
       max_completion_tokens?: number;
       knowledgeBaseId?: number;
     },
-  ): AsyncGenerator<any, void, unknown> {
+  ): Promise<{
+    baseUrl: string;
+    headers: Record<string, string>;
+    body: Record<string, any>;
+  }> {
     const config = await this.configService.getConfig(userId);
     if (!config.apiKey) {
-      this.logger.warn('[streamChatCompletion] API Key 未配置');
+      this.logger.warn('[buildApiRequest] API Key 未配置');
       throw new BadRequestException('API Key 未配置，请先在「API 设置」中填写有效的 API Key');
     }
 
@@ -138,16 +143,15 @@ export class ChatService {
           );
           if (context) {
             messages = this.ragService.buildAugmentedMessages(dto.messages, context);
-            this.logger.log(`[streamChatCompletion] 已注入 RAG 上下文，知识库=${dto.knowledgeBaseId}`);
+            this.logger.log(`[buildApiRequest] 已注入 RAG 上下文，知识库=${dto.knowledgeBaseId}`);
           }
         }
       } catch (ragErr) {
-        this.logger.warn(`[streamChatCompletion] RAG 检索失败，降级处理: ${(ragErr as Error).message}`);
+        this.logger.warn(`[buildApiRequest] RAG 检索失败，降级处理: ${(ragErr as Error).message}`);
       }
     }
 
     const baseUrl = this.configService.getEffectiveBaseUrl(config);
-    this.logger.log(`[streamChatCompletion] 请求 MiMo API: ${baseUrl}/chat/completions`);
 
     // Token Plan 仅支持 8 款模型，mimo-v2-flash 不在支持列表中
     const tokenPlanUnsupportedModels = ['mimo-v2-flash'];
@@ -182,7 +186,6 @@ export class ChatService {
     const body: Record<string, any> = {
       model: dto.model,
       messages: apiMessages,
-      stream: true,
     };
 
     if (dto.thinking) body.thinking = dto.thinking;
@@ -192,16 +195,97 @@ export class ChatService {
     if (dto.temperature !== undefined) body.temperature = dto.temperature;
     if (dto.max_completion_tokens !== undefined) body.max_completion_tokens = dto.max_completion_tokens;
 
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
+    return {
+      baseUrl,
       headers: {
         'Content-Type': 'application/json',
         'api-key': config.apiKey,
       },
+      body,
+    };
+  }
+
+  // ========== 非流式调用（供 Agent 循环使用） ==========
+
+  async callChatCompletion(
+    userId: number,
+    dto: {
+      model: string;
+      messages: Array<{ role: string; content?: string; contentParts?: any[] }>;
+      thinking?: { type: 'enabled' | 'disabled' };
+      tools?: any[];
+      tool_choice?: string;
+      response_format?: { type: 'text' | 'json_object' };
+      temperature?: number;
+      max_completion_tokens?: number;
+      knowledgeBaseId?: number;
+    },
+  ): Promise<{
+    content: string;
+    reasoningContent: string;
+    toolCalls: any[];
+    annotations: any[];
+    usage: any;
+    finishReason: string | null;
+  }> {
+    const { baseUrl, headers, body } = await this.buildApiRequest(userId, dto);
+    body.stream = false;
+
+    this.logger.debug(`[callChatCompletion] 非流式请求 tools: ${JSON.stringify(body.tools || 'none')}`);
+
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers,
       body: JSON.stringify(body),
     });
 
+    if (!response.ok) {
+      const text = await response.text();
+      this.logger.error(`[callChatCompletion] MiMo API 返回 ${response.status}: ${text}`);
+      throw new BadRequestException(`Chat API error: ${response.status} - ${text}`);
+    }
+
+    const data = await response.json();
+    const choice = data.choices?.[0];
+    const message = choice?.message || {};
+
+    return {
+      content: message.content || '',
+      reasoningContent: message.reasoning_content || '',
+      toolCalls: message.tool_calls || [],
+      annotations: message.annotations || [],
+      usage: data.usage || null,
+      finishReason: choice?.finish_reason || null,
+    };
+  }
+
+  // ========== 流式对话 ==========
+
+  async *streamChatCompletion(
+    userId: number,
+    dto: {
+      model: string;
+      messages: Array<{ role: string; content?: string; contentParts?: any[] }>;
+      stream?: boolean;
+      thinking?: { type: 'enabled' | 'disabled' };
+      tools?: any[];
+      tool_choice?: string;
+      response_format?: { type: 'text' | 'json_object' };
+      temperature?: number;
+      max_completion_tokens?: number;
+      knowledgeBaseId?: number;
+    },
+  ): AsyncGenerator<any, void, unknown> {
+    const { baseUrl, headers, body } = await this.buildApiRequest(userId, dto);
+    body.stream = true;
+
     this.logger.debug(`[streamChatCompletion] 请求体 tools: ${JSON.stringify(body.tools || 'none')}`);
+
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    });
 
     if (!response.ok) {
       const text = await response.text();
