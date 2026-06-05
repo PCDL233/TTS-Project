@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:all": "concurrently \"npm run dev\" \"cd server && npm run start:dev\" --names \"FE,BE\" --prefix-colors green,blue",
+    "build:all": "npm run build && cd server && npm run build",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview"
   },
