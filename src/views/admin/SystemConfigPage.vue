@@ -24,6 +24,9 @@
                     <el-button size="small" @click="openEditDialog(row)">编辑</el-button>
                 </template>
             </el-table-column>
+            <template #empty>
+                <el-empty description="暂无数据" />
+            </template>
         </el-table>
 
         <!-- 编辑弹窗 -->
@@ -33,7 +36,54 @@
                     <el-input v-model="currentConfig.key" disabled />
                 </el-form-item>
                 <el-form-item label="配置值">
-                    <el-input v-model="currentConfig.value" placeholder="请输入配置值" />
+                    <!-- allow_register -->
+                    <el-switch
+                        v-if="currentConfig.key === 'allow_register'"
+                        v-model="currentConfig.value"
+                        active-value="true"
+                        inactive-value="false"
+                    />
+                    <!-- default_model -->
+                    <el-select
+                        v-else-if="currentConfig.key === 'default_model'"
+                        v-model="currentConfig.value"
+                        placeholder="请选择模型"
+                        class="w-full"
+                    >
+                        <el-option
+                            v-for="opt in modelOptions"
+                            :key="opt.value"
+                            :label="opt.label"
+                            :value="opt.value"
+                        />
+                    </el-select>
+                    <!-- default_audio_format -->
+                    <el-select
+                        v-else-if="currentConfig.key === 'default_audio_format'"
+                        v-model="currentConfig.value"
+                        placeholder="请选择音频格式"
+                        class="w-full"
+                    >
+                        <el-option label="wav" value="wav" />
+                        <el-option label="pcm16" value="pcm16" />
+                        <el-option label="mp3" value="mp3" />
+                    </el-select>
+                    <!-- default_style_mode -->
+                    <el-select
+                        v-else-if="currentConfig.key === 'default_style_mode'"
+                        v-model="currentConfig.value"
+                        placeholder="请选择风格控制方式"
+                        class="w-full"
+                    >
+                        <el-option label="自然语言控制" value="natural" />
+                        <el-option label="音频标签控制" value="tag" />
+                    </el-select>
+                    <!-- 其他 -->
+                    <el-input
+                        v-else
+                        v-model="currentConfig.value"
+                        placeholder="请输入配置值"
+                    />
                 </el-form-item>
             </el-form>
             <template #footer>
@@ -48,6 +98,14 @@
 import { ref, onMounted } from 'vue'
 import { adminApi } from '../../api/admin'
 import { ElMessage } from 'element-plus'
+
+const modelOptions = [
+    { value: 'mimo-v2.5-pro', label: 'MiMo-V2.5-Pro' },
+    { value: 'mimo-v2.5', label: 'MiMo-V2.5' },
+    { value: 'mimo-v2-pro', label: 'MiMo-V2-Pro' },
+    { value: 'mimo-v2-omni', label: 'MiMo-V2-Omni' },
+    { value: 'mimo-v2-flash', label: 'MiMo-V2-Flash' },
+]
 
 const configs = ref<any[]>([])
 const loading = ref(false)

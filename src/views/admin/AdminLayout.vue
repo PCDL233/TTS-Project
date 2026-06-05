@@ -3,8 +3,8 @@
         <!-- 侧边栏 -->
         <aside class="w-56 bg-[#1e293b] text-white flex flex-col shrink-0">
             <div class="h-14 flex items-center px-5 border-b border-gray-700">
-                <el-icon :size="20" class="mr-2"><microphone /></el-icon>
-                <span class="font-bold text-sm">后台管理系统</span>
+                <el-icon :size="20" class="mr-2"><magic-stick /></el-icon>
+                <span class="font-bold text-sm">{{ systemName }}</span>
             </div>
 
             <nav class="flex-1 py-3 overflow-y-auto">
@@ -64,7 +64,7 @@
             <div
                 class="p-4 border-t border-gray-700 text-xs text-gray-400 text-center"
             >
-                MiMo TTS Admin
+                {{ systemName }} Admin
             </div>
         </aside>
 
@@ -121,16 +121,18 @@
 import { computed, ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../../stores/auth";
+import { useSystemConfig } from "../../composables/useSystemConfig";
 import {
     ArrowDown,
     HomeFilled,
     UserFilled,
-    Microphone,
+    MagicStick,
 } from "@element-plus/icons-vue";
 
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
+const { systemName } = useSystemConfig();
 
 const avatarUrl = computed(() => {
     const avatar = authStore.user?.avatar;
@@ -147,9 +149,22 @@ type MenuItem = LeafMenuItem | GroupMenuItem;
 
 const menuItems: MenuItem[] = [
     { path: "/admin/dashboard", label: "数据看板", icon: "DataLine" },
-    { path: "/admin/users", label: "用户管理", icon: "User" },
-    { path: "/admin/roles", label: "角色管理", icon: "Medal" },
-    { path: "/admin/chat", label: "智能助手管理", icon: "ChatDotSquare" },
+    {
+        label: "系统管理",
+        icon: "SetUp",
+        children: [
+            { path: "/admin/users", label: "用户管理" },
+            { path: "/admin/roles", label: "角色管理" },
+            { path: "/admin/system-config", label: "系统配置" },
+        ],
+    },
+    {
+        label: "智能助手",
+        icon: "ChatDotSquare",
+        children: [
+            { path: "/admin/chat", label: "会话消息" },
+        ],
+    },
     {
         label: "日志监控",
         icon: "Document",
@@ -158,8 +173,13 @@ const menuItems: MenuItem[] = [
             { path: "/admin/logs/operation-logs", label: "操作日志" },
         ],
     },
-    { path: "/admin/system-config", label: "系统配置", icon: "SetUp" },
-    { path: "/admin/audio-tags", label: "音频标签", icon: "CollectionTag" },
+    {
+        label: "语音助手",
+        icon: "CollectionTag",
+        children: [
+            { path: "/admin/audio-tags", label: "音频标签" },
+        ],
+    },
 ];
 
 const expandedGroups = ref<string[]>([]);
