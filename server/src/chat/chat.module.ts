@@ -8,10 +8,13 @@ import { ChatConfigPublicController } from './chat-config-public.controller';
 import { ConfigModule } from '../config/config.module';
 import { ChatConfigModule } from '../chat-config/chat-config.module';
 import { KnowledgeBaseModule } from '../knowledge-base/knowledge-base.module';
+import { McpModule } from '../mcp/mcp.module';
+import { McpServerConfig } from '../mcp/mcp-server-config.entity';
+import { AgentChatService } from './agent-chat.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ChatConversation, ChatMessage]), ConfigModule, ChatConfigModule, KnowledgeBaseModule],
-  providers: [ChatService],
+  imports: [TypeOrmModule.forFeature([ChatConversation, ChatMessage, McpServerConfig]), ConfigModule, ChatConfigModule, KnowledgeBaseModule, McpModule],
+  providers: [ChatService, AgentChatService],
   controllers: [ChatController, ChatConfigPublicController],
 })
 export class ChatModule {}

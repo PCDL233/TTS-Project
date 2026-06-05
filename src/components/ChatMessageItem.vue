@@ -150,6 +150,20 @@
                             </div>
                         </div>
 
+                        <!-- MCP 工具调用事件 -->
+                        <div v-if="message.mcpEvents && message.mcpEvents.length > 0" class="mt-3 space-y-2">
+                            <McpToolCallCard
+                                v-for="(evt, idx) in message.mcpEvents"
+                                :key="idx"
+                                :phase="evt.type === 'tool_call_start' ? 'start' : 'result'"
+                                :tool-calls="evt.type === 'tool_call_start' ? evt.toolCalls : undefined"
+                                :name="evt.type === 'tool_call_result' ? evt.name : undefined"
+                                :status="evt.type === 'tool_call_result' ? evt.status : undefined"
+                                :result="evt.type === 'tool_call_result' ? evt.result : undefined"
+                                :error="evt.type === 'tool_call_result' ? evt.error : undefined"
+                            />
+                        </div>
+
                         <!-- 函数调用 -->
                         <div v-if="message.toolCalls && message.toolCalls.length > 0" class="mt-3">
                             <div class="text-xs text-gray-500 mb-1.5">函数调用：</div>
@@ -199,6 +213,7 @@ import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import { useChatTTS } from '../composables/useChatTTS'
 import { BACKEND_URL } from '../api/client'
+import McpToolCallCard from './McpToolCallCard.vue'
 import { marked } from 'marked'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github.css'
