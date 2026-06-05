@@ -1,86 +1,45 @@
-# MiMo TTS 语音合成
+# MiMo 智能平台
 
-基于小米 MiMo API 的全栈 Web 应用，集成 TTS 语音合成、AI 智能助手聊天、知识库检索与后台管理系统。支持预置音色合成、文本描述音色设计、音频样本音色复刻三种模式，以及基于 RAG 的知识库问答。
+基于小米 MiMo API 的全栈 Web 应用，集成 TTS 语音合成、AI 智能助手、MCP工具调用、RAG 知识库与后台管理系统。
 
-![Tech Stack](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vuedotjs)
-![Tech Stack](https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript)
-![Tech Stack](https://img.shields.io/badge/Vite-8.0-646CFF?logo=vite)
-![Tech Stack](https://img.shields.io/badge/Element_Plus-2.13-409EFF?logo=element)
-![Tech Stack](https://img.shields.io/badge/Tailwind_CSS-4.2-06B6D4?logo=tailwindcss)
-![Tech Stack](https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs)
-![Tech Stack](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite)
+![Vue](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vuedotjs)
+![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript)
+![Vite](https://img.shields.io/badge/Vite-8.0-646CFF?logo=vite)
+![Tailwind](https://img.shields.io/badge/Tailwind-4.2-06B6D4?logo=tailwindcss)
+![NestJS](https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs)
+![SQLite](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite)
 
 ## 功能特性
 
-### 三种 TTS 合成模式
+| 模块 | 核心能力 |
+|---|---|
+| **TTS 合成** | 预置音色（9 种）、文本描述音色设计、音频样本复刻三种模式 |
+| **AI 助手** | 基于 MiMo API 的流式对话，5 种模型切换，多轮会话持久化 |
+| **知识库** | 上传 PDF/Word/TXT，自动切分与向量化，会话级 RAG 检索增强 |
+| **后台管理** | 用户/角色/日志/系统配置/音频标签/统计图表 |
+
+### TTS 合成模式
 
 | 模式 | 说明 | 模型 |
 |---|---|---|
-| **预置音色** | 从 9 种精品音色中选择，支持中英文 | `mimo-v2.5-tts` |
-| **自定义音色** | 通过自然语言文本描述，从零设计全新音色 | `mimo-v2.5-tts-voicedesign` |
-| **复刻音色** | 上传音频样本，高保真复刻任意音色 | `mimo-v2.5-tts-voiceclone` |
+| **预置音色** | 9 种精品音色，支持中英文 | `mimo-v2.5-tts` |
+| **自定义音色** | 自然语言文本描述设计全新音色 | `mimo-v2.5-tts-voicedesign` |
+| **复刻音色** | 上传音频样本高保真复刻 | `mimo-v2.5-tts-voiceclone` |
 
 ### 预置音色列表
 
-| 音色 | 语言 | 性别 |
-|---|---|---|
-| MiMo-默认 | 自动 | - |
-| 冰糖 | 中文 | 女性 |
-| 茉莉 | 中文 | 女性 |
-| 苏打 | 中文 | 男性 |
-| 白桦 | 中文 | 男性 |
-| Mia | 英文 | 女性 |
-| Chloe | 英文 | 女性 |
-| Milo | 英文 | 男性 |
-| Dean | 英文 | 男性 |
+MiMo-默认、冰糖、茉莉、苏打、白桦、Mia、Chloe、Milo、Dean
 
 ### 风格控制
 
-- **自然语言描述**：用自由文本描述期望的说话风格（如"温柔且带一点悲伤的女声"）
-- **音频标签**：从 60+ 预设标签中选择，包括基础情绪、复合情绪、整体语调、音色定位、人设腔调、方言、角色扮演、音频效果等八大类
-- 标签支持点击切换（选中/取消），支持输入框手动输入
+- **自然语言描述**：自由文本描述说话风格（如"温柔且带一点悲伤的女声"）
+- **音频标签**：60+ 预设标签，涵盖情绪、语调、人设、方言、角色扮演、音频效果等
 
-### 音频输出格式
+### 其他亮点
 
-支持 `wav`、`pcm16`、`mp3` 三种格式。
-
-### AI 智能助手
-
-- 基于 MiMo API 的流式对话，支持多轮会话
-- 支持 5 种聊天模型切换：MiMo-V2.5-Pro、MiMo-V2.5、MiMo-V2-Pro、MiMo-V2-Omni、MiMo-V2-Flash
-- **Token Plan 兼容性**：自动过滤 Token Plan 不支持的模型（如 `mimo-v2-flash`）
-- 历史会话记录持久化到 SQLite
-- **功能开关**：深度思考、联网搜索、函数调用、知识库检索均可由管理员在后台统一控制
-
-### 知识库（RAG）
-
-- 支持创建多个知识库，上传 PDF / Word / TXT 等文档
-- 自动文档切分与向量化存储
-- 会话内独立选择是否关联知识库，每个会话互不影响
-- 基于 RAG 的检索增强生成，自动注入相关上下文到对话中
-
-### 历史记录
-
-- 自动保存 TTS 生成记录到后端 **SQLite** 数据库
-- 支持单条播放、删除、全部清空
-- 清空历史时自动释放当前音频资源
-
-### API 配置
-
-- 支持多集群 Base URL 切换（普通 API / Token Plan 中国/新加坡/欧洲）
-- 支持自定义 Base URL
-- API Key 后端持久化存储（SQLite），绝不暴露给浏览器
-- API Key 空值校验与中文友好错误提示
-- 模型兼容性校验：Token Plan 端点自动禁用不支持的模型
-
-### 后台管理（Admin）
-
-- **用户管理**：用户列表、角色分配
-- **角色管理**：RBAC 权限控制（`admin` / `user`）
-- **日志审计**：登录日志、操作日志
-- **系统配置**：全局参数管理
-- **音频标签管理**：60+ 预设标签的增删改查
-- **统计图表**：基于 ECharts 的数据可视化
+- **API 配置**：支持多集群 Base URL 切换（普通 API / Token Plan 中国/新加坡/欧洲），API Key 后端持久化存储，绝不暴露给浏览器
+- **Token Plan 兼容**：前后端联合校验，自动过滤不支持的模型
+- **功能开关**：深度思考、联网搜索、函数调用、知识库检索均可由管理员在后台控制
 
 ## 技术栈
 
@@ -89,7 +48,7 @@
 | 技术 | 版本 | 说明 |
 |---|---|---|
 | Vue | ^3.5.32 | Composition API + `<script setup>` |
-| TypeScript | ~6.0.2 | 类型安全 |
+| TypeScript | ~6.0.2 | 严格模式 |
 | Vite | ^8.0.10 | 构建工具 |
 | Element Plus | ^2.13.7 | UI 组件库 |
 | Tailwind CSS | ^4.2.4 | 原子化样式 |
@@ -97,21 +56,27 @@
 | Vue Router | ^4.6.4 | 路由管理 |
 | Axios | ^1.15.2 | HTTP 客户端 |
 | ECharts | ^6.0.0 | 图表库 |
-| marked | ^18.0.3 | Markdown 渲染 |
-| highlight.js | ^11.11.1 | 代码高亮 |
+| marked + highlight.js | ^18.0.3 / ^11.11.1 | Markdown 渲染与代码高亮 |
 | crypto-js | ^4.2.0 | AES-256-CBC 加密 |
 
 ### 后端
 
 | 技术 | 版本 | 说明 |
 |---|---|---|
-| NestJS | ^11.0.1 | 框架 |
-| TypeScript | ^5.7.3 | 类型安全 |
+| NestJS | ^11.0.1 | 框架，全局前缀 `/api` |
+| TypeScript | ^5.7.3 | 严格模式 |
 | TypeORM | ^0.3.28 | ORM |
-| SQLite | ^12.9.0 | better-sqlite3 驱动 |
+| SQLite | better-sqlite3 ^12.9.0 | 数据库驱动 |
+| sqlite-vec | ^0.1.9 | SQLite 向量扩展（RAG） |
+| @xenova/transformers | ^2.17.2 | 本地 Embedding 模型（384 维） |
+| onnxruntime-node | ^1.26.0 | ONNX 运行时 |
+| @langchain/textsplitters | ^1.0.1 | 文档切分 |
 | Passport JWT | ^11.0.2 | 认证 |
 | bcryptjs | ^3.0.3 | 密码哈希 |
 | class-validator | ^0.15.1 | DTO 校验 |
+| mammoth | ^1.12.0 | Word 文档解析 |
+| pdf-parse | ^2.4.5 | PDF 解析 |
+| xlsx | ^0.18.5 | Excel 解析 |
 
 ## 快速开始
 
@@ -123,75 +88,48 @@
 ### 安装依赖
 
 ```bash
-# 前端依赖（项目根目录）
+# 前端（项目根目录）
 npm install
 
-# 后端依赖
+# 后端
 cd server && npm install
 ```
 
 ### 配置环境变量
 
-在项目根目录创建 `.env`：
+项目根目录 `.env`：
 
 ```env
-# 后端服务地址
 VITE_BACKEND_URL=http://localhost:3001
-# AES 加密密钥（必须与后端一致）
 VITE_AES_SECRET_KEY=MiMo-TTS-AES-256-Secret-Key!!
 ```
 
-在 `server/` 目录创建 `.env`：
+`server/.env`：
 
 ```env
 PORT=3001
-# AES 加密密钥（必须与前端一致）
 AES_SECRET_KEY=MiMo-TTS-AES-256-Secret-Key!!
-# JWT 签名密钥（生产环境请修改为强随机字符串）
 JWT_SECRET=MiMo-TTS-JWT-Secret-Change-Me-Please
 ```
 
-> **注意**：
-> - MiMo API Key 不在环境变量中配置，后端启动后通过前端「API 设置」弹窗保存到数据库。
-> - 前后端 `AES_SECRET_KEY` 必须保持一致，否则登录/注册等敏感接口会解密失败。
+> **注意**：前后端 `AES_SECRET_KEY` 必须保持一致。MiMo API Key 通过前端「API 设置」弹窗保存到数据库，不在环境变量中配置。
 
 ### 开发调试
 
-#### 方式一：一键启动前后端（推荐）
-
 ```bash
+# 一键启动前后端（推荐）
 npm run dev:all
+
+# 分别启动
+npm run dev                 # 前端（端口 3000）
+cd server && npm run start:dev  # 后端（端口 3001）
 ```
-
-前端（绿色 `FE` 前缀）与后端（蓝色 `BE` 前缀）将在同一终端并行运行。
-
-#### 方式二：分别启动
-
-```bash
-# 终端 1：启动后端（watch 模式）
-cd server && npm run start:dev
-
-# 终端 2：启动前端（项目根目录）
-npm run dev
-```
-
-- 后端默认地址：`http://localhost:3001`
-- 前端默认地址：`http://localhost:3000`
 
 ### 生产构建
 
 ```bash
-# 构建前端（输出到 dist/）
-npm run build
-
-# 构建后端（输出到 server/dist/）
-cd server && npm run build
-```
-
-### 预览构建产物
-
-```bash
-npm run preview
+npm run build       # 前端（输出到 dist/）
+cd server && npm run build  # 后端（输出到 server/dist/）
 ```
 
 ### 后端工具命令
@@ -199,9 +137,8 @@ npm run preview
 ```bash
 cd server
 npm run format        # Prettier 格式化
-npm run lint          # ESLint 检查
 npm run test          # Jest 单元测试
-npm run test:cov      # 测试覆盖率报告
+npm run test:cov      # 测试覆盖率
 npm run test:e2e      # 端到端测试
 ```
 
@@ -209,118 +146,93 @@ npm run test:e2e      # 端到端测试
 
 ```
 TTS-Project/
-├── server/                    # NestJS 后端服务
+├── server/                     # NestJS 后端
 │   ├── src/
-│   │   ├── auth/              # JWT 认证（登录/注册/改密）
-│   │   ├── user/              # 用户 CRUD
-│   │   ├── role/              # RBAC 角色管理
-│   │   ├── config/            # 用户级 TTS 配置持久化
-│   │   ├── history/           # TTS 生成历史记录
-│   │   ├── tts/               # TTS 代理模块（MiMo API 封装 + SSE 流式）
-│   │   ├── chat/              # AI 聊天代理（SSE 流式对话 + 会话历史）
-│   │   ├── knowledge-base/    # 知识库管理（文档上传、RAG 检索、向量化）
-│   │   ├── admin/             # 后台管理聚合 API（统计、图表数据）
-│   │   ├── log/               # 登录日志 + 操作日志
-│   │   ├── system-config/     # 系统级配置管理
-│   │   ├── audio-tag/         # 音频标签管理（60+ 预设标签）
-│   │   ├── common/            # 通用模块（加密、上传、角色守卫、日志拦截器）
-│   │   ├── app.module.ts      # 根模块（TypeORM + SQLite 配置）
-│   │   └── main.ts            # 入口（CORS / 50MB Body Parser / 全局管道 / 请求日志 / /api 前缀）
-│   ├── data.sqlite            # SQLite 数据库文件
-│   ├── package.json
-│   └── tsconfig.json
-├── public/                    # 静态资源
-├── src/                       # Vue 3 前端
-│   ├── api/                   # Axios 客户端 + API 模块
-│   ├── components/            # Vue 组件（TTS + Chat）
-│   ├── composables/           # 组合式函数（useTTS、useChat）
-│   ├── router/                # Vue Router 配置（含路由守卫）
-│   ├── stores/                # Pinia setup store
-│   ├── types/                 # TypeScript 类型定义
-│   ├── utils/                 # 工具函数（audio、crypto）
-│   ├── views/                 # 页面级组件
-│   ├── App.vue                # 根组件
-│   ├── main.ts                # 入口文件
-│   └── style.css              # 全局样式
-├── dist/                      # 前端构建产物
-├── .env                       # 前端环境变量
-├── index.html                 # HTML 模板
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
-└── README.md
+│   │   ├── auth/               # JWT 认证
+│   │   ├── user/               # 用户 CRUD
+│   │   ├── role/               # RBAC 角色管理
+│   │   ├── config/             # 用户级配置持久化
+│   │   ├── history/            # TTS 生成历史
+│   │   ├── tts/                # TTS 代理（MiMo API 封装 + SSE）
+│   │   ├── chat/               # AI 聊天代理（SSE 流式对话）
+│   │   ├── chat-config/        # 聊天功能开关配置
+│   │   ├── knowledge-base/     # 知识库（文档上传、RAG、向量化）
+│   │   ├── admin/              # 后台管理聚合 API
+│   │   ├── log/                # 登录日志 + 操作日志
+│   │   ├── system-config/      # 系统级配置
+│   │   ├── audio-tag/          # 音频标签管理
+│   │   ├── common/             # 通用模块
+│   │   │   ├── crypto.service.ts
+│   │   │   ├── decorators/
+│   │   │   ├── guards/
+│   │   │   ├── interceptors/
+│   │   │   ├── upload/
+│   │   │   └── utils/
+│   │   ├── app.module.ts       # 根模块（TypeORM + SQLite）
+│   │   └── main.ts             # 入口（CORS / 50MB Body / 全局管道 / 请求日志）
+│   ├── data.sqlite             # SQLite 数据库文件
+│   └── package.json
+├── src/                        # Vue 3 前端
+│   ├── api/                    # Axios 客户端 + API 模块
+│   ├── components/             # Vue 组件（TTS + Chat）
+│   ├── composables/            # 组合式函数
+│   ├── router/                 # 路由配置（含守卫）
+│   ├── stores/                 # Pinia setup store
+│   ├── types/                  # TypeScript 类型
+│   ├── utils/                  # 工具函数
+│   ├── views/                  # 页面级组件
+│   ├── App.vue
+│   ├── main.ts
+│   └── style.css
+├── dist/                       # 前端构建产物
+├── public/                     # 静态资源
+├── .github/workflows/          # CI/CD
+└── package.json
 ```
 
-## 核心实现说明
+## 核心设计
 
 ### 后端代理 MiMo API
 
 API Key 存储在后端 SQLite 中，前端通过后端代理调用 MiMo API，**API Key 绝不暴露给浏览器**。
 
-### 通信加密（AES-256-CBC）
+### AES-256-CBC 通信加密
 
-前后端之间的登录、注册、个人资料修改等敏感接口，请求体使用 AES-256-CBC 加密，格式为 `iv_base64:ciphertext_base64`，字段名为 `data`。
-
-- 前端实现：`src/utils/crypto.ts`（基于 `crypto-js`）
-- 后端实现：`server/src/common/crypto.service.ts`（基于 Node.js `crypto`）
+登录、注册、个人资料修改等敏感接口，请求体使用 AES-256-CBC 加密，格式为 `iv_base64:ciphertext_base64`，字段名为 `data`。
 
 ### RBAC 权限控制
 
-- 两个角色：`admin`、`user`
-- 第一个注册的用户自动获得 `admin` 角色
-- 后台管理路由和 API 使用 `@Roles('admin')` 装饰器 + `RolesGuard` 保护
-- 非 admin 用户访问 `/admin/*` 会被重定向到首页并提示无权访问
+- 两个角色：`admin`、`user`，第一个注册用户自动获得 `admin`
+- 后台路由和 API 通过 `@Roles('admin')` + `RolesGuard` 保护
 
-### 大体积请求体支持（413 修复）
+### RAG 知识库
 
-保存历史记录时需传输 Base64 音频数据（约 1MB+），超出 NestJS/Express 默认 body limit（~100KB）。后端使用 `NestExpressApplication` 泛型 + `app.useBodyParser('json', { limit: '50mb' })` 解决。
+1. **文档解析**：`pdf-parse`、`mammoth`、`xlsx` 处理 PDF/Word/Excel/TXT
+2. **文本切分**：`@langchain/textsplitters` 按 chunk 切分
+3. **Embedding**：`@xenova/transformers` 本地生成 384 维向量
+4. **向量存储**：`sqlite-vec` 在 SQLite 中创建虚拟表，使用 `MATCH` 做最近邻搜索
+5. **检索注入**：聊天时若开启知识库关联，自动检索 topK 片段注入 system prompt
 
-### 音频播放优化
+### 音频播放
 
-为避免浏览器将 `<audio>` 标签对 blob URL 的预加载误判为下载行为，项目完全移除了 DOM `<audio>` 元素，改用 `new Audio()` 纯 JS 对象：`preload = 'none'`，仅在用户点击播放时加载音频。
+为避免浏览器将 `<audio>` 标签对 blob URL 的预加载误判为下载行为，统一使用 `new Audio()` 纯 JS 对象，`preload = 'none'`，仅在用户点击播放时加载。
 
-### 风格标签解析
+### 大体积请求体（413 修复）
 
-`styleText` 按空白字符分割解析，因此标签本身不含空格。`usedTags` computed 集合实时追踪已选状态，实现标签的点击切换交互。
-
-### 历史记录响应性
-
-`HistoryPanel` 使用 `storeToRefs(historyStore)` 解构 `history`，确保 Pinia setup store 中的数组响应性不丢失。
-
-### Token Plan 模型兼容性
-
-Token Plan API 端点仅支持部分模型，不支持 `mimo-v2-flash`。项目在前后端都做了兼容处理：
-
-- **后端**：调用 MiMo API 前校验模型兼容性，返回清晰的中文错误提示
-- **前端**：模型下拉框根据当前 API 配置动态过滤，Token Plan 下自动隐藏不支持的模型；若当前选中模型不可用，自动回退到首个可用模型
-
-### 日志体系
-
-后端采用分层日志：
-- **HTTP 请求中间件**（`main.ts`）：记录 IP、方法、路径、状态码、耗时
-- **控制器层**：记录接口调用参数与结果
-- **服务层**：记录 MiMo API 调用、SSE chunk 数量、数据库操作
+保存历史记录需传输 Base64 音频数据（~1MB+），超出 NestJS 默认 body limit。后端使用 `NestExpressApplication` + `app.useBodyParser('json', { limit: '50mb' })` 解决。
 
 ### 代码分割
 
-构建时通过 `manualChunks` 将第三方依赖拆分为独立 chunk：
-- `element-plus.js` — Element Plus 框架
-- `icons.js` — @element-plus/icons-vue
-- `vue.js` — Vue + Pinia
-- `markdown.js` — marked + highlight.js
-- `charts.js` — ECharts
-- `vendor.js` — 其余 node_modules
-- `index.js` — 业务代码
+`vite.config.ts` 通过 `manualChunks` 拆分第三方依赖：
+`element-plus.js`、`icons.js`、`vue.js`、`markdown.js`、`charts.js`、`vendor.js`、`index.js`
 
 ## API 参考
 
-本项目对接的是小米 MiMo TTS API，接口兼容 OpenAI Chat Completions 格式。
+本项目对接小米 MiMo API，接口兼容 OpenAI Chat Completions 格式。
 
 **请求地址**：`POST /chat/completions`
 
 **认证方式**：Header `api-key: {your_api_key}`
-
-**核心参数**：
 
 ```json
 {
@@ -336,7 +248,7 @@ Token Plan API 端点仅支持部分模型，不支持 `mimo-v2-flash`。项目�
 }
 ```
 
-完整 API 文档请参考：[MiMo 官方文档](https://platform.xiaomimimo.com)
+完整文档：[MiMo 官方文档](https://platform.xiaomimimo.com)
 
 ## 浏览器兼容性
 
@@ -347,21 +259,18 @@ Token Plan API 端点仅支持部分模型，不支持 `mimo-v2-flash`。项目�
 
 ## 常见问题
 
-### 413 Payload Too Large
+| 问题 | 排查方向 |
+|---|---|
+| **413 Payload Too Large** | 检查 `server/src/main.ts` 的 `useBodyParser('json', { limit: '50mb' })` |
+| **音频无法播放** | 应使用 `new Audio()` 而非 `<audio>` DOM 元素；历史 blob URL 刷新后失效，需从 `audioBase64` 重建 |
+| **请求数据解密失败** | 检查前后端 `.env` 中 `AES_SECRET_KEY` / `VITE_AES_SECRET_KEY` 是否一致 |
+| **不支持 xxx 模型** | Token Plan 端点不支持 `mimo-v2-flash`，请切换到普通 API 端点（`sk-` 开头的 Key） |
+| **CI 中 onnxruntime-node 安装超时** | 已配置 `node_modules` 缓存，首次成功后缓存即生效，后续构建不再重复下载 |
 
-如果保存历史记录时出现 413 错误，检查后端 `main.ts` 的 `useBodyParser('json', { limit: '50mb' })` 是否生效。
+## CI/CD
 
-### 音频无法播放
-
-检查是否使用了 `<audio>` DOM 元素。项目统一使用 `new Audio()` 纯 JS 对象。历史记录中的 blob URL 在页面刷新后会失效，需要从 `audioBase64` 重新创建 blob。
-
-### 登录/注册提示"请求数据解密失败"
-
-检查前后端的 `.env` 中 `AES_SECRET_KEY` / `VITE_AES_SECRET_KEY` 是否一致。
-
-### Token Plan 提示"不支持 xxx 模型"
-
-Token Plan API 端点仅支持 MiMo-V2.5-Pro、MiMo-V2.5、MiMo-V2-Pro、MiMo-V2-Omni 及 TTS 系列模型。如需使用 `mimo-v2-flash`，请切换到普通 API 端点（`sk-` 开头的 API Key）。
+- **CI**（`.github/workflows/ci.yml`）：`push` / `pull_request` 到 `main`/`master` 时触发，构建前后端并运行测试
+- **Release**（`.github/workflows/release.yml`）：推送 `v*` 标签时触发，自动打包构建产物并创建 GitHub Release
 
 ## 许可证
 
