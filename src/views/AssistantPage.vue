@@ -25,19 +25,26 @@
                         </span>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
-                        <el-tooltip content="MCP 工具开关">
-                            <el-switch
-                                v-model="mcpStore.mcpEnabled"
+                        <div class="flex items-center gap-1">
+                            <el-tag
+                                :type="mcpStore.mcpEnabled ? 'success' : 'info'"
                                 size="small"
-                                inline-prompt
-                                active-text="MCP开"
-                                inactive-text="MCP关"
-                                :disabled="!mcpStore.hasServers"
-                            />
-                        </el-tooltip>
+                            >
+                                <el-icon class="mr-0.5"><connection /></el-icon>
+                                MCP
+                            </el-tag>
+                            <el-tooltip content="MCP 工具开关">
+                                <el-switch
+                                    v-model="mcpStore.mcpEnabled"
+                                    size="small"
+                                    :disabled="!mcpStore.hasServers"
+                                />
+                            </el-tooltip>
+                        </div>
                         <el-tooltip content="管理 MCP 服务器">
-                            <el-button text size="small" @click="$router.push('/mcp-servers')">
-                                <el-icon><setting /></el-icon>
+                            <el-button plain size="small" @click="$router.push('/mcp-servers')">
+                                <el-icon class="mr-0.5"><setting /></el-icon>
+                                管理
                             </el-button>
                         </el-tooltip>
                     </div>
@@ -71,6 +78,7 @@ import {
     Expand,
     Fold,
     Setting,
+    Connection,
 } from '@element-plus/icons-vue'
 import { useConfigStore } from '../stores/config'
 import { useChatStore } from '../stores/chat'
