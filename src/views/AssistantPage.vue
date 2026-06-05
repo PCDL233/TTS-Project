@@ -11,9 +11,9 @@
                         <div
                             class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center"
                         >
-                            <el-icon color="white" :size="20"><chat-dot-square /></el-icon>
+                            <el-icon color="white" :size="20"><magic-stick /></el-icon>
                         </div>
-                        <h1 class="text-lg font-bold text-gray-800">MiMo AI 助手</h1>
+                        <h1 class="text-lg font-bold text-gray-800">{{ systemName }}</h1>
                     </div>
 
                     <!-- 模块切换 -->
@@ -133,7 +133,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-    ChatDotSquare,
+    MagicStick,
     Setting,
     UserFilled,
     ArrowDown,
@@ -147,6 +147,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useConfigStore } from '../stores/config'
 import { useAuthStore } from '../stores/auth'
 import { useChatStore } from '../stores/chat'
+import { useSystemConfig } from '../composables/useSystemConfig'
 import ChatSidebar from '../components/ChatSidebar.vue'
 import ChatMessageList from '../components/ChatMessageList.vue'
 import ChatInputArea from '../components/ChatInputArea.vue'
@@ -156,6 +157,7 @@ const router = useRouter()
 const configStore = useConfigStore()
 const authStore = useAuthStore()
 const chatStore = useChatStore()
+const { systemName } = useSystemConfig()
 
 const sidebarCollapsed = ref(false)
 const showApiKeyDialog = ref(false)

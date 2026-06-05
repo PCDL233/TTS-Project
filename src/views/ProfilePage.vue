@@ -7,7 +7,7 @@
                     <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                         <el-icon color="white" :size="20"><microphone /></el-icon>
                     </div>
-                    <h1 class="text-lg font-bold text-gray-800">MiMo TTS 语音合成</h1>
+                    <h1 class="text-lg font-bold text-gray-800">MiMo 智能助手</h1>
                 </div>
                 <div class="flex items-center gap-3">
                     <el-button size="small" @click="$router.push('/')">

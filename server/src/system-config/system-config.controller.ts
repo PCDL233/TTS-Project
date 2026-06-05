@@ -6,17 +6,24 @@ import { SystemConfigService } from './system-config.service'
 import { SystemConfig } from './system-config.entity'
 
 @Controller('admin/system-config')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin')
 export class SystemConfigController {
   constructor(private readonly systemConfigService: SystemConfigService) {}
 
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   async findAll(): Promise<SystemConfig[]> {
     return this.systemConfigService.findAll()
   }
 
+  @Get('public')
+  async findAllPublic(): Promise<SystemConfig[]> {
+    return this.systemConfigService.findAll()
+  }
+
   @Put(':key')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   async update(
     @Param('key') key: string,
     @Body('value') value: string,

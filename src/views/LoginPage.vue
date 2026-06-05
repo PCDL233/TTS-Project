@@ -6,9 +6,9 @@
                     <div
                         class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center"
                     >
-                        <el-icon color="white" :size="24"><microphone /></el-icon>
+                        <el-icon color="white" :size="24"><magic-stick /></el-icon>
                     </div>
-                    <h1 class="text-xl font-bold text-gray-800">MiMo TTS</h1>
+                    <h1 class="text-xl font-bold text-gray-800">{{ systemName }}</h1>
                 </div>
 
                 <h2 class="text-lg font-semibold text-gray-800 text-center mb-6">
@@ -79,12 +79,14 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { Microphone, User, Lock } from '@element-plus/icons-vue'
+import { MagicStick, User, Lock } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
+import { useSystemConfig } from '../composables/useSystemConfig'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { systemName } = useSystemConfig()
 const formRef = ref()
 const loading = ref(false)
 

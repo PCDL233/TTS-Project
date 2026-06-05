@@ -11,11 +11,11 @@
                             class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center"
                         >
                             <el-icon color="white" :size="20"
-                                ><microphone
+                                ><magic-stick
                             /></el-icon>
                         </div>
                         <h1 class="text-lg font-bold text-gray-800">
-                            MiMo TTS 语音合成
+                            {{ systemName }}
                         </h1>
                     </div>
 
@@ -223,11 +223,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
-import { Microphone, Setting, QuestionFilled, UserFilled } from "@element-plus/icons-vue";
+import { MagicStick, Setting, QuestionFilled, UserFilled } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { useConfigStore } from "../stores/config";
 import { useHistoryStore } from "../stores/history";
 import { useAuthStore } from "../stores/auth";
+import { useSystemConfig } from "../composables/useSystemConfig";
 import { useTTS } from "../composables/useTTS";
 import VoiceConfigPanel from "../components/VoiceConfigPanel.vue";
 import TextInputArea from "../components/TextInputArea.vue";
@@ -241,6 +242,7 @@ const router = useRouter();
 const configStore = useConfigStore();
 const historyStore = useHistoryStore();
 const authStore = useAuthStore();
+const { systemName } = useSystemConfig();
 
 const avatarUrl = computed(() => {
     const avatar = authStore.user?.avatar

@@ -14,7 +14,7 @@ export class SystemConfigService {
 
   async seed() {
     const presets = [
-      { key: 'system_name', value: 'MiMo TTS 语音合成平台', description: '系统名称' },
+      { key: 'system_name', value: 'MiMo 智能助手', description: '系统名称' },
       { key: 'default_base_url', value: 'https://api.xiaomimimo.com/v1', description: '默认 Base URL' },
       { key: 'allow_register', value: 'true', description: '是否允许用户注册' },
       { key: 'default_model', value: 'mimo-v2.5-pro', description: '默认AI模型' },

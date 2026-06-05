@@ -6,9 +6,9 @@
                 <div class="flex items-center gap-6">
                     <div class="flex items-center gap-3">
                         <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                            <el-icon color="white" :size="20"><chat-dot-square /></el-icon>
+                            <el-icon color="white" :size="20"><magic-stick /></el-icon>
                         </div>
-                        <h1 class="text-lg font-bold text-gray-800">MiMo AI 助手</h1>
+                        <h1 class="text-lg font-bold text-gray-800">{{ systemName }}</h1>
                     </div>
                     <div class="flex items-center bg-gray-100 rounded-lg p-1">
                         <router-link
@@ -231,11 +231,12 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-    ChatDotSquare, Plus, Collection, Upload, Document,
+    MagicStick, Plus, Collection, Upload, Document,
     Delete, Warning, UserFilled, ArrowDown, User, SetUp, SwitchButton, Loading,
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
+import { useSystemConfig } from '../composables/useSystemConfig'
 import {
     createKnowledgeBase, fetchKnowledgeBases, deleteKnowledgeBase,
     uploadDocument, fetchDocuments, deleteDocument, getDocumentStatus, fetchChunks,
@@ -244,6 +245,7 @@ import {
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { systemName } = useSystemConfig()
 
 const knowledgeBases = ref<KnowledgeBase[]>([])
 const selectedKb = ref<KnowledgeBase | null>(null)
