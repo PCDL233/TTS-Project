@@ -52,6 +52,9 @@
                     </el-button>
                 </template>
             </el-table-column>
+            <template #empty>
+                <el-empty description="暂无数据" />
+            </template>
         </el-table>
 
         <div class="flex justify-end mt-4">

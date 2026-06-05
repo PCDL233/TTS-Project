@@ -42,6 +42,9 @@
                     </el-popconfirm>
                 </template>
             </el-table-column>
+            <template #empty>
+                <el-empty description="暂无数据" />
+            </template>
         </el-table>
 
         <!-- 分页 -->
