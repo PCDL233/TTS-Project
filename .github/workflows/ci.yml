@@ -37,9 +37,31 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential python3 make g++
 
+      - name: Configure npm for network resilience
+        run: |
+          npm config set fetch-retries 5
+          npm config set fetch-retry-mintimeout 30000
+          npm config set fetch-retry-maxtimeout 120000
+
       # ---------- Frontend ----------
+      - name: Cache frontend node_modules
+        id: cache-frontend
+        uses: actions/cache@v4
+        with:
+          path: ./node_modules
+          key: ${{ runner.os }}-frontend-node-modules-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-frontend-node-modules-
+
       - name: Install frontend dependencies
-        run: npm ci
+        run: |
+          if [ "${{ steps.cache-frontend.outputs.cache-hit }}" == "true" ]; then
+            echo "Cache hit - using npm install with prefer-offline"
+            npm install --prefer-offline --no-audit --no-fund
+          else
+            echo "Cache miss - running npm ci"
+            npm ci
+          fi
 
       - name: Build frontend
         run: npm run build
@@ -52,9 +74,25 @@ jobs:
           retention-days: 7
 
       # ---------- Backend ----------
+      - name: Cache backend node_modules
+        id: cache-backend
+        uses: actions/cache@v4
+        with:
+          path: ./server/node_modules
+          key: ${{ runner.os }}-backend-node-modules-${{ hashFiles('server/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-backend-node-modules-
+
       - name: Install backend dependencies
         working-directory: ./server
-        run: npm ci
+        run: |
+          if [ "${{ steps.cache-backend.outputs.cache-hit }}" == "true" ]; then
+            echo "Cache hit - using npm install with prefer-offline"
+            npm install --prefer-offline --no-audit --no-fund
+          else
+            echo "Cache miss - running npm ci"
+            npm ci
+          fi
 
       - name: Build backend
         working-directory: ./server
