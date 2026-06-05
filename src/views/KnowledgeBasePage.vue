@@ -1,65 +1,6 @@
 <template>
     <div class="h-screen bg-gray-50 flex flex-col overflow-hidden">
-        <!-- 顶部导航 -->
-        <header class="bg-white border-b border-gray-200 shrink-0">
-            <div class="max-w-screen-2xl mx-auto px-4 h-14 flex items-center justify-between">
-                <div class="flex items-center gap-6">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                            <el-icon color="white" :size="20"><magic-stick /></el-icon>
-                        </div>
-                        <h1 class="text-lg font-bold text-gray-800">{{ systemName }}</h1>
-                    </div>
-                    <div class="flex items-center bg-gray-100 rounded-lg p-1">
-                        <router-link
-                            to="/assistant"
-                            class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors text-gray-500 hover:text-gray-700"
-                        >
-                            智能助手
-                        </router-link>
-                        <router-link
-                            to="/knowledge-base"
-                            class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors bg-white text-gray-900 shadow-sm"
-                        >
-                            知识库
-                        </router-link>
-                        <router-link
-                            to="/tts"
-                            class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors text-gray-500 hover:text-gray-700"
-                        >
-                            语音合成
-                        </router-link>
-                    </div>
-                </div>
-                <div class="flex items-center gap-3">
-                    <el-dropdown @command="handleUserCommand">
-                        <span class="flex items-center gap-2 cursor-pointer">
-                            <el-avatar :size="28" :src="avatarUrl">
-                                <el-icon><user-filled /></el-icon>
-                            </el-avatar>
-                            <span class="text-sm text-gray-700">{{ authStore.user?.nickname || authStore.user?.username }}</span>
-                            <el-icon class="text-gray-400"><arrow-down /></el-icon>
-                        </span>
-                        <template #dropdown>
-                            <el-dropdown-menu>
-                                <el-dropdown-item command="profile">
-                                    <el-icon><user /></el-icon>
-                                    <span>个人中心</span>
-                                </el-dropdown-item>
-                                <el-dropdown-item v-if="authStore.isAdmin" command="admin">
-                                    <el-icon><set-up /></el-icon>
-                                    <span>后台管理</span>
-                                </el-dropdown-item>
-                                <el-dropdown-item divided command="logout">
-                                    <el-icon><switch-button /></el-icon>
-                                    <span>退出登录</span>
-                                </el-dropdown-item>
-                            </el-dropdown-menu>
-                        </template>
-                    </el-dropdown>
-                </div>
-            </div>
-        </header>
+        <AppHeader />
 
         <!-- 主内容 -->
         <main class="flex-1 flex overflow-hidden">
@@ -228,24 +169,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, onUnmounted } from 'vue'
 import {
-    MagicStick, Plus, Collection, Upload, Document,
-    Delete, Warning, UserFilled, ArrowDown, User, SetUp, SwitchButton, Loading,
+    Plus, Collection, Upload, Document,
+    Delete, Warning, Loading,
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useAuthStore } from '../stores/auth'
-import { useSystemConfig } from '../composables/useSystemConfig'
+import AppHeader from '../components/AppHeader.vue'
 import {
     createKnowledgeBase, fetchKnowledgeBases, deleteKnowledgeBase,
     uploadDocument, fetchDocuments, deleteDocument, getDocumentStatus, fetchChunks,
     type KnowledgeBase, type KnowledgeDocument, type KnowledgeChunk,
 } from '../api/knowledge-base'
-
-const router = useRouter()
-const authStore = useAuthStore()
-const { systemName } = useSystemConfig()
 
 const knowledgeBases = ref<KnowledgeBase[]>([])
 const selectedKb = ref<KnowledgeBase | null>(null)
@@ -258,14 +193,6 @@ const showChunksDrawer = ref(false)
 const chunksLoading = ref(false)
 const chunksDoc = ref<KnowledgeDocument | null>(null)
 const chunks = ref<KnowledgeChunk[]>([])
-
-const avatarUrl = computed(() => {
-    const avatar = authStore.user?.avatar
-    if (!avatar) return ''
-    if (avatar.startsWith('http')) return avatar
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-    return `${backendUrl}${avatar}`
-})
 
 function statusType(status: string) {
     const map: Record<string, string> = { empty: 'info', processing: 'warning', ready: 'success' }
@@ -446,15 +373,6 @@ async function handleDeleteDoc(docId: number) {
         await loadKnowledgeBases()
     } catch {
         // 取消
-    }
-}
-
-function handleUserCommand(cmd: string) {
-    if (cmd === 'profile') router.push('/profile')
-    else if (cmd === 'admin') router.push('/admin')
-    else if (cmd === 'logout') {
-        authStore.logout()
-        router.push('/login')
     }
 }
 
