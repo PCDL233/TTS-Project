@@ -3,8 +3,8 @@
         <AppHeader show-help @help="showHelp = true" />
 
         <!-- 主内容区 -->
-        <main class="flex-1 max-w-400 w-full mx-auto p-4">
-            <div class="flex gap-4 h-[calc(100vh-88px)]">
+        <main class="flex-1 max-w-400 w-full mx-auto p-4 flex flex-col">
+            <div class="flex gap-4 flex-1 min-h-0">
                 <!-- 左侧配置面板 -->
                 <aside
                     class="w-80 bg-white rounded-xl border border-gray-200 shrink-0 overflow-hidden"
