@@ -69,7 +69,7 @@
                     <el-button
                         type="primary"
                         size="large"
-                        class="w-full mt-2 !rounded-lg"
+                        class="w-full mt-2 rounded-lg!"
                         :loading="loading"
                         @click="handleSubmit"
                     >

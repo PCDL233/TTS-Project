@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { ChatConversation, ChatMessage, ChatFeatures } from '../types/chat'
+import { useMcpStore } from './mcp'
 import {
   fetchConversations as apiFetchConversations,
   createConversation as apiCreateConversation,
@@ -13,6 +14,12 @@ import {
 import { CHAT_MODEL_OPTIONS, resolveModelOptions } from '../types/chat'
 
 export const useChatStore = defineStore('chat', () => {
+  // MCP store reference (lazy to avoid circular dep)
+  let mcpStore: ReturnType<typeof useMcpStore> | null = null
+  function getMcpStore() {
+    if (!mcpStore) mcpStore = useMcpStore()
+    return mcpStore
+  }
   // State
   const conversations = ref<ChatConversation[]>([])
   const currentConversationId = ref<number | null>(null)
@@ -185,6 +192,7 @@ export const useChatStore = defineStore('chat', () => {
       tool_choice: tools.length > 0 ? 'auto' : undefined,
       conversationId: currentConversationId.value!,
       knowledgeBaseId: currentConversation.value?.knowledgeBaseId,
+      mcpEnabled: getMcpStore().mcpEnabled && getMcpStore().hasServers,
     }
 
     await sendChatStream(
@@ -193,6 +201,25 @@ export const useChatStore = defineStore('chat', () => {
         // 必须通过数组索引访问 proxy 对象才能触发 Vue 响应式更新
         const lastMsg = messages.value[messages.value.length - 1]
         if (!lastMsg || lastMsg.role !== 'assistant') return
+
+        // MCP Agent 特殊事件
+        if (chunk.type === 'tool_call_start') {
+          if (!lastMsg.mcpEvents) lastMsg.mcpEvents = []
+          lastMsg.mcpEvents.push({ type: 'tool_call_start', toolCalls: chunk.toolCalls || [] })
+          return
+        }
+        if (chunk.type === 'tool_call_result') {
+          if (!lastMsg.mcpEvents) lastMsg.mcpEvents = []
+          lastMsg.mcpEvents.push({
+            type: 'tool_call_result',
+            toolCallId: chunk.toolCallId || '',
+            name: chunk.name || '',
+            status: chunk.status || 'error',
+            result: chunk.result,
+            error: chunk.error,
+          })
+          return
+        }
 
         if (chunk.content) {
           lastMsg.content += chunk.content

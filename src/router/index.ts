@@ -46,6 +46,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/mcp-servers',
+      name: 'McpServers',
+      component: () => import('../views/McpServersPage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/admin',
       component: () => import('../views/admin/AdminLayout.vue'),
       meta: { requiresAuth: true, requiresAdmin: true },
