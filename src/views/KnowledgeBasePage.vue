@@ -158,7 +158,7 @@
                         <el-tag size="small" type="info">#{{ chunk.chunkIndex + 1 }}</el-tag>
                         <span class="text-xs text-gray-400">ID: {{ chunk.id }}</span>
                     </div>
-                    <p class="text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">{{ chunk.content }}</p>
+                    <p class="text-sm text-gray-700 whitespace-pre-wrap wrap-break-word leading-relaxed">{{ chunk.content }}</p>
                     <div v-if="chunk.metadata && Object.keys(chunk.metadata).length > 0" class="mt-2 pt-2 border-t border-gray-100">
                         <span class="text-xs text-gray-400">元数据: {{ JSON.stringify(chunk.metadata) }}</span>
                     </div>
