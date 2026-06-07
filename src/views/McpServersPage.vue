@@ -114,8 +114,8 @@
 
         <el-form-item label="传输类型" prop="transportType">
           <el-radio-group v-model="form.transportType">
-            <el-radio-button label="stdio">STDIO（本地命令）</el-radio-button>
-            <el-radio-button label="sse">SSE（HTTP 远程）</el-radio-button>
+            <el-radio-button value="stdio">STDIO（本地命令）</el-radio-button>
+            <el-radio-button value="sse">SSE（HTTP 远程）</el-radio-button>
           </el-radio-group>
         </el-form-item>
 

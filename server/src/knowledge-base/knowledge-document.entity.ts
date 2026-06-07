@@ -6,6 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
   OneToMany,
+  Index,
 } from 'typeorm';
 import { KnowledgeBase } from './knowledge-base.entity';
 import { KnowledgeChunk } from './knowledge-chunk.entity';
@@ -17,6 +18,7 @@ export class KnowledgeDocument {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Index()
   @Column()
   knowledgeBaseId: number;
 

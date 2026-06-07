@@ -13,6 +13,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'
 import { RolesGuard } from '../common/guards/roles.guard'
 import { Roles } from '../common/decorators/roles.decorator'
+import { escapeLike } from '../common/utils/escape-like.util'
 import { UserService } from '../user/user.service'
 import { LoginLogService } from '../log/login-log.service'
 import { OperationLogService } from '../log/operation-log.service'
@@ -180,82 +181,64 @@ export class AdminController {
   @Get('stats/user-trend')
   async getUserTrend(@Query('days') days?: string) {
     const d = Number(days) || 30
-    const result: { date: string; count: number }[] = []
-    const now = new Date()
-
-    for (let i = d - 1; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
-      const nextDate = new Date(date.getTime() + 24 * 60 * 60 * 1000)
-      const count = await this.userRepository.count({
-        where: { createdAt: Between(date, nextDate) },
-      })
-      result.push({
-        date: date.toISOString().slice(0, 10),
-        count,
-      })
-    }
-    return result
+    const cutoff = new Date(Date.now() - d * 24 * 60 * 60 * 1000)
+    const rows = await this.userRepository
+      .createQueryBuilder('u')
+      .select("strftime('%Y-%m-%d', u.createdAt)", 'date')
+      .addSelect('COUNT(*)', 'count')
+      .where('u.createdAt >= :cutoff', { cutoff })
+      .groupBy("strftime('%Y-%m-%d', u.createdAt)")
+      .getRawMany()
+    return this.fillTrend(rows, d)
   }
 
   @Get('stats/tts-trend')
   async getTtsTrend(@Query('days') days?: string) {
     const d = Number(days) || 30
-    const result: { date: string; count: number }[] = []
-    const now = new Date()
-
-    for (let i = d - 1; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
-      const nextDate = new Date(date.getTime() + 24 * 60 * 60 * 1000)
-      const count = await this.historyRepository.count({
-        where: { createdAt: Between(date.getTime(), nextDate.getTime()) },
-      })
-      result.push({
-        date: date.toISOString().slice(0, 10),
-        count,
-      })
-    }
-    return result
+    const cutoff = Date.now() - d * 24 * 60 * 60 * 1000
+    const rows = await this.historyRepository
+      .createQueryBuilder('h')
+      .select("strftime('%Y-%m-%d', h.createdAt / 1000, 'unixepoch')", 'date')
+      .addSelect('COUNT(*)', 'count')
+      .where('h.createdAt >= :cutoff', { cutoff })
+      .groupBy("strftime('%Y-%m-%d', h.createdAt / 1000, 'unixepoch')")
+      .getRawMany()
+    return this.fillTrend(rows, d)
   }
 
   @Get('stats/login-trend')
   async getLoginTrend(@Query('days') days?: string) {
     const d = Number(days) || 30
-    const result: { date: string; count: number }[] = []
-    const now = new Date()
-
-    for (let i = d - 1; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
-      const nextDate = new Date(date.getTime() + 24 * 60 * 60 * 1000)
-      const count = await this.loginLogRepository.count({
-        where: { createdAt: Between(date, nextDate) },
-      })
-      result.push({
-        date: date.toISOString().slice(0, 10),
-        count,
-      })
-    }
-    return result
+    const cutoff = new Date(Date.now() - d * 24 * 60 * 60 * 1000)
+    const rows = await this.loginLogRepository
+      .createQueryBuilder('l')
+      .select("strftime('%Y-%m-%d', l.createdAt)", 'date')
+      .addSelect('COUNT(*)', 'count')
+      .where('l.createdAt >= :cutoff', { cutoff })
+      .groupBy("strftime('%Y-%m-%d', l.createdAt)")
+      .getRawMany()
+    return this.fillTrend(rows, d)
   }
 
   @Get('stats/role-distribution')
   async getRoleDistribution() {
-    const users = await this.userRepository.find({ relations: ['role'] })
-    const map = new Map<string, number>()
-    for (const user of users) {
-      const code = user.role?.code || 'unknown'
-      map.set(code, (map.get(code) || 0) + 1)
-    }
-    return Array.from(map.entries()).map(([name, value]) => ({ name, value }))
+    return this.userRepository
+      .createQueryBuilder('u')
+      .leftJoin('u.role', 'r')
+      .select("COALESCE(r.code, 'unknown')", 'name')
+      .addSelect('COUNT(*)', 'value')
+      .groupBy('r.code')
+      .getRawMany()
   }
 
   @Get('stats/tts-by-mode')
   async getTtsByMode() {
-    const histories = await this.historyRepository.find()
-    const map = new Map<string, number>()
-    for (const h of histories) {
-      map.set(h.mode, (map.get(h.mode) || 0) + 1)
-    }
-    return Array.from(map.entries()).map(([name, value]) => ({ name, value }))
+    return this.historyRepository
+      .createQueryBuilder('h')
+      .select('h.mode', 'name')
+      .addSelect('COUNT(*)', 'value')
+      .groupBy('h.mode')
+      .getRawMany()
   }
 
   // ========== 智能助手统计 ==========
@@ -288,89 +271,79 @@ export class AdminController {
   @Get('stats/chat-conversation-trend')
   async getChatConversationTrend(@Query('days') days?: string) {
     const d = Number(days) || 30
-    const result: { date: string; count: number }[] = []
-    const now = new Date()
-
-    for (let i = d - 1; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
-      const nextDate = new Date(date.getTime() + 24 * 60 * 60 * 1000)
-      const count = await this.conversationRepository.count({
-        where: { createdAt: Between(date, nextDate) },
-      })
-      result.push({
-        date: date.toISOString().slice(0, 10),
-        count,
-      })
-    }
-    return result
+    const cutoff = new Date(Date.now() - d * 24 * 60 * 60 * 1000)
+    const rows = await this.conversationRepository
+      .createQueryBuilder('c')
+      .select("strftime('%Y-%m-%d', c.createdAt)", 'date')
+      .addSelect('COUNT(*)', 'count')
+      .where('c.createdAt >= :cutoff', { cutoff })
+      .groupBy("strftime('%Y-%m-%d', c.createdAt)")
+      .getRawMany()
+    return this.fillTrend(rows, d)
   }
 
   @Get('stats/chat-message-trend')
   async getChatMessageTrend(@Query('days') days?: string) {
     const d = Number(days) || 30
-    const result: { date: string; count: number }[] = []
-    const now = new Date()
-
-    for (let i = d - 1; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
-      const nextDate = new Date(date.getTime() + 24 * 60 * 60 * 1000)
-      const count = await this.messageRepository.count({
-        where: { createdAt: Between(date, nextDate) },
-      })
-      result.push({
-        date: date.toISOString().slice(0, 10),
-        count,
-      })
-    }
-    return result
+    const cutoff = new Date(Date.now() - d * 24 * 60 * 60 * 1000)
+    const rows = await this.messageRepository
+      .createQueryBuilder('m')
+      .select("strftime('%Y-%m-%d', m.createdAt)", 'date')
+      .addSelect('COUNT(*)', 'count')
+      .where('m.createdAt >= :cutoff', { cutoff })
+      .groupBy("strftime('%Y-%m-%d', m.createdAt)")
+      .getRawMany()
+    return this.fillTrend(rows, d)
   }
 
   @Get('stats/chat-model-distribution')
   async getChatModelDistribution() {
-    const conversations = await this.conversationRepository.find()
-    const map = new Map<string, number>()
-    for (const c of conversations) {
-      map.set(c.model, (map.get(c.model) || 0) + 1)
-    }
-    return Array.from(map.entries()).map(([name, value]) => ({ name, value }))
+    return this.conversationRepository
+      .createQueryBuilder('c')
+      .select('c.model', 'name')
+      .addSelect('COUNT(*)', 'value')
+      .groupBy('c.model')
+      .getRawMany()
   }
 
   @Get('stats/chat-feature-distribution')
   async getChatFeatureDistribution() {
-    const conversations = await this.conversationRepository.find()
-    const map = new Map<string, number>([
-      ['thinking', 0],
-      ['webSearch', 0],
-      ['functionCall', 0],
-    ])
-    for (const c of conversations) {
-      const f = c.features || {}
-      if (f.thinking) map.set('thinking', (map.get('thinking') || 0) + 1)
-      if (f.webSearch) map.set('webSearch', (map.get('webSearch') || 0) + 1)
-      if (f.functionCall) map.set('functionCall', (map.get('functionCall') || 0) + 1)
-    }
     const labelMap: Record<string, string> = {
       thinking: '深度思考',
       webSearch: '联网搜索',
       functionCall: 'Function Call',
     }
-    return Array.from(map.entries()).map(([key, value]) => ({ name: labelMap[key] || key, value }))
+    const features = ['thinking', 'webSearch', 'functionCall']
+    const result: { name: string; value: number }[] = []
+    for (const f of features) {
+      const row = await this.conversationRepository
+        .createQueryBuilder('c')
+        .select('COUNT(*)', 'count')
+        .where(`json_extract(c.features, '$.${f}') = 1`)
+        .getRawOne()
+      result.push({ name: labelMap[f] || f, value: Number(row?.count || 0) })
+    }
+    return result
   }
 
   @Get('stats/chat-role-distribution')
   async getChatRoleDistribution() {
-    const messages = await this.messageRepository.find()
-    const map = new Map<string, number>()
-    for (const m of messages) {
-      map.set(m.role, (map.get(m.role) || 0) + 1)
-    }
     const labelMap: Record<string, string> = {
       user: '用户消息',
       assistant: '助手消息',
       system: '系统消息',
       tool: '工具消息',
     }
-    return Array.from(map.entries()).map(([key, value]) => ({ name: labelMap[key] || key, value }))
+    const rows = await this.messageRepository
+      .createQueryBuilder('m')
+      .select('m.role', 'key')
+      .addSelect('COUNT(*)', 'value')
+      .groupBy('m.role')
+      .getRawMany()
+    return rows.map((r: { key: string; value: number }) => ({
+      name: labelMap[r.key] || r.key,
+      value: Number(r.value),
+    }))
   }
 
   // ========== 智能助手管理 ==========
@@ -390,7 +363,7 @@ export class AdminController {
       .take(pageSizeNum)
 
     if (username) {
-      qb.andWhere('user.username LIKE :username', { username: `%${username}%` })
+      qb.andWhere('user.username LIKE :username ESCAPE \'\\\'', { username: `%${escapeLike(username)}%` })
     }
 
     const [items, total] = await qb.getManyAndCount()
@@ -410,5 +383,20 @@ export class AdminController {
     await this.messageRepository.delete({ conversationId: Number(id) })
     await this.conversationRepository.delete(Number(id))
     return { success: true }
+  }
+
+  private fillTrend(rows: { date: string; count: string | number }[], days: number): { date: string; count: number }[] {
+    const map = new Map<string, number>()
+    for (const r of rows) {
+      map.set(r.date, Number(r.count))
+    }
+    const result: { date: string; count: number }[] = []
+    const now = new Date()
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
+      const key = d.toISOString().slice(0, 10)
+      result.push({ date: key, count: map.get(key) || 0 })
+    }
+    return result
   }
 }

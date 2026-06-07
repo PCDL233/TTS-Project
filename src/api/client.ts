@@ -18,12 +18,17 @@ client.interceptors.request.use((config) => {
   return config
 })
 
+let isLoggingOut = false
+
 client.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
+  async (error) => {
+    if (error.response?.status === 401 && !isLoggingOut) {
+      isLoggingOut = true
       localStorage.removeItem('token')
-      window.location.href = '/login'
+      const { default: router } = await import('../router')
+      await router.push('/login')
+      setTimeout(() => { isLoggingOut = false }, 1000)
     }
     return Promise.reject(error)
   }

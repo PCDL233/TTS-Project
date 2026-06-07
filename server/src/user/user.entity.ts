@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { Role } from '../role/role.entity';
 
 @Entity()
@@ -12,6 +12,7 @@ export class User {
   @Column()
   passwordHash: string;
 
+  @Index()
   @Column({ nullable: true })
   roleId: number;
 

@@ -8,6 +8,7 @@ import { KnowledgeDocument } from './knowledge-document.entity';
 import { KnowledgeChunk } from './knowledge-chunk.entity';
 import { VectorDbService } from './vector-db.service';
 import { DocumentProcessingService } from './document-processing.service';
+import { KnowledgeBaseStatsService } from './knowledge-base-stats.service';
 
 const KB_UPLOAD_DIR = './public/uploads/knowledge-base';
 
@@ -24,6 +25,7 @@ export class KnowledgeBaseService {
     private chunkRepository: Repository<KnowledgeChunk>,
     private readonly vectorDbService: VectorDbService,
     private readonly documentProcessingService: DocumentProcessingService,
+    private readonly statsService: KnowledgeBaseStatsService,
   ) {
     if (!existsSync(KB_UPLOAD_DIR)) {
       mkdirSync(KB_UPLOAD_DIR, { recursive: true });
@@ -62,15 +64,27 @@ export class KnowledgeBaseService {
   async remove(userId: number, id: number): Promise<void> {
     const kb = await this.findOne(userId, id);
 
-    // 删除向量表
-    this.vectorDbService.dropTable(id);
+    const queryRunner = this.kbRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      // 删除向量表（非 SQL 操作）
+      this.vectorDbService.dropTable(id);
 
-    // 删除关联数据（级联）
-    await this.chunkRepository.delete({ knowledgeBaseId: id });
-    await this.documentRepository.delete({ knowledgeBaseId: id });
-    await this.kbRepository.delete({ id });
+      // 删除关联数据
+      await queryRunner.manager.delete(KnowledgeChunk, { knowledgeBaseId: id });
+      await queryRunner.manager.delete(KnowledgeDocument, { knowledgeBaseId: id });
+      await queryRunner.manager.delete(KnowledgeBase, { id });
 
-    this.logger.log(`用户 ${userId} 删除知识库 ${id}`);
+      await queryRunner.commitTransaction();
+      this.logger.log(`用户 ${userId} 删除知识库 ${id}`);
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error(`删除知识库 ${id} 失败，已回滚: ${(err as Error).message}`);
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   // ========== 文档管理 ==========
@@ -109,7 +123,8 @@ export class KnowledgeBaseService {
     return saved;
   }
 
-  async getDocuments(knowledgeBaseId: number): Promise<KnowledgeDocument[]> {
+  async getDocuments(userId: number, knowledgeBaseId: number): Promise<KnowledgeDocument[]> {
+    await this.findOne(userId, knowledgeBaseId);
     return this.documentRepository.find({
       where: { knowledgeBaseId },
       order: { createdAt: 'DESC' },
@@ -135,48 +150,28 @@ export class KnowledgeBaseService {
     await this.documentRepository.delete({ id: documentId });
 
     // 更新知识库统计
-    await this.updateKnowledgeBaseStats(knowledgeBaseId);
+    await this.statsService.updateStats(knowledgeBaseId);
 
     this.logger.log(`用户 ${userId} 从知识库 ${knowledgeBaseId} 删除文档 ${documentId}`);
   }
 
   async getDocumentStatus(
+    userId: number,
     knowledgeBaseId: number,
     documentId: number,
   ): Promise<KnowledgeDocument | null> {
+    await this.findOne(userId, knowledgeBaseId);
     return this.documentRepository.findOne({
       where: { id: documentId, knowledgeBaseId },
     });
   }
 
-  async getChunks(knowledgeBaseId: number, documentId: number): Promise<KnowledgeChunk[]> {
+  async getChunks(userId: number, knowledgeBaseId: number, documentId: number): Promise<KnowledgeChunk[]> {
+    await this.findOne(userId, knowledgeBaseId);
     return this.chunkRepository.find({
       where: { knowledgeBaseId, documentId },
       order: { chunkIndex: 'ASC' },
     });
   }
 
-  // ========== 私有方法 ==========
-
-  private async updateKnowledgeBaseStats(knowledgeBaseId: number): Promise<void> {
-    const documents = await this.documentRepository.find({
-      where: { knowledgeBaseId },
-    });
-    const totalChunks = documents.reduce((sum, d) => sum + d.chunkCount, 0);
-    const hasCompleted = documents.some((d) => d.status === 'completed');
-    const hasProcessing = documents.some((d) => d.status === 'processing');
-
-    let status: 'empty' | 'processing' | 'ready' = 'empty';
-    if (hasProcessing) {
-      status = 'processing';
-    } else if (hasCompleted) {
-      status = 'ready';
-    }
-
-    await this.kbRepository.update(knowledgeBaseId, {
-      documentCount: documents.length,
-      chunkCount: totalChunks,
-      status,
-    });
-  }
 }

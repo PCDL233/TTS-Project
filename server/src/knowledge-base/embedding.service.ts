@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
-import { pipeline, FeatureExtractionPipeline, env } from '@xenova/transformers';
+import { pipeline, FeatureExtractionPipeline, env } from '@huggingface/transformers';
 
 @Injectable()
 export class EmbeddingService implements OnModuleInit {
@@ -54,9 +54,7 @@ export class EmbeddingService implements OnModuleInit {
       for (let attempt = 1; attempt <= retries; attempt++) {
         try {
           this.logger.log(`模型加载尝试 ${attempt}/${retries} (源: ${host})...`);
-          this.embedder = await pipeline('feature-extraction', this.modelName, {
-            quantized: false,
-          });
+          this.embedder = await pipeline('feature-extraction', this.modelName);
           this.logger.log('Embedding 模型加载完成');
           return;
         } catch (err) {
@@ -97,12 +95,18 @@ export class EmbeddingService implements OnModuleInit {
     return new Float32Array(output.data as number[]);
   }
 
-  async embedBatch(texts: string[]): Promise<Float32Array[]> {
+  async embedBatch(texts: string[], batchSize = 8): Promise<Float32Array[]> {
     await this.ensureLoaded();
     const results: Float32Array[] = [];
-    for (const text of texts) {
-      const output = await this.embedder!(text, { pooling: 'mean', normalize: true });
-      results.push(new Float32Array(output.data as number[]));
+    for (let i = 0; i < texts.length; i += batchSize) {
+      const batch = texts.slice(i, i + batchSize);
+      const batchResults = await Promise.all(
+        batch.map(async (text) => {
+          const output = await this.embedder!(text, { pooling: 'mean', normalize: true });
+          return new Float32Array(output.data as number[]);
+        }),
+      );
+      results.push(...batchResults);
     }
     return results;
   }

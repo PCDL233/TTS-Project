@@ -86,6 +86,12 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   async function selectConversation(id: number) {
+    // 取消正在进行的流式请求
+    if (abortController.value) {
+      abortController.value.abort()
+      abortController.value = null
+      loading.value = false
+    }
     currentConversationId.value = id
     messages.value = []
     try {
@@ -152,6 +158,7 @@ export const useChatStore = defineStore('chat', () => {
     messages.value.push(assistantMessage)
 
     abortController.value = new AbortController()
+    const targetConversationId = currentConversationId.value!
 
     // 构建请求消息
     const apiMessages = messages.value.slice(0, -1).map((msg) => ({
@@ -190,7 +197,7 @@ export const useChatStore = defineStore('chat', () => {
       thinking: features.value.thinking ? { type: 'enabled' as const } : { type: 'disabled' as const },
       tools: tools.length > 0 ? tools : undefined,
       tool_choice: tools.length > 0 ? 'auto' : undefined,
-      conversationId: currentConversationId.value!,
+      conversationId: targetConversationId,
       knowledgeBaseId: currentConversation.value?.knowledgeBaseId,
       mcpEnabled: getMcpStore().mcpEnabled && getMcpStore().hasServers,
     }
@@ -198,7 +205,8 @@ export const useChatStore = defineStore('chat', () => {
     await sendChatStream(
       params,
       (chunk) => {
-        // 必须通过数组索引访问 proxy 对象才能触发 Vue 响应式更新
+        // 防止快速切换会话时消息写入错误会话
+        if (currentConversationId.value !== targetConversationId) return
         const lastMsg = messages.value[messages.value.length - 1]
         if (!lastMsg || lastMsg.role !== 'assistant') return
 

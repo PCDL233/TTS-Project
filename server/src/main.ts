@@ -15,12 +15,25 @@ async function bootstrap() {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   })
 
-  app.useBodyParser('json', { limit: '50mb' })
-  app.useBodyParser('urlencoded', { limit: '50mb', extended: true })
+  app.useBodyParser('json', { limit: '10mb' })
+  app.useBodyParser('urlencoded', { limit: '10mb', extended: true })
+
+  const allowedOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim())
+    : ['http://localhost:3000']
 
   app.enableCors({
-    origin: true,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true)
+      } else {
+        callback(new Error(`CORS blocked: ${origin}`))
+      }
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    maxAge: 86400,
   })
 
   // 信任代理，使 req.ip 能正确获取真实客户端 IP

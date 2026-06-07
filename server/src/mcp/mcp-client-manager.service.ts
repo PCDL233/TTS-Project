@@ -41,6 +41,7 @@ export class McpClientManager implements OnModuleDestroy {
   private readonly logger = new Logger(McpClientManager.name);
   private clients = new Map<string, McpClientEntry>();
   private reconnectAttempts = new Map<string, number>();
+  private reconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   private getKey(userId: number, configId: number): string {
     return `${userId}:${configId}`;
@@ -68,9 +69,12 @@ export class McpClientManager implements OnModuleDestroy {
     let transport: any;
 
     if (config.transport.type === 'stdio') {
+      const args = Array.isArray(config.transport.args)
+        ? config.transport.args.filter((a): a is string => typeof a === 'string')
+        : [];
       transport = new StdioClientTransport({
         command: config.transport.command!,
-        args: config.transport.args || [],
+        args,
         env: config.transport.env,
       });
     } else {
@@ -145,13 +149,16 @@ export class McpClientManager implements OnModuleDestroy {
     const delay = Math.pow(2, attempts - 1) * 1000;
     this.logger.log(`[McpClientManager] ${delay}ms 后尝试第 ${attempts} 次重连 ${key}...`);
 
-    setTimeout(() => {
+    const timer = setTimeout(() => {
+      this.reconnectTimers.delete(key);
       this.connect(config).catch(() => {});
     }, delay);
+    this.reconnectTimers.set(key, timer);
   }
 
   async disconnect(userId: number, configId: number) {
     const key = this.getKey(userId, configId);
+    this.clearReconnectTimer(key);
     const entry = this.clients.get(key);
     if (entry) {
       try { await entry.client.close(); } catch {}
@@ -164,6 +171,7 @@ export class McpClientManager implements OnModuleDestroy {
   async disconnectAllForUser(userId: number) {
     for (const [key, entry] of this.clients.entries()) {
       if (key.startsWith(`${userId}:`)) {
+        this.clearReconnectTimer(key);
         try { await entry.client.close(); } catch {}
         this.clients.delete(key);
         this.reconnectAttempts.delete(key);
@@ -173,10 +181,22 @@ export class McpClientManager implements OnModuleDestroy {
   }
 
   async onModuleDestroy() {
+    for (const timer of this.reconnectTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.reconnectTimers.clear();
     for (const [key, entry] of this.clients.entries()) {
       try { await entry.client.close(); } catch {}
       this.clients.delete(key);
     }
     this.logger.log('[McpClientManager] 应用关闭，所有 MCP 连接已清理');
+  }
+
+  private clearReconnectTimer(key: string) {
+    const timer = this.reconnectTimers.get(key);
+    if (timer) {
+      clearTimeout(timer);
+      this.reconnectTimers.delete(key);
+    }
   }
 }

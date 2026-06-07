@@ -12,6 +12,7 @@ import {
   Logger,
   UseGuards,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import type { RequestWithUser } from '../common/interfaces/request-with-user.interface';
@@ -96,20 +97,30 @@ export class ChatController {
     @Res() res: Response,
   ) {
     this.logger.log(`[completions] 用户 ${req.user.userId} 请求对话，model=${dto.model}, kb=${dto.knowledgeBaseId || 'none'}, mcp=${dto.mcpEnabled ?? false}`);
-    if (dto.tools && dto.tools.length > 0) {
-      this.logger.log(`[completions] tools 参数: ${JSON.stringify(dto.tools)}`);
-    }
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.status(HttpStatus.OK);
 
+    let clientDisconnected = false;
     let fullContent = '';
     let fullReasoning = '';
     const toolCallMap = new Map<string, any>();
     const annotationsSet = new Set<string>();
-    // MCP Agent 模式额外收集 tool 调用状态
     const mcpToolCalls: any[] = [];
+
+    // 监听客户端断开
+    req.on('close', () => {
+      clientDisconnected = true;
+      this.logger.debug(`[completions] 用户 ${req.user.userId} 客户端断开连接`);
+    });
+
+    // 心跳机制
+    const heartbeat = setInterval(() => {
+      if (!clientDisconnected) {
+        res.write(': heartbeat\n\n');
+      }
+    }, 30000);
 
     try {
       const useAgent = dto.mcpEnabled === true;
@@ -127,7 +138,8 @@ export class ChatController {
         : this.chatService.streamChatCompletion(req.user.userId, dto);
 
       for await (const chunk of stream) {
-        // MCP Agent 特殊 chunk 类型
+        if (clientDisconnected) break;
+
         if (chunk.type === 'tool_call_start') {
           mcpToolCalls.push({ phase: 'start', ...chunk });
           res.write(`data: ${JSON.stringify(chunk)}\n\n`);
@@ -155,17 +167,23 @@ export class ChatController {
           for (const anno of chunk.annotations) {
             annotationsSet.add(JSON.stringify(anno));
           }
-          this.logger.debug(`[completions] 收到 ${chunk.annotations.length} 条 annotations`);
         }
         res.write(`data: ${JSON.stringify(chunk)}\n\n`);
       }
-      res.write('data: [DONE]\n\n');
-      this.logger.log(`[completions] 用户 ${req.user.userId} 对话完成`);
+
+      if (!clientDisconnected) {
+        res.write('data: [DONE]\n\n');
+        this.logger.log(`[completions] 用户 ${req.user.userId} 对话完成`);
+      }
     } catch (err) {
       this.logger.error(`[completions] 错误: ${(err as Error).message}`);
-      res.write(`data: ${JSON.stringify({ error: (err as Error).message })}\n\n`);
+      if (!clientDisconnected) {
+        const errorMsg = err instanceof BadRequestException ? (err as Error).message : '对话请求处理失败，请稍后重试';
+        res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
+      }
     } finally {
-      if (dto.conversationId && (fullContent || fullReasoning)) {
+      clearInterval(heartbeat);
+      if (!clientDisconnected && dto.conversationId && (fullContent || fullReasoning)) {
         try {
           const lastUserMessage = dto.messages[dto.messages.length - 1];
           const fullToolCalls = Array.from(toolCallMap.values());
@@ -185,7 +203,9 @@ export class ChatController {
           this.logger.error(`[completions] 保存消息失败: ${(saveErr as Error).message}`);
         }
       }
-      res.end();
+      if (!clientDisconnected) {
+        res.end();
+      }
     }
   }
 }

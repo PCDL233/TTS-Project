@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 'typeorm';
 
 export interface MessagePart {
   type: 'text' | 'image_url' | 'input_audio' | 'video_url';
@@ -13,6 +13,7 @@ export class ChatMessage {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Index()
   @Column({ nullable: true })
   conversationId: number;
 

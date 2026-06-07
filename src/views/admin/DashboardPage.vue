@@ -43,11 +43,11 @@
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <h3 class="text-sm font-semibold text-gray-700">趋势统计（近30天）</h3>
                     <el-radio-group v-model="activeTrend" size="small">
-                        <el-radio-button label="user">用户注册</el-radio-button>
-                        <el-radio-button label="tts">TTS 生成</el-radio-button>
-                        <el-radio-button label="login">登录活跃</el-radio-button>
-                        <el-radio-button label="conversation">会话创建</el-radio-button>
-                        <el-radio-button label="message">消息量</el-radio-button>
+                        <el-radio-button value="user">用户注册</el-radio-button>
+                        <el-radio-button value="tts">TTS 生成</el-radio-button>
+                        <el-radio-button value="login">登录活跃</el-radio-button>
+                        <el-radio-button value="conversation">会话创建</el-radio-button>
+                        <el-radio-button value="message">消息量</el-radio-button>
                     </el-radio-group>
                 </div>
                 <div class="h-80 w-full">
@@ -61,11 +61,11 @@
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <h3 class="text-sm font-semibold text-gray-700">分布统计</h3>
                     <el-radio-group v-model="activeDistribution" size="small">
-                        <el-radio-button label="role">用户角色</el-radio-button>
-                        <el-radio-button label="ttsMode">TTS 模式</el-radio-button>
-                        <el-radio-button label="chatModel">模型使用</el-radio-button>
-                        <el-radio-button label="chatFeature">功能使用</el-radio-button>
-                        <el-radio-button label="chatRole">消息角色</el-radio-button>
+                        <el-radio-button value="role">用户角色</el-radio-button>
+                        <el-radio-button value="ttsMode">TTS 模式</el-radio-button>
+                        <el-radio-button value="chatModel">模型使用</el-radio-button>
+                        <el-radio-button value="chatFeature">功能使用</el-radio-button>
+                        <el-radio-button value="chatRole">消息角色</el-radio-button>
                     </el-radio-group>
                 </div>
                 <div class="h-80 w-full">

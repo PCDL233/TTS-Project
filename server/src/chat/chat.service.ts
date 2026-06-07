@@ -231,7 +231,7 @@ export class ChatService {
     const { baseUrl, headers, body } = await this.buildApiRequest(userId, dto);
     body.stream = false;
 
-    this.logger.debug(`[callChatCompletion] 非流式请求 tools: ${JSON.stringify(body.tools || 'none')}`);
+    this.logger.debug(`[callChatCompletion] 非流式请求 tools 数量: ${body.tools?.length ?? 0}`);
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
@@ -279,7 +279,7 @@ export class ChatService {
     const { baseUrl, headers, body } = await this.buildApiRequest(userId, dto);
     body.stream = true;
 
-    this.logger.debug(`[streamChatCompletion] 请求体 tools: ${JSON.stringify(body.tools || 'none')}`);
+    this.logger.debug(`[streamChatCompletion] 请求体 tools 数量: ${body.tools?.length ?? 0}`);
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',

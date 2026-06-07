@@ -1,10 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, Index } from 'typeorm';
 
 @Entity()
 export class History {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Index()
   @Column({ nullable: true })
   userId: number;
 

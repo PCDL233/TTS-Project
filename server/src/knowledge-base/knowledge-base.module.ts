@@ -9,11 +9,12 @@ import { KnowledgeBaseController } from './knowledge-base.controller';
 import { VectorDbService } from './vector-db.service';
 import { EmbeddingService } from './embedding.service';
 import { DocumentProcessingService } from './document-processing.service';
+import { KnowledgeBaseStatsService } from './knowledge-base-stats.service';
 import { RagService } from './rag.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([KnowledgeBase, KnowledgeDocument, KnowledgeChunk]), ConfigModule],
-  providers: [KnowledgeBaseService, VectorDbService, EmbeddingService, DocumentProcessingService, RagService],
+  providers: [KnowledgeBaseService, VectorDbService, EmbeddingService, DocumentProcessingService, KnowledgeBaseStatsService, RagService],
   controllers: [KnowledgeBaseController],
   exports: [KnowledgeBaseService, RagService],
 })

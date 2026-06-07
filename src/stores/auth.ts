@@ -33,7 +33,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function login(username: string, password: string) {
-    const encrypted = aesEncrypt(JSON.stringify({ username, password }))
+    const encrypted = await aesEncrypt(JSON.stringify({ username, password }))
     const res = await client.post('/auth/login', { data: encrypted })
     token.value = res.data.token
     user.value = res.data.user
@@ -42,20 +42,20 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function register(username: string, password: string) {
-    const encrypted = aesEncrypt(JSON.stringify({ username, password }))
+    const encrypted = await aesEncrypt(JSON.stringify({ username, password }))
     const res = await client.post('/auth/register', { data: encrypted })
     return res.data
   }
 
   async function updateProfile(data: Partial<Pick<User, 'nickname' | 'email' | 'phone' | 'avatar'>>) {
-    const encrypted = aesEncrypt(JSON.stringify(data))
+    const encrypted = await aesEncrypt(JSON.stringify(data))
     const res = await client.put('/auth/profile', { data: encrypted })
     user.value = res.data
     return res.data
   }
 
   async function changePassword(oldPassword: string, newPassword: string) {
-    const encrypted = aesEncrypt(JSON.stringify({ oldPassword, newPassword }))
+    const encrypted = await aesEncrypt(JSON.stringify({ oldPassword, newPassword }))
     const res = await client.put('/auth/password', { data: encrypted })
     return res.data
   }

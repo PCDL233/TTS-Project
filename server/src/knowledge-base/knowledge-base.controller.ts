@@ -101,8 +101,8 @@ export class KnowledgeBaseController {
   }
 
   @Get(':id/documents')
-  async getDocuments(@Param('id') id: string) {
-    return this.kbService.getDocuments(Number(id));
+  async getDocuments(@Req() req: RequestWithUser, @Param('id') id: string) {
+    return this.kbService.getDocuments(req.user.userId, Number(id));
   }
 
   @Delete(':id/documents/:docId')
@@ -116,14 +116,14 @@ export class KnowledgeBaseController {
   }
 
   @Get(':id/documents/:docId/status')
-  async getDocumentStatus(@Param('id') id: string, @Param('docId') docId: string) {
-    const doc = await this.kbService.getDocumentStatus(Number(id), Number(docId));
+  async getDocumentStatus(@Req() req: RequestWithUser, @Param('id') id: string, @Param('docId') docId: string) {
+    const doc = await this.kbService.getDocumentStatus(req.user.userId, Number(id), Number(docId));
     if (!doc) throw new BadRequestException('文档不存在');
     return doc;
   }
 
   @Get(':id/documents/:docId/chunks')
-  async getChunks(@Param('id') id: string, @Param('docId') docId: string) {
-    return this.kbService.getChunks(Number(id), Number(docId));
+  async getChunks(@Req() req: RequestWithUser, @Param('id') id: string, @Param('docId') docId: string) {
+    return this.kbService.getChunks(req.user.userId, Number(id), Number(docId));
   }
 }

@@ -32,13 +32,13 @@
       <div>
         <label class="text-sm font-medium text-gray-700 mb-2 block">合成模式</label>
         <el-radio-group v-model="configStore.config.mode" size="default" class="w-full mode-radio-group" @change="onModeChange">
-          <el-radio-button label="preset">
+          <el-radio-button value="preset">
             <el-icon><headset /></el-icon> 预置音色
           </el-radio-button>
-          <el-radio-button label="design">
+          <el-radio-button value="design">
             <el-icon><magic-stick /></el-icon> 音色设计
           </el-radio-button>
-          <el-radio-button label="clone">
+          <el-radio-button value="clone">
             <el-icon><copy-document /></el-icon> 音色复刻
           </el-radio-button>
         </el-radio-group>
@@ -91,8 +91,8 @@
       <div>
         <label class="text-sm font-medium text-gray-700 mb-2 block">风格控制方式</label>
         <el-radio-group v-model="configStore.config.styleMode" size="default" @change="onStyleModeChange">
-          <el-radio-button label="natural">自然语言</el-radio-button>
-          <el-radio-button label="tag">音频标签</el-radio-button>
+          <el-radio-button value="natural">自然语言</el-radio-button>
+          <el-radio-button value="tag">音频标签</el-radio-button>
         </el-radio-group>
       </div>
 
@@ -159,9 +159,9 @@
               <div>
                 <label class="text-sm text-gray-600 mb-2 block">音频格式</label>
                 <el-radio-group v-model="configStore.config.audioFormat" size="small">
-                  <el-radio-button label="wav">WAV</el-radio-button>
-                  <el-radio-button label="pcm16">PCM16</el-radio-button>
-                  <el-radio-button label="mp3">MP3</el-radio-button>
+                  <el-radio-button value="wav">WAV</el-radio-button>
+                  <el-radio-button value="pcm16">PCM16</el-radio-button>
+                  <el-radio-button value="mp3">MP3</el-radio-button>
                 </el-radio-group>
               </div>
             </div>

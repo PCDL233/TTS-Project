@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { KnowledgeDocument } from './knowledge-document.entity';
 
@@ -13,6 +14,7 @@ export class KnowledgeChunk {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Index()
   @Column()
   documentId: number;
 
@@ -20,6 +22,7 @@ export class KnowledgeChunk {
   @JoinColumn({ name: 'documentId' })
   document: KnowledgeDocument;
 
+  @Index()
   @Column()
   knowledgeBaseId: number;
 

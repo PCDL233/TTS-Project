@@ -50,7 +50,7 @@ export class TtsController {
       this.logger.log(`[generate-stream] 完成，共 ${chunkCount} 个音频块`);
     } catch (err) {
       this.logger.error(`[generate-stream] 错误: ${(err as Error).message}`);
-      res.write(`data: ${JSON.stringify({ error: (err as Error).message })}\n\n`);
+      res.write(`data: ${JSON.stringify({ error: '语音合成失败，请稍后重试' })}\n\n`);
     } finally {
       res.end();
     }

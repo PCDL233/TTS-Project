@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { User } from '../user/user.entity';
 
 @Entity()
@@ -6,6 +6,7 @@ export class ChatConversation {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Index()
   @Column({ nullable: true })
   userId: number;
 
@@ -29,6 +30,7 @@ export class ChatConversation {
   @CreateDateColumn({ type: 'datetime' })
   createdAt: Date;
 
+  @Index()
   @Column({ nullable: true })
   knowledgeBaseId: number;
 

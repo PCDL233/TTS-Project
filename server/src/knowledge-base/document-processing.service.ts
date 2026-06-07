@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { readFileSync, unlinkSync } from 'fs';
+import { readFile, unlink } from 'fs/promises';
 import { resolve } from 'path';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { KnowledgeDocument } from './knowledge-document.entity';
@@ -9,6 +9,7 @@ import { KnowledgeChunk } from './knowledge-chunk.entity';
 import { KnowledgeBase } from './knowledge-base.entity';
 import { EmbeddingService } from './embedding.service';
 import { VectorDbService } from './vector-db.service';
+import { KnowledgeBaseStatsService } from './knowledge-base-stats.service';
 
 @Injectable()
 export class DocumentProcessingService {
@@ -23,6 +24,7 @@ export class DocumentProcessingService {
     private knowledgeBaseRepository: Repository<KnowledgeBase>,
     private readonly embeddingService: EmbeddingService,
     private readonly vectorDbService: VectorDbService,
+    private readonly statsService: KnowledgeBaseStatsService,
   ) {}
 
   async processDocument(
@@ -96,7 +98,7 @@ export class DocumentProcessingService {
       });
 
       // 7. 更新 knowledgeBase 统计
-      await this.updateKnowledgeBaseStats(knowledgeBaseId);
+      await this.statsService.updateStats(knowledgeBaseId);
 
       this.logger.log(`文档 ${documentId} 处理完成，共 ${savedChunks.length} 个 chunks`);
     } catch (err) {
@@ -106,14 +108,10 @@ export class DocumentProcessingService {
         errorMessage: (err as Error).message,
       });
       // 刷新知识库聚合状态，避免卡在"处理中"
-      await this.updateKnowledgeBaseStats(knowledgeBaseId);
+      await this.statsService.updateStats(knowledgeBaseId);
     } finally {
       // 清理临时文件
-      try {
-        unlinkSync(filePath);
-      } catch {
-        // ignore
-      }
+      await unlink(filePath).catch(() => {});
     }
   }
 
@@ -122,7 +120,7 @@ export class DocumentProcessingService {
 
     if (mimetype === 'application/pdf') {
       const { PDFParse } = await import('pdf-parse');
-      const buffer = readFileSync(fullPath);
+      const buffer = await readFile(fullPath);
       const parser = new PDFParse({ data: new Uint8Array(buffer) });
       const result = await parser.getText();
       await parser.destroy();
@@ -143,48 +141,33 @@ export class DocumentProcessingService {
       mimetype === 'application/vnd.ms-excel' ||
       mimetype === 'text/csv'
     ) {
-      const xlsx = await import('xlsx');
-      const workbook = xlsx.readFile(fullPath);
+      const ExcelJS = await import('exceljs');
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(fullPath);
       let text = '';
-      for (const sheetName of workbook.SheetNames) {
-        const sheet = workbook.Sheets[sheetName];
-        const jsonData = xlsx.utils.sheet_to_json(sheet, { header: 1 });
-        text += jsonData.map((row: any) => row.join('\t')).join('\n') + '\n';
-      }
+      workbook.eachSheet((sheet) => {
+        sheet.eachRow((row) => {
+          const values = row.values as unknown[];
+          const line = values
+            .slice(1)
+            .map((v) => (v != null ? String(v) : ''))
+            .join('\t');
+          text += line + '\n';
+        });
+      });
       return text;
     }
 
     if (mimetype.startsWith('text/')) {
-      return readFileSync(fullPath, 'utf-8');
+      return await readFile(fullPath, 'utf-8');
     }
 
     // 尝试作为文本读取
     try {
-      return readFileSync(fullPath, 'utf-8');
+      return await readFile(fullPath, 'utf-8');
     } catch {
       throw new Error(`不支持的文件类型: ${mimetype}`);
     }
   }
 
-  private async updateKnowledgeBaseStats(knowledgeBaseId: number): Promise<void> {
-    const documents = await this.documentRepository.find({
-      where: { knowledgeBaseId },
-    });
-    const totalChunks = documents.reduce((sum, d) => sum + d.chunkCount, 0);
-    const hasCompleted = documents.some((d) => d.status === 'completed');
-    const hasProcessing = documents.some((d) => d.status === 'processing');
-
-    let status: 'empty' | 'processing' | 'ready' = 'empty';
-    if (hasProcessing) {
-      status = 'processing';
-    } else if (hasCompleted) {
-      status = 'ready';
-    }
-
-    await this.knowledgeBaseRepository.update(knowledgeBaseId, {
-      documentCount: documents.length,
-      chunkCount: totalChunks,
-      status,
-    });
-  }
 }
