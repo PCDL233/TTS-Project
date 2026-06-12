@@ -27,7 +27,14 @@ export class KnowledgeBaseController {
   @Post()
   async create(
     @Req() req: RequestWithUser,
-    @Body() body: { name: string; description?: string; embeddingModel?: string },
+    @Body() body: {
+      name: string;
+      description?: string;
+      embeddingModel?: string;
+      chunkSize?: number;
+      chunkOverlap?: number;
+      embeddingBatchSize?: number;
+    },
   ) {
     if (!body.name || body.name.trim().length === 0) {
       throw new BadRequestException('知识库名称不能为空');
@@ -50,6 +57,19 @@ export class KnowledgeBaseController {
       throw new BadRequestException('嵌入模型名称不能为空');
     }
     return this.kbService.switchModel(req.user.userId, Number(id), body.embeddingModel);
+  }
+
+  @Put(':id/settings')
+  async updateSettings(
+    @Req() req: RequestWithUser,
+    @Param('id') id: string,
+    @Body() body: {
+      chunkSize?: number;
+      chunkOverlap?: number;
+      embeddingBatchSize?: number;
+    },
+  ) {
+    return this.kbService.updateSettings(req.user.userId, Number(id), body);
   }
 
   @Get()

@@ -33,6 +33,9 @@ export class DocumentProcessingService {
     documentId: number,
     knowledgeBaseId: number,
     modelName: string,
+    chunkSize: number = 500,
+    chunkOverlap: number = 100,
+    embeddingBatchSize: number = 8,
   ): Promise<void> {
     this.logger.log(`开始处理文档 ${documentId}: ${filePath}`);
 
@@ -48,8 +51,8 @@ export class DocumentProcessingService {
 
       // 2. 分块
       const splitter = new RecursiveCharacterTextSplitter({
-        chunkSize: 500,
-        chunkOverlap: 100,
+        chunkSize,
+        chunkOverlap,
       });
       const docs = await splitter.createDocuments([text]);
 
@@ -86,6 +89,7 @@ export class DocumentProcessingService {
       const embeddings = await this.embeddingService.embedBatch(
         savedChunks.map((c) => c.content),
         modelName,
+        embeddingBatchSize,
       );
 
       // 5. 存储向量

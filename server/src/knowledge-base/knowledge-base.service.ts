@@ -35,7 +35,14 @@ export class KnowledgeBaseService {
 
   async create(
     userId: number,
-    data: { name: string; description?: string; embeddingModel?: string },
+    data: {
+      name: string;
+      description?: string;
+      embeddingModel?: string;
+      chunkSize?: number;
+      chunkOverlap?: number;
+      embeddingBatchSize?: number;
+    },
   ): Promise<KnowledgeBase> {
     const modelName = data.embeddingModel || 'Xenova/all-MiniLM-L6-v2';
     const dimension = EmbeddingService.getModelDimension(modelName);
@@ -45,6 +52,9 @@ export class KnowledgeBaseService {
       name: data.name,
       description: data.description || '',
       embeddingModel: modelName,
+      chunkSize: data.chunkSize ?? 500,
+      chunkOverlap: data.chunkOverlap ?? 100,
+      embeddingBatchSize: data.embeddingBatchSize ?? 8,
     });
     const saved = await this.kbRepository.save(kb);
     this.vectorDbService.createTable(saved.id, dimension);
@@ -97,6 +107,66 @@ export class KnowledgeBaseService {
     await this.statsService.updateStats(knowledgeBaseId);
 
     return (await this.findOne(userId, knowledgeBaseId))!;
+  }
+
+  async updateSettings(
+    userId: number,
+    knowledgeBaseId: number,
+    data: {
+      chunkSize?: number;
+      chunkOverlap?: number;
+      embeddingBatchSize?: number;
+    },
+  ): Promise<KnowledgeBase & { reprocessRequired: boolean }> {
+    const kb = await this.findOne(userId, knowledgeBaseId);
+
+    const updates: Partial<KnowledgeBase> = {};
+    let reprocessRequired = false;
+
+    if (data.chunkSize !== undefined && data.chunkSize !== kb.chunkSize) {
+      updates.chunkSize = data.chunkSize;
+      reprocessRequired = true;
+    }
+    if (data.chunkOverlap !== undefined && data.chunkOverlap !== kb.chunkOverlap) {
+      updates.chunkOverlap = data.chunkOverlap;
+      reprocessRequired = true;
+    }
+    if (data.embeddingBatchSize !== undefined && data.embeddingBatchSize !== kb.embeddingBatchSize) {
+      updates.embeddingBatchSize = data.embeddingBatchSize;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return { ...kb, reprocessRequired: false };
+    }
+
+    await this.kbRepository.update(knowledgeBaseId, updates);
+
+    if (reprocessRequired) {
+      const documents = await this.documentRepository.find({
+        where: { knowledgeBaseId },
+      });
+      const completedDocs = documents.filter((d) => d.status === 'completed');
+
+      this.vectorDbService.dropTable(knowledgeBaseId);
+      await this.chunkRepository.delete({ knowledgeBaseId });
+
+      const dimension = EmbeddingService.getModelDimension(kb.embeddingModel);
+      this.vectorDbService.createTable(knowledgeBaseId, dimension);
+
+      await this.kbRepository.update(knowledgeBaseId, { status: 'processing' });
+
+      for (const doc of completedDocs) {
+        await this.documentRepository.update(doc.id, {
+          status: 'pending',
+          chunkCount: 0,
+        });
+      }
+
+      await this.statsService.updateStats(knowledgeBaseId);
+    }
+
+    const updated = await this.findOne(userId, knowledgeBaseId);
+    return { ...updated!, reprocessRequired };
   }
 
   async findAll(userId: number): Promise<KnowledgeBase[]> {
@@ -161,7 +231,10 @@ export class KnowledgeBaseService {
 
     const filePath = join(KB_UPLOAD_DIR, file.filename);
     this.documentProcessingService
-      .processDocument(filePath, file.mimetype, saved.id, knowledgeBaseId, kb.embeddingModel)
+      .processDocument(
+        filePath, file.mimetype, saved.id, knowledgeBaseId,
+        kb.embeddingModel, kb.chunkSize, kb.chunkOverlap, kb.embeddingBatchSize,
+      )
       .catch((err) => {
         this.logger.error(`文档异步处理异常: ${(err as Error).message}`);
       });
