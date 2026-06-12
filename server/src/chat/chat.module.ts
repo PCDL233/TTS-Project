@@ -11,9 +11,10 @@ import { KnowledgeBaseModule } from '../knowledge-base/knowledge-base.module';
 import { McpModule } from '../mcp/mcp.module';
 import { McpServerConfig } from '../mcp/mcp-server-config.entity';
 import { AgentChatService } from './agent-chat.service';
+import { KnowledgeBase } from '../knowledge-base/knowledge-base.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ChatConversation, ChatMessage, McpServerConfig]), ConfigModule, ChatConfigModule, KnowledgeBaseModule, McpModule],
+  imports: [TypeOrmModule.forFeature([ChatConversation, ChatMessage, McpServerConfig, KnowledgeBase]), ConfigModule, ChatConfigModule, KnowledgeBaseModule, McpModule],
   providers: [ChatService, AgentChatService],
   controllers: [ChatController, ChatConfigPublicController],
 })

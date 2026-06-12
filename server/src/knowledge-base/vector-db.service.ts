@@ -7,7 +7,6 @@ import * as sqliteVec from 'sqlite-vec';
 export class VectorDbService implements OnModuleInit {
   private readonly logger = new Logger(VectorDbService.name);
   private db: any | null = null;
-  private readonly dimension = 384;
 
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
@@ -30,15 +29,15 @@ export class VectorDbService implements OnModuleInit {
     return `vec_kb_${knowledgeBaseId}`;
   }
 
-  createTable(knowledgeBaseId: number): void {
+  createTable(knowledgeBaseId: number, dimension: number): void {
     const tableName = this.getTableName(knowledgeBaseId);
     this.db!.exec(`
       CREATE VIRTUAL TABLE IF NOT EXISTS ${tableName} USING vec0(
         chunk_id INTEGER PRIMARY KEY,
-        embedding float[${this.dimension}]
+        embedding float[${dimension}]
       );
     `);
-    this.logger.log(`向量表 ${tableName} 创建成功`);
+    this.logger.log(`向量表 ${tableName} 创建成功 (维度: ${dimension})`);
   }
 
   dropTable(knowledgeBaseId: number): void {

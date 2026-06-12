@@ -59,6 +59,12 @@
                             <div>
                                 <h2 class="text-lg font-semibold">{{ selectedKb.name }}</h2>
                                 <p class="text-sm text-gray-500 mt-1">{{ selectedKb.description || '暂无描述' }}</p>
+                                <div class="flex items-center gap-2 mt-2">
+                                    <el-tag size="small" type="info">{{ selectedKb.embeddingModel }}</el-tag>
+                                    <el-button link type="primary" size="small" @click="openSwitchModelDialog">
+                                        切换模型
+                                    </el-button>
+                                </div>
                             </div>
                             <el-button type="danger" plain size="small" @click="handleDeleteKb(selectedKb.id)">
                                 <el-icon class="mr-1"><delete /></el-icon>
@@ -140,10 +146,49 @@
                 <el-form-item label="描述">
                     <el-input v-model="createForm.description" type="textarea" :rows="3" placeholder="可选，描述知识库用途" />
                 </el-form-item>
+                <el-form-item label="嵌入模型">
+                    <el-select v-model="createForm.embeddingModel" class="w-full!">
+                        <el-option
+                            v-for="model in availableModels"
+                            :key="model.name"
+                            :label="`${model.name} (${model.dimension}维)`"
+                            :value="model.name"
+                        />
+                    </el-select>
+                </el-form-item>
             </el-form>
             <template #footer>
                 <el-button @click="showCreateDialog = false">取消</el-button>
                 <el-button type="primary" @click="handleCreate">创建</el-button>
+            </template>
+        </el-dialog>
+
+        <!-- 切换嵌入模型对话框 -->
+        <el-dialog v-model="showSwitchModelDialog" title="切换嵌入模型" width="480px">
+            <el-alert
+                title="警告"
+                type="warning"
+                :closable="false"
+                show-icon
+                class="mb-4"
+            >
+                切换模型将删除现有向量数据并重新处理所有文档，此操作不可撤销。
+            </el-alert>
+            <el-form label-width="80px">
+                <el-form-item label="新模型">
+                    <el-select v-model="switchModelForm.embeddingModel" class="w-full!">
+                        <el-option
+                            v-for="model in availableModels"
+                            :key="model.name"
+                            :label="`${model.name} (${model.dimension}维)`"
+                            :value="model.name"
+                        />
+                    </el-select>
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <el-button @click="showSwitchModelDialog = false">取消</el-button>
+                <el-button type="primary" @click="handleSwitchModel">确认切换</el-button>
             </template>
         </el-dialog>
 
@@ -193,7 +238,9 @@ import { usePageData } from '../composables/usePageData'
 import {
     createKnowledgeBase, fetchKnowledgeBases, deleteKnowledgeBase,
     uploadDocument, fetchDocuments, deleteDocument, getDocumentStatus, fetchChunks,
+    fetchEmbeddingModels, switchEmbeddingModel,
     type KnowledgeBase, type KnowledgeDocument, type KnowledgeChunk,
+    type EmbeddingModel,
 } from '../api/knowledge-base'
 
 const {
@@ -207,13 +254,16 @@ const knowledgeBases = computed<KnowledgeBase[]>(() => kbData.value || [])
 const selectedKb = ref<KnowledgeBase | null>(null)
 const documents = ref<KnowledgeDocument[]>([])
 const showCreateDialog = ref(false)
-const createForm = ref({ name: '', description: '' })
+const createForm = ref({ name: '', description: '', embeddingModel: '' })
 const fileInput = ref<HTMLInputElement | null>(null)
 const statusPollingTimers = ref<Map<number, number>>(new Map())
 const showChunksDrawer = ref(false)
 const chunksLoading = ref(false)
 const chunksDoc = ref<KnowledgeDocument | null>(null)
 const chunks = ref<KnowledgeChunk[]>([])
+const availableModels = ref<EmbeddingModel[]>([])
+const showSwitchModelDialog = ref(false)
+const switchModelForm = ref({ embeddingModel: '' })
 
 function statusType(status: string) {
     const map: Record<string, string> = { empty: 'info', processing: 'warning', ready: 'success' }
@@ -299,7 +349,7 @@ async function handleCreate() {
         await createKnowledgeBase(createForm.value)
         ElMessage.success('知识库创建成功')
         showCreateDialog.value = false
-        createForm.value = { name: '', description: '' }
+        createForm.value = { name: '', description: '', embeddingModel: availableModels.value[0]?.name || '' }
         await loadKnowledgeBases()
     } catch (err: any) {
         ElMessage.error(err.response?.data?.message || '创建失败')
@@ -372,6 +422,40 @@ async function handleViewChunks(doc: KnowledgeDocument) {
     }
 }
 
+async function loadModels() {
+    try {
+        availableModels.value = await fetchEmbeddingModels()
+        if (availableModels.value.length > 0 && !createForm.value.embeddingModel) {
+            createForm.value.embeddingModel = availableModels.value[0].name
+        }
+    } catch (err: any) {
+        ElMessage.error('加载嵌入模型列表失败')
+    }
+}
+
+function openSwitchModelDialog() {
+    switchModelForm.value.embeddingModel = selectedKb.value?.embeddingModel || ''
+    showSwitchModelDialog.value = true
+}
+
+async function handleSwitchModel() {
+    if (!selectedKb.value || !switchModelForm.value.embeddingModel) return
+    if (switchModelForm.value.embeddingModel === selectedKb.value.embeddingModel) {
+        ElMessage.warning('新模型与当前模型相同')
+        return
+    }
+    try {
+        const updated = await switchEmbeddingModel(selectedKb.value.id, switchModelForm.value.embeddingModel)
+        selectedKb.value = updated
+        showSwitchModelDialog.value = false
+        ElMessage.success('模型已切换，文档将重新处理')
+        await loadDocuments()
+        await loadKnowledgeBases()
+    } catch (err: any) {
+        ElMessage.error(err.response?.data?.message || '切换模型失败')
+    }
+}
+
 async function handleDeleteDoc(docId: number) {
     if (!selectedKb.value) return
     try {
@@ -390,6 +474,7 @@ async function handleDeleteDoc(docId: number) {
 }
 
 onMounted(() => {
+    loadModels()
     loadKnowledgeBases()
 })
 

@@ -40,6 +40,9 @@ export class KnowledgeBase {
   @Column({ type: 'varchar', default: 'empty' })
   status: KnowledgeBaseStatus;
 
+  @Column({ type: 'varchar', default: 'Xenova/all-MiniLM-L6-v2' })
+  embeddingModel: string;
+
   @OneToMany(() => KnowledgeDocument, (doc) => doc.knowledgeBase, { cascade: true })
   documents: KnowledgeDocument[];
 

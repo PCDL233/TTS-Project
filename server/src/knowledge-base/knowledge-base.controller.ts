@@ -1,16 +1,6 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Delete,
-  Body,
-  Param,
-  Req,
-  UseGuards,
-  UseInterceptors,
-  UploadedFile,
-  BadRequestException,
-  Logger,
+  Controller, Get, Post, Put, Delete, Body, Param, Req,
+  UseGuards, UseInterceptors, UploadedFile, BadRequestException, Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -19,6 +9,7 @@ import { existsSync, mkdirSync } from 'fs';
 import { KnowledgeBaseService } from './knowledge-base.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { RequestWithUser } from '../common/interfaces/request-with-user.interface';
+import { EmbeddingService } from './embedding.service';
 
 const KB_UPLOAD_DIR = './public/uploads/knowledge-base';
 
@@ -36,12 +27,29 @@ export class KnowledgeBaseController {
   @Post()
   async create(
     @Req() req: RequestWithUser,
-    @Body() body: { name: string; description?: string },
+    @Body() body: { name: string; description?: string; embeddingModel?: string },
   ) {
     if (!body.name || body.name.trim().length === 0) {
       throw new BadRequestException('知识库名称不能为空');
     }
     return this.kbService.create(req.user.userId, body);
+  }
+
+  @Get('models')
+  getModels() {
+    return EmbeddingService.getSupportedModels();
+  }
+
+  @Put(':id/model')
+  async switchModel(
+    @Req() req: RequestWithUser,
+    @Param('id') id: string,
+    @Body() body: { embeddingModel: string },
+  ) {
+    if (!body.embeddingModel) {
+      throw new BadRequestException('嵌入模型名称不能为空');
+    }
+    return this.kbService.switchModel(req.user.userId, Number(id), body.embeddingModel);
   }
 
   @Get()

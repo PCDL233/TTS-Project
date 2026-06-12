@@ -1,45 +1,72 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { pipeline, FeatureExtractionPipeline, env } from '@huggingface/transformers';
 
+const EMBEDDING_MODEL_CONFIG: Record<string, number> = {
+  'Xenova/all-MiniLM-L6-v2': 384,
+  'Xenova/all-mpnet-base-v2': 768,
+  'Xenova/bge-small-en-v1.5': 384,
+  'Xenova/gte-small': 384,
+  'Xenova/multilingual-e5-small': 384,
+};
+
 @Injectable()
-export class EmbeddingService implements OnModuleInit {
+export class EmbeddingService {
   private readonly logger = new Logger(EmbeddingService.name);
-  private embedder: FeatureExtractionPipeline | null = null;
-  private readonly modelName = 'Xenova/all-MiniLM-L6-v2';
-  private loadingPromise: Promise<void> | null = null;
+  private readonly pipelines = new Map<string, FeatureExtractionPipeline>();
+  private readonly loadingPromises = new Map<string, Promise<void>>();
+  private initialized = false;
 
-  async onModuleInit() {
-    // 配置 transformers.js 使用项目内的缓存目录和可选的镜像
-    env.cacheDir = process.env.TRANSFORMERS_CACHE || './models/transformers';
-    if (process.env.HF_ENDPOINT) {
-      // 确保 remoteHost 以 / 结尾，否则 URL 拼接会出错
-      let endpoint = process.env.HF_ENDPOINT.trim();
-      if (!endpoint.endsWith('/')) {
-        endpoint += '/';
-      }
-      env.remoteHost = endpoint;
-    }
-
-    this.logger.log(`正在加载 Embedding 模型: ${this.modelName}...`);
-    this.logger.log(`模型缓存目录: ${env.cacheDir}`);
-    this.logger.log(`模型下载地址: ${env.remoteHost || 'https://huggingface.co/ (默认)'}`);
-
-    // 异步加载，不阻塞应用启动
-    this.loadingPromise = this.loadModelWithRetry();
-    this.loadingPromise.catch((err) => {
-      this.logger.error(`Embedding 模型加载失败: ${(err as Error).message}`);
-      this.logger.warn('知识库文档处理和 RAG 检索功能暂时不可用。');
-      this.logger.warn('解决建议：');
-      this.logger.warn('  1) 设置环境变量 HF_ENDPOINT=https://hf-mirror.com/ 后重启服务');
-      this.logger.warn('  2) 将模型预下载到缓存目录后设置 allowRemoteModels=false');
-      this.logger.warn('  3) 检查系统代理设置（HTTP_PROXY / HTTPS_PROXY）');
-    });
+  constructor() {
+    this.initConfig();
   }
 
-  private async loadModelWithRetry(maxRetries = 3): Promise<void> {
+  private initConfig() {
+    if (this.initialized) return;
+    env.cacheDir = process.env.TRANSFORMERS_CACHE || './models/transformers';
+    if (process.env.HF_ENDPOINT) {
+      let endpoint = process.env.HF_ENDPOINT.trim();
+      if (!endpoint.endsWith('/')) endpoint += '/';
+      env.remoteHost = endpoint;
+    }
+    this.initialized = true;
+    this.logger.log(`EmbeddingService 配置完成，缓存目录: ${env.cacheDir}`);
+  }
+
+  static getSupportedModels(): Array<{ name: string; dimension: number }> {
+    return Object.entries(EMBEDDING_MODEL_CONFIG).map(([name, dimension]) => ({ name, dimension }));
+  }
+
+  static getModelDimension(modelName: string): number {
+    const dim = EMBEDDING_MODEL_CONFIG[modelName];
+    if (!dim) throw new Error(`不支持的嵌入模型: ${modelName}`);
+    return dim;
+  }
+
+  private async loadModel(modelName: string): Promise<FeatureExtractionPipeline> {
+    const existing = this.pipelines.get(modelName);
+    if (existing) return existing;
+
+    const loadingPromise = this.loadingPromises.get(modelName);
+    if (loadingPromise) {
+      await loadingPromise;
+      return this.pipelines.get(modelName)!;
+    }
+
+    const promise = this.loadModelWithRetry(modelName);
+    this.loadingPromises.set(modelName, promise);
+
+    try {
+      await promise;
+    } catch (err) {
+      this.loadingPromises.delete(modelName);
+      throw err;
+    }
+
+    return this.pipelines.get(modelName)!;
+  }
+
+  private async loadModelWithRetry(modelName: string, maxRetries = 3): Promise<void> {
     let lastError: Error | undefined;
-    // 如果没有配置 HF_ENDPOINT，失败时自动回退到国内镜像
-    // 默认源只重试 1 次，失败后立即切换到镜像
     const fallbackHosts: { host: string; retries: number }[] = process.env.HF_ENDPOINT
       ? [{ host: env.remoteHost, retries: maxRetries }]
       : [
@@ -49,60 +76,53 @@ export class EmbeddingService implements OnModuleInit {
 
     for (const { host, retries } of fallbackHosts) {
       env.remoteHost = host;
-      this.logger.log(`当前使用模型源: ${host}`);
+      this.logger.log(`加载模型 ${modelName}，源: ${host}`);
 
       for (let attempt = 1; attempt <= retries; attempt++) {
         try {
-          this.logger.log(`模型加载尝试 ${attempt}/${retries} (源: ${host})...`);
-          this.embedder = await pipeline('feature-extraction', this.modelName);
-          this.logger.log('Embedding 模型加载完成');
+          this.logger.log(`模型 ${modelName} 加载尝试 ${attempt}/${retries}...`);
+          const pipeline_ = await pipeline('feature-extraction', modelName);
+          this.pipelines.set(modelName, pipeline_);
+          this.logger.log(`模型 ${modelName} 加载完成`);
           return;
         } catch (err) {
           lastError = err as Error;
-          // 打印更详细的错误信息（包括 fetch 的 cause）
           const cause = (err as any).cause;
           const detail = cause ? ` (cause: ${cause.message || cause})` : '';
           this.logger.error(
-            `模型加载尝试 ${attempt}/${retries} 失败: ${lastError.message}${detail}`,
+            `模型 ${modelName} 加载尝试 ${attempt}/${retries} 失败: ${lastError.message}${detail}`,
           );
           if (attempt < retries) {
             const delay = attempt * 2000;
-            this.logger.log(`${delay}ms 后进行下一次重试...`);
+            this.logger.log(`${delay}ms 后重试...`);
             await new Promise((r) => setTimeout(r, delay));
           }
         }
       }
     }
-    throw lastError;
+    throw lastError || new Error(`加载模型 ${modelName} 失败`);
   }
 
-  private async ensureLoaded(): Promise<void> {
-    if (this.embedder) return;
-    if (this.loadingPromise) {
-      await this.loadingPromise;
-    }
-    if (!this.embedder) {
-      throw new Error(
-        'Embedding 模型未加载。可能原因：1) 网络问题导致模型下载失败；' +
-        '2) 模型缓存目录不可写。建议设置 HF_ENDPOINT=https://hf-mirror.com 或预下载模型到缓存目录。',
-      );
-    }
+  private async ensureModelLoaded(modelName: string): Promise<FeatureExtractionPipeline> {
+    const pipeline_ = this.pipelines.get(modelName);
+    if (pipeline_) return pipeline_;
+    return this.loadModel(modelName);
   }
 
-  async embed(text: string): Promise<Float32Array> {
-    await this.ensureLoaded();
-    const output = await this.embedder!(text, { pooling: 'mean', normalize: true });
+  async embed(text: string, modelName = 'Xenova/all-MiniLM-L6-v2'): Promise<Float32Array> {
+    const pipeline_ = await this.ensureModelLoaded(modelName);
+    const output = await pipeline_(text, { pooling: 'mean', normalize: true });
     return new Float32Array(output.data as number[]);
   }
 
-  async embedBatch(texts: string[], batchSize = 8): Promise<Float32Array[]> {
-    await this.ensureLoaded();
+  async embedBatch(texts: string[], modelName = 'Xenova/all-MiniLM-L6-v2', batchSize = 8): Promise<Float32Array[]> {
+    const pipeline_ = await this.ensureModelLoaded(modelName);
     const results: Float32Array[] = [];
     for (let i = 0; i < texts.length; i += batchSize) {
       const batch = texts.slice(i, i + batchSize);
       const batchResults = await Promise.all(
         batch.map(async (text) => {
-          const output = await this.embedder!(text, { pooling: 'mean', normalize: true });
+          const output = await pipeline_(text, { pooling: 'mean', normalize: true });
           return new Float32Array(output.data as number[]);
         }),
       );

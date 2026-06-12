@@ -21,11 +21,15 @@ export class RagService {
     query: string,
     knowledgeBaseId: number,
     topK: number = 5,
+    modelName?: string,
   ): Promise<string> {
     this.logger.log(`RAG 检索: knowledgeBaseId=${knowledgeBaseId}, query="${query.slice(0, 50)}..."`);
 
     // 1. 向量化 query
-    const queryEmbedding = await this.embeddingService.embed(query);
+    const queryEmbedding = await this.embeddingService.embed(
+      query,
+      modelName || 'Xenova/all-MiniLM-L6-v2',
+    );
 
     // 2. 搜索相似 chunks
     const results = this.vectorDbService.search(knowledgeBaseId, queryEmbedding, topK);

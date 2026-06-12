@@ -5,6 +5,7 @@ import { ChatConversation } from './chat-conversation.entity';
 import { ChatMessage } from './chat-message.entity';
 import { ConfigService } from '../config/config.service';
 import { RagService } from '../knowledge-base/rag.service';
+import { KnowledgeBase } from '../knowledge-base/knowledge-base.entity';
 
 @Injectable()
 export class ChatService {
@@ -15,6 +16,8 @@ export class ChatService {
     private conversationRepository: Repository<ChatConversation>,
     @InjectRepository(ChatMessage)
     private messageRepository: Repository<ChatMessage>,
+    @InjectRepository(KnowledgeBase)
+    private kbRepository: Repository<KnowledgeBase>,
     private readonly configService: ConfigService,
     private readonly ragService: RagService,
   ) {}
@@ -137,9 +140,12 @@ export class ChatService {
       try {
         const lastUserMessage = dto.messages.filter((m) => m.role === 'user').pop();
         if (lastUserMessage?.content) {
+          const kb = await this.kbRepository.findOne({ where: { id: dto.knowledgeBaseId } });
           const context = await this.ragService.retrieveContext(
             lastUserMessage.content,
             dto.knowledgeBaseId,
+            5,
+            kb?.embeddingModel,
           );
           if (context) {
             messages = this.ragService.buildAugmentedMessages(dto.messages, context);

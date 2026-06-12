@@ -32,6 +32,7 @@ export class DocumentProcessingService {
     mimetype: string,
     documentId: number,
     knowledgeBaseId: number,
+    modelName: string,
   ): Promise<void> {
     this.logger.log(`开始处理文档 ${documentId}: ${filePath}`);
 
@@ -84,6 +85,7 @@ export class DocumentProcessingService {
       // 4. 批量 Embedding
       const embeddings = await this.embeddingService.embedBatch(
         savedChunks.map((c) => c.content),
+        modelName,
       );
 
       // 5. 存储向量

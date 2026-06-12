@@ -8,6 +8,7 @@ export interface KnowledgeBase {
   documentCount: number
   chunkCount: number
   status: 'empty' | 'processing' | 'ready'
+  embeddingModel: string
   createdAt: string
   updatedAt: string
 }
@@ -35,9 +36,15 @@ export interface KnowledgeChunk {
   createdAt: string
 }
 
+export interface EmbeddingModel {
+  name: string
+  dimension: number
+}
+
 export async function createKnowledgeBase(data: {
   name: string
   description?: string
+  embeddingModel?: string
 }): Promise<KnowledgeBase> {
   const res = await client.post<KnowledgeBase>('/knowledge-base', data)
   return res.data
@@ -82,5 +89,15 @@ export async function getDocumentStatus(kbId: number, docId: number): Promise<Kn
 
 export async function fetchChunks(kbId: number, docId: number): Promise<KnowledgeChunk[]> {
   const res = await client.get<KnowledgeChunk[]>(`/knowledge-base/${kbId}/documents/${docId}/chunks`)
+  return res.data
+}
+
+export async function fetchEmbeddingModels(): Promise<EmbeddingModel[]> {
+  const res = await client.get<EmbeddingModel[]>('/knowledge-base/models')
+  return res.data
+}
+
+export async function switchEmbeddingModel(kbId: number, embeddingModel: string): Promise<KnowledgeBase> {
+  const res = await client.put<KnowledgeBase>(`/knowledge-base/${kbId}/model`, { embeddingModel })
   return res.data
 }

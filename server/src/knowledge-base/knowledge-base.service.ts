@@ -9,6 +9,7 @@ import { KnowledgeChunk } from './knowledge-chunk.entity';
 import { VectorDbService } from './vector-db.service';
 import { DocumentProcessingService } from './document-processing.service';
 import { KnowledgeBaseStatsService } from './knowledge-base-stats.service';
+import { EmbeddingService } from './embedding.service';
 
 const KB_UPLOAD_DIR = './public/uploads/knowledge-base';
 
@@ -32,18 +33,70 @@ export class KnowledgeBaseService {
     }
   }
 
-  // ========== 知识库 CRUD ==========
+  async create(
+    userId: number,
+    data: { name: string; description?: string; embeddingModel?: string },
+  ): Promise<KnowledgeBase> {
+    const modelName = data.embeddingModel || 'Xenova/all-MiniLM-L6-v2';
+    const dimension = EmbeddingService.getModelDimension(modelName);
 
-  async create(userId: number, data: { name: string; description?: string }): Promise<KnowledgeBase> {
     const kb = this.kbRepository.create({
       userId,
       name: data.name,
       description: data.description || '',
+      embeddingModel: modelName,
     });
     const saved = await this.kbRepository.save(kb);
-    // 创建向量表
-    this.vectorDbService.createTable(saved.id);
+    this.vectorDbService.createTable(saved.id, dimension);
     return saved;
+  }
+
+  async switchModel(
+    userId: number,
+    knowledgeBaseId: number,
+    newModel: string,
+  ): Promise<KnowledgeBase> {
+    const kb = await this.findOne(userId, knowledgeBaseId);
+
+    const dimension = EmbeddingService.getModelDimension(newModel);
+
+    const documents = await this.documentRepository.find({
+      where: { knowledgeBaseId },
+    });
+    const completedDocs = documents.filter((d) => d.status === 'completed');
+
+    if (completedDocs.length > 0) {
+      this.logger.log(
+        `知识库 ${knowledgeBaseId} 切换模型到 ${newModel}，将重新处理 ${completedDocs.length} 个已完成文档`,
+      );
+
+      this.vectorDbService.dropTable(knowledgeBaseId);
+      await this.chunkRepository.delete({ knowledgeBaseId });
+
+      this.vectorDbService.createTable(knowledgeBaseId, dimension);
+
+      await this.kbRepository.update(knowledgeBaseId, {
+        embeddingModel: newModel,
+        status: 'processing',
+      });
+
+      for (const doc of completedDocs) {
+        await this.documentRepository.update(doc.id, {
+          status: 'pending',
+          chunkCount: 0,
+        });
+      }
+    } else {
+      this.vectorDbService.dropTable(knowledgeBaseId);
+      this.vectorDbService.createTable(knowledgeBaseId, dimension);
+      await this.kbRepository.update(knowledgeBaseId, {
+        embeddingModel: newModel,
+      });
+    }
+
+    await this.statsService.updateStats(knowledgeBaseId);
+
+    return (await this.findOne(userId, knowledgeBaseId))!;
   }
 
   async findAll(userId: number): Promise<KnowledgeBase[]> {
@@ -68,10 +121,8 @@ export class KnowledgeBaseService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
-      // 删除向量表（非 SQL 操作）
       this.vectorDbService.dropTable(id);
 
-      // 删除关联数据
       await queryRunner.manager.delete(KnowledgeChunk, { knowledgeBaseId: id });
       await queryRunner.manager.delete(KnowledgeDocument, { knowledgeBaseId: id });
       await queryRunner.manager.delete(KnowledgeBase, { id });
@@ -87,16 +138,13 @@ export class KnowledgeBaseService {
     }
   }
 
-  // ========== 文档管理 ==========
-
   async uploadDocument(
     userId: number,
     knowledgeBaseId: number,
     file: Express.Multer.File,
   ): Promise<KnowledgeDocument> {
-    await this.findOne(userId, knowledgeBaseId);
+    const kb = await this.findOne(userId, knowledgeBaseId);
 
-    // Multer 对非 ASCII 文件名默认使用 latin1 编码，需要转回 utf8
     const decodedOriginalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
 
     const doc = this.documentRepository.create({
@@ -109,13 +157,11 @@ export class KnowledgeBaseService {
     });
     const saved = await this.documentRepository.save(doc);
 
-    // 更新知识库状态
     await this.kbRepository.update(knowledgeBaseId, { status: 'processing' });
 
-    // 异步处理文档
     const filePath = join(KB_UPLOAD_DIR, file.filename);
     this.documentProcessingService
-      .processDocument(filePath, file.mimetype, saved.id, knowledgeBaseId)
+      .processDocument(filePath, file.mimetype, saved.id, knowledgeBaseId, kb.embeddingModel)
       .catch((err) => {
         this.logger.error(`文档异步处理异常: ${(err as Error).message}`);
       });
@@ -143,13 +189,8 @@ export class KnowledgeBaseService {
     });
     if (!doc) throw new NotFoundException('文档不存在');
 
-    // 删除 chunks
     await this.chunkRepository.delete({ documentId });
-
-    // 删除文档记录
     await this.documentRepository.delete({ id: documentId });
-
-    // 更新知识库统计
     await this.statsService.updateStats(knowledgeBaseId);
 
     this.logger.log(`用户 ${userId} 从知识库 ${knowledgeBaseId} 删除文档 ${documentId}`);
@@ -166,12 +207,15 @@ export class KnowledgeBaseService {
     });
   }
 
-  async getChunks(userId: number, knowledgeBaseId: number, documentId: number): Promise<KnowledgeChunk[]> {
+  async getChunks(
+    userId: number,
+    knowledgeBaseId: number,
+    documentId: number,
+  ): Promise<KnowledgeChunk[]> {
     await this.findOne(userId, knowledgeBaseId);
     return this.chunkRepository.find({
       where: { knowledgeBaseId, documentId },
       order: { chunkIndex: 'ASC' },
     });
   }
-
 }
