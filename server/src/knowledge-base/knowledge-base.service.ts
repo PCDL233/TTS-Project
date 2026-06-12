@@ -96,6 +96,18 @@ export class KnowledgeBaseService {
           chunkCount: 0,
         });
       }
+
+      for (const doc of completedDocs) {
+        const filePath = join(KB_UPLOAD_DIR, doc.filename);
+        this.documentProcessingService
+          .processDocument(
+            filePath, doc.mimetype, doc.id, knowledgeBaseId,
+            newModel, kb.chunkSize, kb.chunkOverlap, kb.embeddingBatchSize,
+          )
+          .catch((err) => {
+            this.logger.error(`重新处理文档 ${doc.id} 失败: ${(err as Error).message}`);
+          });
+      }
     } else {
       this.vectorDbService.dropTable(knowledgeBaseId);
       this.vectorDbService.createTable(knowledgeBaseId, dimension);
@@ -160,6 +172,22 @@ export class KnowledgeBaseService {
           status: 'pending',
           chunkCount: 0,
         });
+      }
+
+      const newChunkSize = data.chunkSize ?? kb.chunkSize;
+      const newChunkOverlap = data.chunkOverlap ?? kb.chunkOverlap;
+      const newBatchSize = data.embeddingBatchSize ?? kb.embeddingBatchSize;
+
+      for (const doc of completedDocs) {
+        const filePath = join(KB_UPLOAD_DIR, doc.filename);
+        this.documentProcessingService
+          .processDocument(
+            filePath, doc.mimetype, doc.id, knowledgeBaseId,
+            kb.embeddingModel, newChunkSize, newChunkOverlap, newBatchSize,
+          )
+          .catch((err) => {
+            this.logger.error(`重新处理文档 ${doc.id} 失败: ${(err as Error).message}`);
+          });
       }
 
       await this.statsService.updateStats(knowledgeBaseId);
