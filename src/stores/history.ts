@@ -7,8 +7,10 @@ import { ElMessage } from 'element-plus'
 export const useHistoryStore = defineStore('history', () => {
   const items = ref<TTSHistoryItem[]>([])
   const loaded = ref(false)
+  const loading = ref(false)
 
   async function loadHistory(page = 1, pageSize = 50) {
+    loading.value = true
     try {
       const res = await client.get('/history', { params: { page, pageSize } })
       const data = res.data
@@ -28,6 +30,7 @@ export const useHistoryStore = defineStore('history', () => {
       ElMessage.error('加载历史记录失败')
     } finally {
       loaded.value = true
+      loading.value = false
     }
   }
 
@@ -65,6 +68,7 @@ export const useHistoryStore = defineStore('history', () => {
   return {
     items,
     loaded,
+    loading,
     loadHistory,
     addItem,
     removeItem,

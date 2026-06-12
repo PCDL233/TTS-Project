@@ -13,7 +13,7 @@
                 </aside>
 
                 <!-- 右侧主区 -->
-                <div class="flex-1 flex flex-col gap-4 min-w-0">
+                <div v-loading="pageLoading" class="flex-1 flex flex-col gap-4 min-w-0">
                     <!-- 文本输入 -->
                     <div
                         class="bg-white rounded-xl border border-gray-200 p-5 flex-1 min-h-0"
@@ -151,6 +151,7 @@ const {
 } = useTTS();
 
 const showHelp = ref(false);
+const pageLoading = ref(false);
 const textInputRef = ref<InstanceType<typeof TextInputArea>>();
 
 async function onGenerate(text: string) {
@@ -211,9 +212,16 @@ function onPlayHistory(item: TTSHistoryItem) {
     }
 }
 
-onMounted(() => {
-    configStore.loadConfig();
-    historyStore.loadHistory();
+onMounted(async () => {
+    pageLoading.value = true;
+    try {
+        await Promise.all([
+            configStore.loadConfig(),
+            historyStore.loadHistory(),
+        ]);
+    } finally {
+        pageLoading.value = false;
+    }
 });
 
 onUnmounted(() => {

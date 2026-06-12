@@ -10,7 +10,8 @@ export default defineConfig({
     host: true
   },
   build: {
-    chunkSizeWarningLimit: 500,
+    // element-plus / marked / echarts 等第三方库体积较大，已按库拆包，放宽警告阈值
+    chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
         manualChunks(id) {

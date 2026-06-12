@@ -12,7 +12,7 @@
         </div>
 
         <!-- 会话列表 -->
-        <div class="flex-1 overflow-y-auto px-2 pb-2 space-y-1">
+        <div v-loading="chatStore.conversationsLoading" class="flex-1 overflow-y-auto px-2 pb-2 space-y-1">
             <div
                 v-for="conv in chatStore.conversations"
                 :key="conv.id"
@@ -38,7 +38,7 @@
             </div>
 
             <div
-                v-if="chatStore.conversations.length === 0"
+                v-if="chatStore.conversations.length === 0 && !chatStore.conversationsLoading"
                 class="text-center text-gray-400 text-xs py-8"
             >
                 暂无历史对话

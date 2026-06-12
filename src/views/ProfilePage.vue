@@ -20,7 +20,7 @@
 
         <!-- 主内容 -->
         <main class="max-w-2xl mx-auto p-6">
-            <div class="bg-white rounded-xl border border-gray-200 p-8">
+            <div v-loading="pageLoading" class="bg-white rounded-xl border border-gray-200 p-8">
                 <h2 class="text-xl font-bold text-gray-800 mb-6">个人中心</h2>
 
                 <!-- 头像 -->
@@ -115,18 +115,31 @@ const form = ref({
 const saving = ref(false)
 const showPasswordDialog = ref(false)
 const changingPassword = ref(false)
+const pageLoading = ref(false)
 const passwordForm = ref({
     oldPassword: '',
     newPassword: '',
     confirmPassword: '',
 })
 
-onMounted(() => {
+function syncForm() {
     if (authStore.user) {
         form.value.username = authStore.user.username
         form.value.nickname = authStore.user.nickname || ''
         form.value.email = authStore.user.email || ''
         form.value.phone = authStore.user.phone || ''
+    }
+}
+
+onMounted(async () => {
+    pageLoading.value = true
+    try {
+        if (!authStore.user) {
+            await authStore.fetchUser()
+        }
+        syncForm()
+    } finally {
+        pageLoading.value = false
     }
 })
 

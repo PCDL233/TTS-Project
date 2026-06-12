@@ -119,7 +119,20 @@
       </div>
 
       <!-- 音频标签 -->
-      <div v-else>
+      <div v-else v-loading="tagsLoading">
+        <el-alert
+          v-if="tagsError"
+          :title="tagsError"
+          type="error"
+          show-icon
+          closable
+          class="mb-3"
+          @close="tagsError = ''"
+        >
+          <template #default>
+            <el-button link type="primary" size="small" @click="loadAudioTags">重试</el-button>
+          </template>
+        </el-alert>
         <label class="text-sm font-medium text-gray-700 mb-2 block">风格标签</label>
         <el-input
           v-model="configStore.config.styleText"
@@ -173,11 +186,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { Headset, MagicStick, CopyDocument } from '@element-plus/icons-vue'
 import { useConfigStore } from '../stores/config'
 import { PRESET_VOICES, MODEL_OPTIONS } from '../types/tts'
 import { adminApi } from '../api/admin'
+import { usePageData } from '../composables/usePageData'
 import AudioUploader from './AudioUploader.vue'
 
 interface AudioTag {
@@ -201,12 +215,20 @@ const GROUP_LABELS: Record<string, string> = {
 }
 
 const configStore = useConfigStore()
-const audioTags = ref<AudioTag[]>([])
+const {
+  data: audioTags,
+  loading: tagsLoading,
+  error: tagsError,
+  refresh: loadAudioTags,
+} = usePageData(async () => {
+  const res = await adminApi.getAudioTags({ page: 1, pageSize: 200 })
+  return res.data[0] as AudioTag[]
+}, { defaultErrorMessage: '加载音频标签失败' })
 
 /** 按 group 分组后的标签 */
 const tagGroups = computed(() => {
   const groups: Record<string, AudioTag[]> = {}
-  for (const tag of audioTags.value) {
+  for (const tag of audioTags.value || []) {
     if (!groups[tag.group]) groups[tag.group] = []
     groups[tag.group].push(tag)
   }
@@ -220,13 +242,8 @@ const tagGroups = computed(() => {
   return result
 })
 
-onMounted(async () => {
-  try {
-    const res = await adminApi.getAudioTags({ page: 1, pageSize: 200 })
-    audioTags.value = res.data[0]
-  } catch {
-    // 静默失败，使用空列表
-  }
+onMounted(() => {
+  loadAudioTags()
 })
 
 const currentModelOption = computed(() =>

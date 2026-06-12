@@ -25,8 +25,10 @@ function getDefaultConfig(): TTSConfig {
 export const useConfigStore = defineStore('config', () => {
   const config = ref<TTSConfig>(getDefaultConfig())
   const loaded = ref(false)
+  const loading = ref(false)
 
   async function loadConfig() {
+    loading.value = true
     try {
       const res = await client.get('/config')
       config.value = { ...getDefaultConfig(), ...res.data }
@@ -38,6 +40,7 @@ export const useConfigStore = defineStore('config', () => {
       ElMessage.error('加载配置失败，使用默认配置')
     } finally {
       loaded.value = true
+      loading.value = false
     }
   }
 
@@ -125,6 +128,7 @@ export const useConfigStore = defineStore('config', () => {
   return {
     config,
     loaded,
+    loading,
     loadConfig,
     updateApiKey,
     updateBaseUrlPreset,

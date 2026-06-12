@@ -25,6 +25,7 @@ export const useChatStore = defineStore('chat', () => {
   const currentConversationId = ref<number | null>(null)
   const messages = ref<ChatMessage[]>([])
   const loading = ref(false)
+  const conversationsLoading = ref(false)
   const error = ref('')
   const currentModel = ref('mimo-v2.5-pro')
   // 管理员全局功能开关（控制 UI 按钮可见性）
@@ -60,10 +61,13 @@ export const useChatStore = defineStore('chat', () => {
 
   // Actions
   async function loadConversations() {
+    conversationsLoading.value = true
     try {
       conversations.value = await apiFetchConversations()
     } catch (err: any) {
       error.value = err.response?.data?.message || '加载会话列表失败'
+    } finally {
+      conversationsLoading.value = false
     }
   }
 
@@ -320,8 +324,8 @@ export const useChatStore = defineStore('chat', () => {
         }
       }
       chatConfigLoaded.value = true
-    } catch {
-      // 加载失败时保留硬编码默认值，静默处理
+    } catch (err: any) {
+      error.value = err.response?.data?.message || '加载聊天配置失败'
     }
   }
 
@@ -334,6 +338,7 @@ export const useChatStore = defineStore('chat', () => {
     currentConversationId,
     messages,
     loading,
+    conversationsLoading,
     error,
     currentModel,
     features,

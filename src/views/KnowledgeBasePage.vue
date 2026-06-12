@@ -12,7 +12,20 @@
                         新建知识库
                     </el-button>
                 </div>
-                <div class="flex-1 overflow-y-auto p-3 space-y-2">
+                <div v-loading="kbLoading" class="flex-1 overflow-y-auto p-3 space-y-2">
+                    <el-alert
+                        v-if="kbError"
+                        :title="kbError"
+                        type="error"
+                        show-icon
+                        closable
+                        class="mb-2"
+                        @close="kbError = ''"
+                    >
+                        <template #default>
+                            <el-button link type="primary" size="small" @click="loadKnowledgeBases">重试</el-button>
+                        </template>
+                    </el-alert>
                     <div
                         v-for="kb in knowledgeBases"
                         :key="kb.id"
@@ -33,7 +46,7 @@
                             <span>{{ kb.chunkCount }} 个片段</span>
                         </div>
                     </div>
-                    <el-empty v-if="knowledgeBases.length === 0" description="暂无知识库" />
+                    <el-empty v-if="knowledgeBases.length === 0 && !kbLoading" description="暂无知识库" />
                 </div>
             </aside>
 
@@ -169,20 +182,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
     Plus, Collection, Upload, Document,
     Delete, Warning, Loading,
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AppHeader from '../components/AppHeader.vue'
+import { usePageData } from '../composables/usePageData'
 import {
     createKnowledgeBase, fetchKnowledgeBases, deleteKnowledgeBase,
     uploadDocument, fetchDocuments, deleteDocument, getDocumentStatus, fetchChunks,
     type KnowledgeBase, type KnowledgeDocument, type KnowledgeChunk,
 } from '../api/knowledge-base'
 
-const knowledgeBases = ref<KnowledgeBase[]>([])
+const {
+    data: kbData,
+    loading: kbLoading,
+    error: kbError,
+    refresh: loadKnowledgeBases,
+} = usePageData(fetchKnowledgeBases, { defaultErrorMessage: '加载知识库失败' })
+
+const knowledgeBases = computed<KnowledgeBase[]>(() => kbData.value || [])
 const selectedKb = ref<KnowledgeBase | null>(null)
 const documents = ref<KnowledgeDocument[]>([])
 const showCreateDialog = ref(false)
@@ -218,14 +239,6 @@ function formatSize(bytes: number): string {
     if (bytes < 1024) return bytes + ' B'
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
-}
-
-async function loadKnowledgeBases() {
-    try {
-        knowledgeBases.value = await fetchKnowledgeBases()
-    } catch (err: any) {
-        ElMessage.error(err.response?.data?.message || '加载知识库失败')
-    }
 }
 
 async function selectKb(kb: KnowledgeBase) {

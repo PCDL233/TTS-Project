@@ -94,10 +94,12 @@ const mcpStore = useMcpStore()
 
 const sidebarCollapsed = ref(false)
 
-onMounted(() => {
-    configStore.loadConfig()
-    chatStore.loadConversations()
-    chatStore.loadChatConfig()
-    mcpStore.loadServers()
+onMounted(async () => {
+    await Promise.all([
+        configStore.loadConfig(),
+        chatStore.loadConversations(),
+        chatStore.loadChatConfig(),
+        mcpStore.loadServers(),
+    ])
 })
 </script>

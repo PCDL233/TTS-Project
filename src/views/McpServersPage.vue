@@ -207,8 +207,8 @@ const rules = {
   url: [{ required: true, message: '请输入 URL', trigger: 'blur' }],
 }
 
-onMounted(() => {
-  mcpStore.loadServers()
+onMounted(async () => {
+  await mcpStore.loadServers()
 })
 
 function resetForm() {

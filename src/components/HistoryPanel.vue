@@ -13,33 +13,35 @@
       </el-button>
     </div>
 
-    <div v-if="history.length === 0" class="text-center text-gray-400 text-sm py-4">
-      暂无生成记录
-    </div>
+    <div v-loading="historyStore.loading" class="min-h-30">
+      <div v-if="history.length === 0 && !historyStore.loading" class="text-center text-gray-400 text-sm py-4">
+        暂无生成记录
+      </div>
 
-    <div v-else class="space-y-2 max-h-64 overflow-y-auto">
-      <div
-        v-for="item in history"
-        :key="item.id"
-        class="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-orange-50 transition-colors group"
-        @click="playHistory(item)"
-      >
-        <div class="flex items-start justify-between gap-2">
-          <div class="flex-1 min-w-0">
-            <div class="text-sm truncate">{{ item.text }}</div>
-            <div class="flex items-center gap-2 mt-1">
-              <el-tag size="small" type="info">{{ item.voice }}</el-tag>
-              <span class="text-xs text-gray-400">{{ formatTime(item.createdAt) }}</span>
+      <div v-else class="space-y-2 max-h-64 overflow-y-auto">
+        <div
+          v-for="item in history"
+          :key="item.id"
+          class="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-orange-50 transition-colors group"
+          @click="playHistory(item)"
+        >
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex-1 min-w-0">
+              <div class="text-sm truncate">{{ item.text }}</div>
+              <div class="flex items-center gap-2 mt-1">
+                <el-tag size="small" type="info">{{ item.voice }}</el-tag>
+                <span class="text-xs text-gray-400">{{ formatTime(item.createdAt) }}</span>
+              </div>
             </div>
+            <el-button
+              size="small"
+              link
+              class="opacity-0 group-hover:opacity-100"
+              @click.stop="deleteItem(item.id)"
+            >
+              <el-icon><close /></el-icon>
+            </el-button>
           </div>
-          <el-button
-            size="small"
-            link
-            class="opacity-0 group-hover:opacity-100"
-            @click.stop="deleteItem(item.id)"
-          >
-            <el-icon><close /></el-icon>
-          </el-button>
         </div>
       </div>
     </div>
