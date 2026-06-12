@@ -43,6 +43,15 @@ export class KnowledgeBase {
   @Column({ type: 'varchar', default: 'Xenova/all-MiniLM-L6-v2' })
   embeddingModel: string;
 
+  @Column({ default: 500 })
+  chunkSize: number;
+
+  @Column({ default: 100 })
+  chunkOverlap: number;
+
+  @Column({ default: 8 })
+  embeddingBatchSize: number;
+
   @OneToMany(() => KnowledgeDocument, (doc) => doc.knowledgeBase, { cascade: true })
   documents: KnowledgeDocument[];
 
