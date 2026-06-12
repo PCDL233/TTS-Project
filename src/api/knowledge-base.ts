@@ -9,6 +9,9 @@ export interface KnowledgeBase {
   chunkCount: number
   status: 'empty' | 'processing' | 'ready'
   embeddingModel: string
+  chunkSize: number
+  chunkOverlap: number
+  embeddingBatchSize: number
   createdAt: string
   updatedAt: string
 }
@@ -45,6 +48,9 @@ export async function createKnowledgeBase(data: {
   name: string
   description?: string
   embeddingModel?: string
+  chunkSize?: number
+  chunkOverlap?: number
+  embeddingBatchSize?: number
 }): Promise<KnowledgeBase> {
   const res = await client.post<KnowledgeBase>('/knowledge-base', data)
   return res.data
@@ -99,5 +105,20 @@ export async function fetchEmbeddingModels(): Promise<EmbeddingModel[]> {
 
 export async function switchEmbeddingModel(kbId: number, embeddingModel: string): Promise<KnowledgeBase> {
   const res = await client.put<KnowledgeBase>(`/knowledge-base/${kbId}/model`, { embeddingModel })
+  return res.data
+}
+
+export async function updateKnowledgeBaseSettings(
+  kbId: number,
+  data: {
+    chunkSize?: number
+    chunkOverlap?: number
+    embeddingBatchSize?: number
+  },
+): Promise<KnowledgeBase & { reprocessRequired: boolean }> {
+  const res = await client.put<KnowledgeBase & { reprocessRequired: boolean }>(
+    `/knowledge-base/${kbId}/settings`,
+    data,
+  )
   return res.data
 }
