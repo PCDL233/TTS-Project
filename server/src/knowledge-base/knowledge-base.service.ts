@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { existsSync, mkdirSync } from 'fs';
+import { unlink } from 'fs/promises';
 import { join } from 'path';
 import { KnowledgeBase } from './knowledge-base.entity';
 import { KnowledgeDocument } from './knowledge-document.entity';
@@ -215,6 +216,10 @@ export class KnowledgeBaseService {
   async remove(userId: number, id: number): Promise<void> {
     const kb = await this.findOne(userId, id);
 
+    const documents = await this.documentRepository.find({
+      where: { knowledgeBaseId: id },
+    });
+
     const queryRunner = this.kbRepository.manager.connection.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -233,6 +238,17 @@ export class KnowledgeBaseService {
       throw err;
     } finally {
       await queryRunner.release();
+    }
+
+    for (const doc of documents) {
+      const filePath = join(KB_UPLOAD_DIR, doc.filename);
+      try {
+        if (existsSync(filePath)) {
+          await unlink(filePath);
+        }
+      } catch (err) {
+        this.logger.warn(`删除知识库 ${id} 的文件失败: ${(err as Error).message}`);
+      }
     }
   }
 
@@ -293,6 +309,15 @@ export class KnowledgeBaseService {
     await this.chunkRepository.delete({ documentId });
     await this.documentRepository.delete({ id: documentId });
     await this.statsService.updateStats(knowledgeBaseId);
+
+    const filePath = join(KB_UPLOAD_DIR, doc.filename);
+    try {
+      if (existsSync(filePath)) {
+        await unlink(filePath);
+      }
+    } catch (err) {
+      this.logger.warn(`删除文档 ${documentId} 的文件失败: ${(err as Error).message}`);
+    }
 
     this.logger.log(`用户 ${userId} 从知识库 ${knowledgeBaseId} 删除文档 ${documentId}`);
   }

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { readFile, unlink } from 'fs/promises';
+import { readFile } from 'fs/promises';
 import { resolve } from 'path';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { KnowledgeDocument } from './knowledge-document.entity';
@@ -115,9 +115,6 @@ export class DocumentProcessingService {
       });
       // 刷新知识库聚合状态，避免卡在"处理中"
       await this.statsService.updateStats(knowledgeBaseId);
-    } finally {
-      // 清理临时文件
-      await unlink(filePath).catch(() => {});
     }
   }
 
