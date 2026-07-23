@@ -12,6 +12,7 @@ import {
   fetchChatConfig,
 } from '../api/chat'
 import { CHAT_MODEL_OPTIONS, resolveModelOptions } from '../types/chat'
+import { getApiErrorMessage } from '../api/error'
 
 export const useChatStore = defineStore('chat', () => {
   // MCP store reference (lazy to avoid circular dep)
@@ -64,8 +65,8 @@ export const useChatStore = defineStore('chat', () => {
     conversationsLoading.value = true
     try {
       conversations.value = await apiFetchConversations()
-    } catch (err: any) {
-      error.value = err.response?.data?.message || '加载会话列表失败'
+    } catch (err: unknown) {
+      error.value = getApiErrorMessage(err, '加载会话列表失败')
     } finally {
       conversationsLoading.value = false
     }
@@ -83,8 +84,8 @@ export const useChatStore = defineStore('chat', () => {
       currentConversationId.value = conversation.id
       messages.value = []
       return conversation
-    } catch (err: any) {
-      error.value = err.response?.data?.message || '创建会话失败'
+    } catch (err: unknown) {
+      error.value = getApiErrorMessage(err, '创建会话失败')
       return null
     }
   }
@@ -100,8 +101,8 @@ export const useChatStore = defineStore('chat', () => {
     messages.value = []
     try {
       messages.value = await apiFetchMessages(id)
-    } catch (err: any) {
-      error.value = err.response?.data?.message || '加载消息失败'
+    } catch (err: unknown) {
+      error.value = getApiErrorMessage(err, '加载消息失败')
     }
   }
 
@@ -113,8 +114,8 @@ export const useChatStore = defineStore('chat', () => {
         currentConversationId.value = null
         messages.value = []
       }
-    } catch (err: any) {
-      error.value = err.response?.data?.message || '删除会话失败'
+    } catch (err: unknown) {
+      error.value = getApiErrorMessage(err, '删除会话失败')
     }
   }
 
@@ -324,8 +325,8 @@ export const useChatStore = defineStore('chat', () => {
         }
       }
       chatConfigLoaded.value = true
-    } catch (err: any) {
-      error.value = err.response?.data?.message || '加载聊天配置失败'
+    } catch (err: unknown) {
+      error.value = getApiErrorMessage(err, '加载聊天配置失败')
     }
   }
 

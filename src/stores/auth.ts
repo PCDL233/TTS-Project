@@ -21,7 +21,10 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function fetchUser() {
     try {
-      const res = await client.get('/auth/me')
+      const res = await client.get('/auth/me', {
+        _skipGlobalToast: true,
+        _skipUnauthorizedRedirect: true,
+      })
       user.value = res.data
       return res.data
     } catch {
