@@ -12,11 +12,14 @@ export class Config {
   @Column({ default: '' })
   apiKey: string;
 
-  @Column({ default: 'default' })
+  @Column({ default: 'mimo-default' })
   baseUrlPreset: string;
 
   @Column({ default: '' })
   baseUrlCustom: string;
+
+  @Column({ default: 'auto' })
+  apiAuthType: string;
 
   @Column({ default: 'preset' })
   mode: string;

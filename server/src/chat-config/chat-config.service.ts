@@ -18,6 +18,19 @@ export class ChatConfigService {
           'mimo-v2.5-pro',
           'mimo-v2.5',
           'mimo-v2-pro',
+          'mimo-v2-omni',
+          'mimo-v2-flash',
+          'gpt-4.1',
+          'gpt-4.1-mini',
+          'gpt-4o',
+          'deepseek-chat',
+          'deepseek-reasoner',
+          'qwen-plus',
+          'qwen-max',
+          'moonshot-v1-8k',
+          'glm-4-plus',
+          'openai/gpt-4o-mini',
+          'Qwen/Qwen2.5-72B-Instruct',
         ]),
         description: '可用模型列表',
       },
@@ -91,6 +104,17 @@ export class ChatConfigService {
         await this.chatConfigRepository.update(config.id, { value });
       }
     }
+  }
+
+  async updateModels(models: string[], defaultModel: string): Promise<void> {
+    const uniqueModels = Array.from(new Set(models.map((model) => model.trim()).filter(Boolean)));
+    if (defaultModel && !uniqueModels.includes(defaultModel)) {
+      uniqueModels.unshift(defaultModel);
+    }
+    await this.updateMultiple({
+      available_models: JSON.stringify(uniqueModels),
+      default_model: defaultModel || uniqueModels[0] || 'mimo-v2.5-pro',
+    });
   }
 
   async getModels(): Promise<{ models: string[]; defaultModel: string }> {

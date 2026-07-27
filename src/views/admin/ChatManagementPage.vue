@@ -64,7 +64,14 @@
       <el-tab-pane label="模型配置" name="models">
         <el-form label-width="120px">
           <el-form-item label="默认模型">
-            <el-select v-model="modelConfig.defaultModel" style="width: 300px">
+            <el-select
+              v-model="modelConfig.defaultModel"
+              style="width: 360px"
+              filterable
+              allow-create
+              default-first-option
+              placeholder="选择或输入默认模型"
+            >
               <el-option
                 v-for="model in modelConfig.models"
                 :key="model"
@@ -72,6 +79,21 @@
                 :value="model"
               />
             </el-select>
+          </el-form-item>
+          <el-form-item label="可用模型">
+            <el-input
+              v-model="modelListText"
+              type="textarea"
+              :rows="8"
+              placeholder="每行一个模型名，例如：
+gpt-4.1
+deepseek-chat
+qwen-plus"
+              style="width: 520px"
+            />
+            <div class="text-xs text-gray-400 mt-1">
+              用户聊天页支持直接输入自定义模型名；这里配置常用候选列表。
+            </div>
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="saveModelConfig">保存</el-button>
@@ -146,6 +168,7 @@ const modelConfig = ref({
   models: [] as string[],
   defaultModel: '',
 })
+const modelListText = ref('')
 
 const featureConfig = ref({
   thinking: true,
@@ -198,6 +221,7 @@ async function loadModelConfig() {
   try {
     const res = await adminApi.getChatModels()
     modelConfig.value = res.data
+    modelListText.value = modelConfig.value.models.join('\n')
   } catch {
     ElMessage.error('加载模型配置失败')
   }
@@ -205,7 +229,11 @@ async function loadModelConfig() {
 
 async function saveModelConfig() {
   try {
-    await adminApi.updateChatModels({ defaultModel: modelConfig.value.defaultModel })
+    const models = modelListText.value
+      .split(/[,\n]/)
+      .map((model) => model.trim())
+      .filter(Boolean)
+    await adminApi.updateChatModels({ models, defaultModel: modelConfig.value.defaultModel })
     ElMessage.success('保存成功')
     chatStore.loadChatConfig()
   } catch {

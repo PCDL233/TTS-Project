@@ -16,8 +16,9 @@ export class ChatConfigController {
   }
 
   @Put('models')
-  async updateModels(@Body() body: { defaultModel: string }) {
-    await this.chatConfigService.update('default_model', body.defaultModel)
+  async updateModels(@Body() body: { models?: string[]; defaultModel: string }) {
+    const current = await this.chatConfigService.getModels()
+    await this.chatConfigService.updateModels(body.models || current.models, body.defaultModel)
     return { success: true }
   }
 

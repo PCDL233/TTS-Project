@@ -18,14 +18,11 @@ export class TtsService {
       throw new BadRequestException('API Key 未配置，请先在「API 设置」中填写有效的 API Key');
     }
     const baseUrl = this.configService.getEffectiveBaseUrl(config);
-    this.logger.log(`[generate] 请求 MiMo API: ${baseUrl}/chat/completions`);
+    this.logger.log(`[generate] 请求模型 API: ${baseUrl}/chat/completions`);
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': config.apiKey,
-      },
+      headers: this.configService.buildApiHeaders(config),
       body: JSON.stringify({
         model: dto.model,
         messages: dto.messages,
@@ -35,7 +32,7 @@ export class TtsService {
 
     if (!response.ok) {
       const text = await response.text();
-      this.logger.error(`[generate] MiMo API 返回 ${response.status}: ${text}`);
+      this.logger.error(`[generate] 模型 API 返回 ${response.status}: ${text}`);
       throw new BadRequestException(`TTS API error: ${response.status} - ${text}`);
     }
 
@@ -60,14 +57,11 @@ export class TtsService {
       throw new BadRequestException('API Key 未配置，请先在「API 设置」中填写有效的 API Key');
     }
     const baseUrl = this.configService.getEffectiveBaseUrl(config);
-    this.logger.log(`[generateStream] 请求 MiMo API (流式): ${baseUrl}/chat/completions`);
+    this.logger.log(`[generateStream] 请求模型 API (流式): ${baseUrl}/chat/completions`);
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': config.apiKey,
-      },
+      headers: this.configService.buildApiHeaders(config),
       body: JSON.stringify({
         model: dto.model,
         messages: dto.messages,
@@ -78,7 +72,7 @@ export class TtsService {
 
     if (!response.ok) {
       const text = await response.text();
-      this.logger.error(`[generateStream] MiMo API 返回 ${response.status}: ${text}`);
+      this.logger.error(`[generateStream] 模型 API 返回 ${response.status}: ${text}`);
       throw new BadRequestException(`TTS API error: ${response.status} - ${text}`);
     }
 

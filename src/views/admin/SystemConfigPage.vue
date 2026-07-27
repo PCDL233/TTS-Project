@@ -47,8 +47,11 @@
                     <el-select
                         v-else-if="currentConfig.key === 'default_model'"
                         v-model="currentConfig.value"
-                        placeholder="请选择模型"
+                        placeholder="请选择或输入模型"
                         class="w-full"
+                        filterable
+                        allow-create
+                        default-first-option
                     >
                         <el-option
                             v-for="opt in modelOptions"
@@ -105,6 +108,15 @@ const modelOptions = [
     { value: 'mimo-v2-pro', label: 'MiMo-V2-Pro' },
     { value: 'mimo-v2-omni', label: 'MiMo-V2-Omni' },
     { value: 'mimo-v2-flash', label: 'MiMo-V2-Flash' },
+    { value: 'gpt-4.1', label: 'GPT-4.1' },
+    { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini' },
+    { value: 'gpt-4o', label: 'GPT-4o' },
+    { value: 'deepseek-chat', label: 'DeepSeek Chat' },
+    { value: 'deepseek-reasoner', label: 'DeepSeek Reasoner' },
+    { value: 'qwen-plus', label: 'Qwen Plus' },
+    { value: 'qwen-max', label: 'Qwen Max' },
+    { value: 'moonshot-v1-8k', label: 'Moonshot V1 8K' },
+    { value: 'glm-4-plus', label: 'GLM-4-Plus' },
 ]
 
 const configs = ref<any[]>([])

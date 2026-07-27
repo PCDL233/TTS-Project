@@ -55,13 +55,6 @@ export class SystemConfigService {
   }
 
   private async syncBaseUrlToUsers(baseUrl: string) {
-    const presetMap: Record<string, string> = {
-      'https://api.xiaomimimo.com/v1': 'default',
-      'https://token-plan-cn.xiaomimimo.com/v1': 'token-plan-cn',
-      'https://token-plan-sgp.xiaomimimo.com/v1': 'token-plan-sgp',
-      'https://token-plan-ams.xiaomimimo.com/v1': 'token-plan-ams',
-    }
-    const preset = presetMap[baseUrl] || 'default'
-    await this.configService.updateAllUsersBaseUrlPreset(preset)
+    await this.configService.updateAllUsersBaseUrl(baseUrl)
   }
 }

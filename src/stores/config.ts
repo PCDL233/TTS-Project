@@ -1,15 +1,17 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { TTSConfig, TTSMode, PresetVoice, BaseUrlPreset } from '../types/tts'
-import { BASE_URL_OPTIONS, MODEL_MAP } from '../types/tts'
+import type { TTSConfig, TTSMode, PresetVoice, BaseUrlPreset, ApiAuthType } from '../types/tts'
+import { MODEL_MAP } from '../types/tts'
+import { getBaseUrlOption, MIMO_BASE_URL_PRESETS, normalizeBaseUrlPreset } from '../types/llm'
 import { client } from '../api/client'
 import { ElMessage } from 'element-plus'
 
 function getDefaultConfig(): TTSConfig {
   return {
     apiKey: '',
-    baseUrlPreset: 'default',
+    baseUrlPreset: 'mimo-default',
     baseUrlCustom: '',
+    apiAuthType: 'auto',
     mode: 'preset',
     model: MODEL_MAP.preset,
     presetVoice: 'mimo_default',
@@ -32,6 +34,7 @@ export const useConfigStore = defineStore('config', () => {
     try {
       const res = await client.get('/config')
       config.value = { ...getDefaultConfig(), ...res.data }
+      config.value.baseUrlPreset = normalizeBaseUrlPreset(config.value.baseUrlPreset)
       // 兼容性处理
       if (!config.value.model) {
         config.value.model = MODEL_MAP[(config.value.mode as TTSMode) || 'preset']
@@ -62,7 +65,7 @@ export const useConfigStore = defineStore('config', () => {
   }
 
   function updateBaseUrlPreset(preset: BaseUrlPreset) {
-    config.value.baseUrlPreset = preset
+    config.value.baseUrlPreset = normalizeBaseUrlPreset(preset)
     saveConfig()
   }
 
@@ -72,11 +75,19 @@ export const useConfigStore = defineStore('config', () => {
   }
 
   function getEffectiveBaseUrl(): string {
-    const preset = BASE_URL_OPTIONS.find(o => o.value === config.value.baseUrlPreset)
     if (config.value.baseUrlPreset === 'custom') {
       return config.value.baseUrlCustom || 'https://api.xiaomimimo.com/v1'
     }
-    return preset?.url || 'https://api.xiaomimimo.com/v1'
+    return getBaseUrlOption(config.value.baseUrlPreset)?.url || 'https://api.xiaomimimo.com/v1'
+  }
+
+  function updateApiAuthType(authType: ApiAuthType) {
+    config.value.apiAuthType = authType
+    saveConfig()
+  }
+
+  function isMimoProvider(): boolean {
+    return MIMO_BASE_URL_PRESETS.has(config.value.baseUrlPreset)
   }
 
   function updateMode(mode: TTSMode) {
@@ -133,7 +144,9 @@ export const useConfigStore = defineStore('config', () => {
     updateApiKey,
     updateBaseUrlPreset,
     updateBaseUrlCustom,
+    updateApiAuthType,
     getEffectiveBaseUrl,
+    isMimoProvider,
     updateMode,
     updateModel,
     updatePresetVoice,

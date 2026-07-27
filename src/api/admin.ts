@@ -135,7 +135,7 @@ export const adminApi = {
   getChatModels() {
     return client.get('/admin/chat-config/models')
   },
-  updateChatModels(data: { defaultModel: string }) {
+  updateChatModels(data: { models?: string[]; defaultModel: string }) {
     return client.put('/admin/chat-config/models', data)
   },
   getChatFeatures() {

@@ -114,7 +114,7 @@
                 <el-divider v-if="chatStore.adminFeatures.thinking || chatStore.adminFeatures.webSearch || chatStore.adminFeatures.functionCall || chatStore.adminFeatures.knowledgeBase" direction="vertical" class="mx-1!" />
 
                 <!-- 深度思考 -->
-                <el-tooltip v-if="chatStore.adminFeatures.thinking" content="深度思考" placement="top">
+                <el-tooltip v-if="supportsMimoExtensions && chatStore.adminFeatures.thinking" content="深度思考" placement="top">
                     <button
                         class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
                         :class="chatStore.features.thinking ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
@@ -126,7 +126,7 @@
                 </el-tooltip>
 
                 <!-- 联网搜索 -->
-                <el-tooltip v-if="chatStore.adminFeatures.webSearch" content="联网搜索" placement="top">
+                <el-tooltip v-if="supportsMimoExtensions && chatStore.adminFeatures.webSearch" content="联网搜索" placement="top">
                     <button
                         class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
                         :class="chatStore.features.webSearch ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
@@ -180,6 +180,10 @@
                         v-model="chatStore.currentModel"
                         size="small"
                         style="width: 200px"
+                        filterable
+                        allow-create
+                        default-first-option
+                        placeholder="选择或输入模型名"
                         @change="chatStore.updateModel"
                     >
                         <el-option
@@ -249,6 +253,7 @@ import { useChatStore } from '../stores/chat'
 import { useConfigStore } from '../stores/config'
 import type { ChatMessage, ChatMessagePart, ChatFeatures } from '../types/chat'
 import { TOKEN_PLAN_CHAT_MODELS } from '../types/chat'
+import { MIMO_BASE_URL_PRESETS, TOKEN_PLAN_BASE_URL_PRESETS } from '../types/llm'
 import { uploadFile } from '../api/upload'
 import { BACKEND_URL } from '../api/client'
 import { ElMessage } from 'element-plus'
@@ -301,9 +306,11 @@ async function handleKnowledgeBaseChange(val: number | null) {
 
 loadKnowledgeBases()
 
+const supportsMimoExtensions = computed(() => MIMO_BASE_URL_PRESETS.has(configStore.config.baseUrlPreset))
+
 const availableModelOptions = computed(() => {
   const preset = configStore.config.baseUrlPreset
-  if (preset && preset.startsWith('token-plan')) {
+  if (TOKEN_PLAN_BASE_URL_PRESETS.has(preset)) {
     return chatStore.availableModelOptions.filter(opt => TOKEN_PLAN_CHAT_MODELS.has(opt.value))
   }
   return chatStore.availableModelOptions

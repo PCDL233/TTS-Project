@@ -158,21 +158,29 @@ export class ChatService {
     }
 
     const baseUrl = this.configService.getEffectiveBaseUrl(config);
+    const isMimoApi = this.configService.isMimoApi(config);
+    const isTokenPlanApi = this.configService.isTokenPlanApi(config);
 
     // Token Plan 仅支持 8 款模型，mimo-v2-flash 不在支持列表中
     const tokenPlanUnsupportedModels = ['mimo-v2-flash'];
-    if (tokenPlanUnsupportedModels.includes(dto.model) && config.baseUrlPreset?.startsWith('token-plan')) {
+    if (tokenPlanUnsupportedModels.includes(dto.model) && isTokenPlanApi) {
       throw new BadRequestException(
         `当前 API 配置（Token Plan）不支持 ${dto.model} 模型。Token Plan 仅支持 MiMo-V2.5-Pro、MiMo-V2.5、MiMo-V2-Pro、MiMo-V2-Omni 及 TTS 系列模型，请切换为普通 API 端点或选择其他模型。`
       );
     }
 
-    // Token Plan 端点不支持联网搜索（web_search）
+    // MiMo 扩展能力校验：thinking / web_search 不是通用 OpenAI Chat Completions 参数。
     const hasWebSearch = dto.tools?.some((t: any) => t.type === 'web_search');
-    if (hasWebSearch && config.baseUrlPreset?.startsWith('token-plan')) {
+    if (hasWebSearch && isTokenPlanApi) {
       throw new BadRequestException(
-        '当前 API 配置（Token Plan）不支持联网搜索（web_search）功能。Token Plan 与普通 API 是两个独立计费体系，即使已在普通 API 开通联网服务，Token Plan 端点仍无法使用。请切换为「默认」或「国内加速」API 端点，或关闭联网搜索后重试。'
+        '当前 API 配置（Token Plan）不支持联网搜索（web_search）功能。Token Plan 与普通 API 是两个独立计费体系，即使已在普通 API 开通联网服务，Token Plan 端点仍无法使用。请切换为 MiMo 普通 API 端点，或关闭联网搜索后重试。',
       );
+    }
+    if (hasWebSearch && !isMimoApi) {
+      throw new BadRequestException('当前模型供应商使用通用 OpenAI 兼容接口，不支持 MiMo 的 web_search 扩展，请关闭联网搜索后重试。');
+    }
+    if (dto.thinking?.type === 'enabled' && !isMimoApi) {
+      throw new BadRequestException('当前模型供应商使用通用 OpenAI 兼容接口，不支持 MiMo 的 thinking 参数，请关闭深度思考后重试。');
     }
 
     // 构造 MiMo API 消息格式
@@ -194,19 +202,16 @@ export class ChatService {
       messages: apiMessages,
     };
 
-    if (dto.thinking) body.thinking = dto.thinking;
+    if (isMimoApi && dto.thinking) body.thinking = dto.thinking;
     if (dto.tools && dto.tools.length > 0) body.tools = dto.tools;
-    if (dto.tool_choice) body.tool_choice = dto.tool_choice;
+    if (dto.tool_choice && dto.tools && dto.tools.length > 0) body.tool_choice = dto.tool_choice;
     if (dto.response_format) body.response_format = dto.response_format;
     if (dto.temperature !== undefined) body.temperature = dto.temperature;
     if (dto.max_completion_tokens !== undefined) body.max_completion_tokens = dto.max_completion_tokens;
 
     return {
       baseUrl,
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': config.apiKey,
-      },
+      headers: this.configService.buildApiHeaders(config),
       body,
     };
   }
@@ -247,7 +252,7 @@ export class ChatService {
 
     if (!response.ok) {
       const text = await response.text();
-      this.logger.error(`[callChatCompletion] MiMo API 返回 ${response.status}: ${text}`);
+      this.logger.error(`[callChatCompletion] 模型 API 返回 ${response.status}: ${text}`);
       throw new BadRequestException(`Chat API error: ${response.status} - ${text}`);
     }
 
@@ -295,7 +300,7 @@ export class ChatService {
 
     if (!response.ok) {
       const text = await response.text();
-      this.logger.error(`[streamChatCompletion] MiMo API 返回 ${response.status}: ${text}`);
+      this.logger.error(`[streamChatCompletion] 模型 API 返回 ${response.status}: ${text}`);
       throw new BadRequestException(`Chat API error: ${response.status} - ${text}`);
     }
 

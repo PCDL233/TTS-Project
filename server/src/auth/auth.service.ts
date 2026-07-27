@@ -52,16 +52,12 @@ export class AuthService {
       this.systemConfigService.findByKey('default_style_mode'),
     ])
 
-    const baseUrlPresetMap: Record<string, string> = {
-      'https://api.xiaomimimo.com/v1': 'default',
-      'https://token-plan-cn.xiaomimimo.com/v1': 'token-plan-cn',
-      'https://token-plan-sgp.xiaomimimo.com/v1': 'token-plan-sgp',
-      'https://token-plan-ams.xiaomimimo.com/v1': 'token-plan-ams',
-    }
     const baseUrlValue = defaultBaseUrl?.value || 'https://api.xiaomimimo.com/v1'
+    const resolvedBaseUrl = this.configService.resolveBaseUrlPresetFromUrl(baseUrlValue)
 
     await this.configService.createConfig(user.id, {
-      baseUrlPreset: baseUrlPresetMap[baseUrlValue] || 'default',
+      ...resolvedBaseUrl,
+      apiAuthType: 'auto',
       model: defaultModel?.value || 'mimo-v2.5-pro',
       audioFormat: defaultAudioFormat?.value || 'wav',
       styleMode: defaultStyleMode?.value || 'natural',

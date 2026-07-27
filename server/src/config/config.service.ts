@@ -3,6 +3,18 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Config } from './config.entity';
 import { CryptoService } from '../common/crypto.service';
+import {
+  BASE_URL_PRESETS,
+  DEFAULT_MIMO_BASE_URL,
+  MIMO_PRESETS,
+  TOKEN_PLAN_PRESETS,
+  ApiAuthType,
+  buildAuthHeaders,
+  normalizeBaseUrl,
+  normalizePreset,
+  resolveAuthType,
+  resolvePresetByBaseUrl,
+} from './llm-provider.util';
 
 @Injectable()
 export class ConfigService {
@@ -21,12 +33,15 @@ export class ConfigService {
       const newConfig = this.configRepository.create({ userId });
       return this.configRepository.save(newConfig);
     }
+
+    config.baseUrlPreset = normalizePreset(config.baseUrlPreset);
+
     // 解密 API Key
     if (config.apiKey) {
       try {
         config.apiKey = this.cryptoService.aesDecrypt(config.apiKey);
       } catch {
-        // 密文格式为 iv:ciphertext，如果不包含分隔符则判定为明文旧数据
+        // 密文格式为 iv:authTag:ciphertext 或旧版 iv:ciphertext，如果不包含分隔符则判定为明文旧数据
         if (config.apiKey.includes(':')) {
           this.logger.warn(`[getConfig] 用户 ${userId} API Key 解密失败，密文格式异常`);
         } else {
@@ -42,43 +57,84 @@ export class ConfigService {
 
   async updateConfig(userId: number, partial: Partial<Config>): Promise<Config> {
     const config = await this.getConfig(userId);
-    // 加密 API Key
-    if (partial.apiKey) {
-      partial.apiKey = this.cryptoService.aesEncrypt(partial.apiKey);
+
+    const next: Partial<Config> = { ...partial };
+    if (next.baseUrlPreset) {
+      next.baseUrlPreset = normalizePreset(next.baseUrlPreset);
     }
-    Object.assign(config, partial);
+    if (next.baseUrlCustom !== undefined) {
+      next.baseUrlCustom = normalizeBaseUrl(next.baseUrlCustom);
+    }
+
+    // 加密 API Key。允许传空字符串清空 Key。
+    if (next.apiKey !== undefined) {
+      next.apiKey = next.apiKey ? this.cryptoService.aesEncrypt(next.apiKey) : '';
+    }
+
+    Object.assign(config, next);
     const saved = await this.configRepository.save(config);
-    this.logger.log(`[updateConfig] 用户 ${userId} 配置已更新: baseUrlPreset=${saved.baseUrlPreset}`);
+    this.logger.log(
+      `[updateConfig] 用户 ${userId} 配置已更新: baseUrlPreset=${saved.baseUrlPreset}, apiAuthType=${saved.apiAuthType}`,
+    );
     return saved;
   }
 
   getEffectiveBaseUrl(config: { baseUrlPreset: string; baseUrlCustom: string }): string {
-    if (config.baseUrlPreset === 'custom') {
-      return config.baseUrlCustom || 'https://api.xiaomimimo.com/v1';
+    const preset = normalizePreset(config.baseUrlPreset);
+    if (preset === 'custom') {
+      return normalizeBaseUrl(config.baseUrlCustom) || DEFAULT_MIMO_BASE_URL;
     }
-    const presets: Record<string, string> = {
-      default: 'https://api.xiaomimimo.com/v1',
-      'token-plan-cn': 'https://token-plan-cn.xiaomimimo.com/v1',
-      'token-plan-sgp': 'https://token-plan-sgp.xiaomimimo.com/v1',
-      'token-plan-ams': 'https://token-plan-ams.xiaomimimo.com/v1',
+    return BASE_URL_PRESETS[preset]?.url || DEFAULT_MIMO_BASE_URL;
+  }
+
+  getEffectiveApiAuthType(config: { baseUrlPreset: string; apiAuthType?: string }): ApiAuthType {
+    return resolveAuthType(config.baseUrlPreset, config.apiAuthType);
+  }
+
+  buildApiHeaders(config: { baseUrlPreset: string; apiAuthType?: string; apiKey: string }): Record<string, string> {
+    const authType = this.getEffectiveApiAuthType(config);
+    return {
+      'Content-Type': 'application/json',
+      ...buildAuthHeaders(config.apiKey, authType),
     };
-    return presets[config.baseUrlPreset] || 'https://api.xiaomimimo.com/v1';
+  }
+
+  isMimoApi(config: { baseUrlPreset: string }): boolean {
+    return MIMO_PRESETS.has(config.baseUrlPreset);
+  }
+
+  isTokenPlanApi(config: { baseUrlPreset: string }): boolean {
+    return TOKEN_PLAN_PRESETS.has(config.baseUrlPreset);
+  }
+
+  resolveBaseUrlPresetFromUrl(baseUrl: string): { baseUrlPreset: string; baseUrlCustom: string } {
+    return resolvePresetByBaseUrl(baseUrl);
   }
 
   async createConfig(userId: number, defaults?: Partial<Config>): Promise<Config> {
     const config = this.configRepository.create({
       userId,
       ...defaults,
-    })
-    return this.configRepository.save(config)
+    });
+    return this.configRepository.save(config);
   }
 
   async updateAllUsersBaseUrlPreset(preset: string): Promise<void> {
     await this.configRepository
       .createQueryBuilder()
       .update()
-      .set({ baseUrlPreset: preset })
+      .set({ baseUrlPreset: normalizePreset(preset) })
       .where('baseUrlPreset != :custom', { custom: 'custom' })
-      .execute()
+      .execute();
+  }
+
+  async updateAllUsersBaseUrl(baseUrl: string): Promise<void> {
+    const resolved = this.resolveBaseUrlPresetFromUrl(baseUrl);
+    await this.configRepository
+      .createQueryBuilder()
+      .update()
+      .set(resolved)
+      .where('baseUrlPreset != :custom', { custom: 'custom' })
+      .execute();
   }
 }
