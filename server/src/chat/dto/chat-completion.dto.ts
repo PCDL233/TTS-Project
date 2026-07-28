@@ -1,4 +1,13 @@
-import { IsString, IsOptional, IsBoolean, IsArray, IsObject, ValidateNested, IsNumber } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsArray,
+  IsObject,
+  ValidateNested,
+  IsNumber,
+  MaxLength,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 class ChatMessageDto {
@@ -23,6 +32,21 @@ class ChatMessageDto {
 class ThinkingDto {
   @IsString()
   type: 'enabled' | 'disabled';
+}
+
+class RoleSettingsDto {
+  @IsBoolean()
+  @IsOptional()
+  enabled?: boolean;
+
+  @IsString()
+  @IsOptional()
+  presetId?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(2000)
+  customPrompt?: string;
 }
 
 class ResponseFormatDto {
@@ -139,4 +163,9 @@ export class ChatCompletionDto {
   @IsBoolean()
   @IsOptional()
   mcpEnabled?: boolean;
+
+  @ValidateNested()
+  @IsOptional()
+  @Type(() => RoleSettingsDto)
+  roleSettings?: RoleSettingsDto;
 }

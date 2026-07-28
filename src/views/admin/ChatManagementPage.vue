@@ -113,6 +113,10 @@
             <el-switch v-model="featureConfig.functionCall" />
             <span class="ml-2 text-sm text-gray-500">允许AI调用外部函数</span>
           </el-form-item>
+          <el-form-item label="角色设定">
+            <el-switch v-model="featureConfig.roleSetting" />
+            <span class="ml-2 text-sm text-gray-500">允许用户在智能助手输入框中选择模型角色</span>
+          </el-form-item>
           <el-form-item label="知识库">
             <el-switch v-model="featureConfig.knowledgeBase" />
             <span class="ml-2 text-sm text-gray-500">允许在会话中使用知识库检索</span>
@@ -171,6 +175,7 @@ const featureConfig = ref({
   thinking: true,
   webSearch: true,
   functionCall: true,
+  roleSetting: true,
   knowledgeBase: true,
 })
 

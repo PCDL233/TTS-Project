@@ -112,7 +112,7 @@
                     @change="handleVideoChange"
                 />
 
-                <el-divider v-if="chatStore.adminFeatures.thinking || chatStore.adminFeatures.webSearch || chatStore.adminFeatures.functionCall || chatStore.adminFeatures.knowledgeBase" direction="vertical" class="mx-1!" />
+                <el-divider direction="vertical" class="mx-1!" />
 
                 <!-- 深度思考 -->
                 <el-tooltip v-if="chatStore.adminFeatures.thinking" :content="thinkingTooltip" placement="top">
@@ -150,6 +150,18 @@
                     >
                         <el-icon :size="14"><magic-stick /></el-icon>
                         <span>函数调用</span>
+                    </button>
+                </el-tooltip>
+
+                <!-- 模型角色设定 -->
+                <el-tooltip v-if="chatStore.adminFeatures.roleSetting" :content="roleTooltip" placement="top">
+                    <button
+                        class="toolbar-button flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
+                        :class="chatStore.roleSettings.enabled ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        @click="roleDialogVisible = true"
+                    >
+                        <el-icon :size="14"><user /></el-icon>
+                        <span>{{ chatStore.roleSettings.enabled ? chatStore.currentRoleLabel : '角色设定' }}</span>
                     </button>
                 </el-tooltip>
 
@@ -224,6 +236,82 @@
                 </div>
             </div>
 
+
+
+            <el-dialog
+                v-if="chatStore.adminFeatures.roleSetting"
+                v-model="roleDialogVisible"
+                title="模型角色设定"
+                width="560px"
+                append-to-body
+            >
+                <div class="role-settings-panel">
+                    <div class="role-settings-row">
+                        <div>
+                            <div class="role-settings-title">启用角色设定</div>
+                            <div class="role-settings-desc">关闭后不注入任何角色提示，模型按官方默认行为答复。</div>
+                        </div>
+                        <el-switch v-model="chatStore.roleSettings.enabled" />
+                    </div>
+
+                    <el-divider />
+
+                    <el-form label-position="top">
+                        <el-form-item label="选择角色示例">
+                            <el-select
+                                v-model="chatStore.roleSettings.presetId"
+                                class="w-full"
+                                placeholder="请选择角色"
+                                popper-class="role-select-popper"
+                            >
+                                <el-option
+                                    v-for="preset in chatStore.rolePresets"
+                                    :key="preset.id"
+                                    :label="preset.name"
+                                    :value="preset.id"
+                                >
+                                    <div class="role-option">
+                                        <span class="role-option-name">{{ preset.name }}</span>
+                                        <span class="role-option-desc">{{ preset.description }}</span>
+                                    </div>
+                                </el-option>
+                                <el-option label="自定义角色" value="custom">
+                                    <div class="role-option">
+                                        <span class="role-option-name">自定义角色</span>
+                                        <span class="role-option-desc">由你填写完整角色、人设、语气和输出规则。</span>
+                                    </div>
+                                </el-option>
+                            </el-select>
+                        </el-form-item>
+
+                        <el-form-item v-if="chatStore.roleSettings.presetId === 'custom'" label="自定义角色设定">
+                            <el-input
+                                v-model="chatStore.roleSettings.customPrompt"
+                                type="textarea"
+                                :rows="6"
+                                maxlength="2000"
+                                show-word-limit
+                                placeholder="例如：你是一名资深产品经理。回答必须先给结论，再给用户价值、实现路径、风险和验收标准，语气专业直接。"
+                            />
+                        </el-form-item>
+
+                        <el-alert
+                            v-else-if="currentRolePreset"
+                            type="info"
+                            :closable="false"
+                            show-icon
+                        >
+                            <template #title>{{ currentRolePreset.name }}</template>
+                            <div class="role-preset-preview">{{ currentRolePreset.prompt }}</div>
+                        </el-alert>
+                    </el-form>
+                </div>
+
+                <template #footer>
+                    <el-button @click="roleDialogVisible = false">完成</el-button>
+                </template>
+            </el-dialog>
+
             <div v-if="chatStore.modelsError" class="model-error-banner mb-2">
                 <el-icon class="shrink-0 mt-0.5"><warning-filled /></el-icon>
                 <div class="min-w-0 flex-1">
@@ -294,6 +382,7 @@ import {
     Collection,
     Refresh,
     WarningFilled,
+    User,
 } from '@element-plus/icons-vue'
 import { useChatStore } from '../stores/chat'
 import { useConfigStore } from '../stores/config'
@@ -311,6 +400,14 @@ const SUPPORTED_AUDIO_FORMATS = new Set(['mp3', 'wav', 'ogg', 'm4a'])
 const chatStore = useChatStore()
 const configStore = useConfigStore()
 const mcpStore = useMcpStore()
+
+const roleDialogVisible = ref(false)
+const currentRolePreset = computed(() => (
+    chatStore.rolePresets.find((preset) => preset.id === chatStore.roleSettings.presetId) || null
+))
+const roleTooltip = computed(() => (
+    chatStore.roleSettings.enabled ? `模型角色设定：${chatStore.currentRoleLabel}` : '模型角色设定'
+))
 
 // 知识库列表
 const knowledgeBases = ref<KnowledgeBase[]>([])
@@ -668,6 +765,87 @@ function removeVideo() {
     box-shadow: 0 0 0 1px #d1d5db;
 }
 
+
+
+.role-settings-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.role-settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.role-settings-title {
+    color: #111827;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.role-settings-desc {
+    margin-top: 0.25rem;
+    color: #6b7280;
+    font-size: 0.75rem;
+    line-height: 1.25rem;
+}
+
+.role-option {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0.35rem 0;
+    line-height: normal;
+}
+
+.role-option-name {
+    color: #374151;
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.role-option-desc,
+.role-preset-preview {
+    color: #6b7280;
+    font-size: 0.75rem;
+    line-height: 1.25rem;
+    white-space: normal;
+}
+
+:global(.role-select-popper) {
+    min-width: min(520px, calc(100vw - 2rem)) !important;
+}
+
+:global(.role-select-popper .el-select-dropdown__item) {
+    height: auto;
+    min-height: 52px;
+    padding: 0.45rem 0.75rem;
+    line-height: normal;
+    white-space: normal;
+}
+
+:global(.role-select-popper .el-select-dropdown__item .role-option) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    line-height: normal;
+}
+
+:global(.role-select-popper .el-select-dropdown__item .role-option-name) {
+    color: #374151;
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+:global(.role-select-popper .el-select-dropdown__item .role-option-desc) {
+    color: #6b7280;
+    font-size: 0.75rem;
+    line-height: 1.25rem;
+    white-space: normal;
+}
 
 .model-error-banner {
     display: flex;

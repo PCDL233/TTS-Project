@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import type { ChatConversation, ChatMessage, ChatFeatures } from '../types/chat'
+import { ref, computed, watch } from 'vue'
+import { CHAT_ROLE_PRESETS } from '../types/chat'
+import type { ChatConversation, ChatMessage, ChatFeatures, ChatRoleSettings } from '../types/chat'
 import { useMcpStore } from './mcp'
 import {
   fetchConversations as apiFetchConversations,
@@ -17,6 +18,42 @@ import { getApiErrorMessage } from '../api/error'
 
 interface SendMessageOptions {
   knowledgeBaseId?: number | null
+}
+
+
+const ROLE_SETTINGS_STORAGE_KEY = 'chatRoleSettings'
+const DEFAULT_ROLE_SETTINGS: ChatRoleSettings = {
+  enabled: false,
+  presetId: 'professional_assistant',
+  customPrompt: '',
+}
+
+function loadStoredRoleSettings(): ChatRoleSettings {
+  try {
+    const raw = localStorage.getItem(ROLE_SETTINGS_STORAGE_KEY)
+    if (!raw) return { ...DEFAULT_ROLE_SETTINGS }
+    const parsed = JSON.parse(raw) as Partial<ChatRoleSettings>
+    const presetIds = new Set([...CHAT_ROLE_PRESETS.map((preset) => preset.id), 'custom'])
+    const presetId = parsed.presetId && presetIds.has(parsed.presetId)
+      ? parsed.presetId
+      : DEFAULT_ROLE_SETTINGS.presetId
+    return {
+      enabled: parsed.enabled === true,
+      presetId,
+      customPrompt: typeof parsed.customPrompt === 'string' ? parsed.customPrompt : '',
+    }
+  } catch {
+    return { ...DEFAULT_ROLE_SETTINGS }
+  }
+}
+
+function normalizeRoleSettings(settings: ChatRoleSettings): ChatRoleSettings | undefined {
+  if (!settings.enabled) return undefined
+  return {
+    enabled: true,
+    presetId: settings.presetId,
+    customPrompt: settings.presetId === 'custom' ? settings.customPrompt?.trim() : undefined,
+  }
 }
 
 export const useChatStore = defineStore('chat', () => {
@@ -39,6 +76,7 @@ export const useChatStore = defineStore('chat', () => {
     thinking: false,
     webSearch: false,
     functionCall: false,
+    roleSetting: false,
     knowledgeBase: false,
   })
   // 用户本地开关偏好（仅对 adminFeatures 中开启的功能生效）
@@ -46,6 +84,7 @@ export const useChatStore = defineStore('chat', () => {
     thinking: false,
     webSearch: false,
     functionCall: false,
+    roleSetting: true,
     knowledgeBase: false,
   })
   // 最终生效的功能（admin 关闭则整体关闭，admin 开启则取决于用户本地开关）
@@ -53,6 +92,7 @@ export const useChatStore = defineStore('chat', () => {
     thinking: adminFeatures.value.thinking && userToggledFeatures.value.thinking,
     webSearch: adminFeatures.value.webSearch && userToggledFeatures.value.webSearch,
     functionCall: adminFeatures.value.functionCall && userToggledFeatures.value.functionCall,
+    roleSetting: adminFeatures.value.roleSetting === true,
     knowledgeBase: adminFeatures.value.knowledgeBase && userToggledFeatures.value.knowledgeBase,
   }))
   const abortController = ref<AbortController | null>(null)
@@ -62,11 +102,25 @@ export const useChatStore = defineStore('chat', () => {
   const modelsError = ref('')
   const providerModelSource = ref('')
   const availableModelOptions = ref<ChatModelOption[]>([])
+  const roleSettings = ref<ChatRoleSettings>(loadStoredRoleSettings())
+
+  watch(
+    roleSettings,
+    (value) => {
+      localStorage.setItem(ROLE_SETTINGS_STORAGE_KEY, JSON.stringify(value))
+    },
+    { deep: true },
+  )
 
   // Getters
   const currentConversation = computed(() =>
     conversations.value.find((c) => c.id === currentConversationId.value),
   )
+  const currentRoleLabel = computed(() => {
+    if (!roleSettings.value.enabled) return '未启用'
+    if (roleSettings.value.presetId === 'custom') return '自定义角色'
+    return CHAT_ROLE_PRESETS.find((preset) => preset.id === roleSettings.value.presetId)?.name || '模型角色'
+  })
 
   // Actions
   async function loadConversations() {
@@ -137,6 +191,11 @@ export const useChatStore = defineStore('chat', () => {
 
     if (!currentModel.value) {
       error.value = '请先选择或输入模型'
+      return
+    }
+
+    if (features.value.roleSetting && roleSettings.value.enabled && roleSettings.value.presetId === 'custom' && !roleSettings.value.customPrompt?.trim()) {
+      error.value = '请输入自定义角色设定，或关闭角色设定'
       return
     }
 
@@ -211,6 +270,7 @@ export const useChatStore = defineStore('chat', () => {
       conversationId: targetConversationId,
       knowledgeBaseId: activeKnowledgeBaseId,
       mcpEnabled: features.value.functionCall && hasEnabledMcpServers,
+      roleSettings: features.value.roleSetting ? normalizeRoleSettings(roleSettings.value) : undefined,
     }
 
     await sendChatStream(
@@ -297,6 +357,13 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  function updateRoleSettings(newSettings: Partial<ChatRoleSettings>) {
+    roleSettings.value = {
+      ...roleSettings.value,
+      ...newSettings,
+    }
+  }
+
   function updateModel(model: string) {
     userSelectedModel.value = true
     currentModel.value = model
@@ -340,12 +407,14 @@ export const useChatStore = defineStore('chat', () => {
           thinking: config.features.thinking ?? false,
           webSearch: config.features.webSearch ?? false,
           functionCall: config.features.functionCall ?? false,
+          roleSetting: config.features.roleSetting ?? false,
           knowledgeBase: config.features.knowledgeBase ?? false,
         }
         userToggledFeatures.value = {
           thinking: adminFeatures.value.thinking && (previousAdminFeatures.thinking ? userToggledFeatures.value.thinking : true),
           webSearch: adminFeatures.value.webSearch && (previousAdminFeatures.webSearch ? userToggledFeatures.value.webSearch : true),
           functionCall: adminFeatures.value.functionCall && (previousAdminFeatures.functionCall ? userToggledFeatures.value.functionCall : true),
+          roleSetting: true,
           knowledgeBase: adminFeatures.value.knowledgeBase && (previousAdminFeatures.knowledgeBase ? userToggledFeatures.value.knowledgeBase : true),
         }
       }
@@ -371,6 +440,9 @@ export const useChatStore = defineStore('chat', () => {
     features,
     adminFeatures,
     userToggledFeatures,
+    roleSettings,
+    currentRoleLabel,
+    rolePresets: CHAT_ROLE_PRESETS,
     chatConfigLoaded,
     modelsLoading,
     modelsError,
@@ -384,6 +456,7 @@ export const useChatStore = defineStore('chat', () => {
     sendMessage,
     stopGeneration,
     updateFeatures,
+    updateRoleSettings,
     updateModel,
     loadChatConfig,
     loadProviderModels,
