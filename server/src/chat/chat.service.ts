@@ -158,7 +158,6 @@ export class ChatService {
     }
 
     const baseUrl = this.configService.getEffectiveBaseUrl(config);
-    const isMimoApi = this.configService.isMimoApi(config);
     const isTokenPlanApi = this.configService.isTokenPlanApi(config);
 
     // Token Plan 仅支持 8 款模型，mimo-v2-flash 不在支持列表中
@@ -169,18 +168,13 @@ export class ChatService {
       );
     }
 
-    // MiMo 扩展能力校验：thinking / web_search 不是通用 OpenAI Chat Completions 参数。
+    // 联网搜索 / 深度思考在多家 OpenAI 兼容厂商中存在兼容实现；除已知不支持的 Token Plan 外，
+    // 不再按 MiMo 厂商限制，交由上游模型接口按自身能力处理。
     const hasWebSearch = dto.tools?.some((t: any) => t.type === 'web_search');
     if (hasWebSearch && isTokenPlanApi) {
       throw new BadRequestException(
-        '当前 API 配置（Token Plan）不支持联网搜索（web_search）功能。Token Plan 与普通 API 是两个独立计费体系，即使已在普通 API 开通联网服务，Token Plan 端点仍无法使用。请切换为 MiMo 普通 API 端点，或关闭联网搜索后重试。',
+        '当前 API 配置（Token Plan）不支持联网搜索（web_search）功能。请切换到普通 API 或其他兼容厂商，或关闭联网搜索后重试。',
       );
-    }
-    if (hasWebSearch && !isMimoApi) {
-      throw new BadRequestException('当前模型供应商使用通用 OpenAI 兼容接口，不支持 MiMo 的 web_search 扩展，请关闭联网搜索后重试。');
-    }
-    if (dto.thinking?.type === 'enabled' && !isMimoApi) {
-      throw new BadRequestException('当前模型供应商使用通用 OpenAI 兼容接口，不支持 MiMo 的 thinking 参数，请关闭深度思考后重试。');
     }
 
     // 构造 MiMo API 消息格式
@@ -202,7 +196,7 @@ export class ChatService {
       messages: apiMessages,
     };
 
-    if (isMimoApi && dto.thinking) body.thinking = dto.thinking;
+    if (dto.thinking) body.thinking = dto.thinking;
     if (dto.tools && dto.tools.length > 0) body.tools = dto.tools;
     if (dto.tool_choice && dto.tools && dto.tools.length > 0) body.tool_choice = dto.tool_choice;
     if (dto.response_format) body.response_format = dto.response_format;

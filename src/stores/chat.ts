@@ -15,6 +15,10 @@ import {
 import type { ChatModelOption } from '../types/chat'
 import { getApiErrorMessage } from '../api/error'
 
+interface SendMessageOptions {
+  knowledgeBaseId?: number | null
+}
+
 export const useChatStore = defineStore('chat', () => {
   // MCP store reference (lazy to avoid circular dep)
   let mcpStore: ReturnType<typeof useMcpStore> | null = null
@@ -128,7 +132,7 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  async function sendMessage(userMessage: ChatMessage) {
+  async function sendMessage(userMessage: ChatMessage, options: SendMessageOptions = {}) {
     if (loading.value) return
 
     if (!currentModel.value) {
@@ -139,9 +143,15 @@ export const useChatStore = defineStore('chat', () => {
     loading.value = true
     error.value = ''
 
+    const activeKnowledgeBaseId = features.value.knowledgeBase
+      ? options.knowledgeBaseId === undefined
+        ? (currentConversation.value?.knowledgeBaseId ?? undefined)
+        : (options.knowledgeBaseId ?? undefined)
+      : undefined
+
     // 确保有当前会话
     if (!currentConversationId.value) {
-      const conversation = await createNewChat(userMessage.content.slice(0, 20) || '新对话')
+      const conversation = await createNewChat(userMessage.content.slice(0, 20) || '新对话', activeKnowledgeBaseId)
       if (!conversation) {
         loading.value = false
         return
@@ -186,28 +196,10 @@ export const useChatStore = defineStore('chat', () => {
       contentParts: msg.contentParts,
     }))
 
-    // 构建 tools
-    const tools: any[] = []
-    if (features.value.webSearch) {
-      tools.push({ type: 'web_search' })
-    }
-    if (features.value.functionCall) {
-      tools.push({
-        type: 'function',
-        function: {
-          name: 'get_current_weather',
-          description: '获取指定城市的当前天气',
-          parameters: {
-            type: 'object',
-            properties: {
-              location: { type: 'string', description: '城市名称' },
-              unit: { type: 'string', enum: ['celsius', 'fahrenheit'] },
-            },
-            required: ['location'],
-          },
-        },
-      })
-    }
+    // 构建 MiMo 内置工具；MCP 函数调用由 mcpEnabled 交给后端 Agent 注入真实工具。
+    const tools = features.value.webSearch ? [{ type: 'web_search' as const }] : []
+    const mcp = getMcpStore()
+    const hasEnabledMcpServers = mcp.enabledServers.length > 0
 
     const params = {
       model: currentModel.value,
@@ -217,8 +209,8 @@ export const useChatStore = defineStore('chat', () => {
       tools: tools.length > 0 ? tools : undefined,
       tool_choice: tools.length > 0 ? 'auto' : undefined,
       conversationId: targetConversationId,
-      knowledgeBaseId: currentConversation.value?.knowledgeBaseId,
-      mcpEnabled: getMcpStore().mcpEnabled && getMcpStore().hasServers,
+      knowledgeBaseId: activeKnowledgeBaseId,
+      mcpEnabled: features.value.functionCall && hasEnabledMcpServers,
     }
 
     await sendChatStream(
@@ -341,19 +333,20 @@ export const useChatStore = defineStore('chat', () => {
       const config = await fetchChatConfig()
       // 用后端返回的功能开关更新 adminFeatures
       if (config.features) {
+        // 同步 userToggledFeatures：后台开关打开时即默认在前台启用；
+        // 用户在前台手动关闭后，保持当前选择，直到后台先关后开重新启用。
+        const previousAdminFeatures = { ...adminFeatures.value }
         adminFeatures.value = {
           thinking: config.features.thinking ?? false,
           webSearch: config.features.webSearch ?? false,
           functionCall: config.features.functionCall ?? false,
           knowledgeBase: config.features.knowledgeBase ?? false,
         }
-        // 同步 userToggledFeatures：admin 关闭的功能强制关闭，
-        // admin 开启的功能保持用户原选择（默认不自动开启，由用户自己决定）
         userToggledFeatures.value = {
-          thinking: adminFeatures.value.thinking && userToggledFeatures.value.thinking,
-          webSearch: adminFeatures.value.webSearch && userToggledFeatures.value.webSearch,
-          functionCall: adminFeatures.value.functionCall && userToggledFeatures.value.functionCall,
-          knowledgeBase: adminFeatures.value.knowledgeBase && userToggledFeatures.value.knowledgeBase,
+          thinking: adminFeatures.value.thinking && (previousAdminFeatures.thinking ? userToggledFeatures.value.thinking : true),
+          webSearch: adminFeatures.value.webSearch && (previousAdminFeatures.webSearch ? userToggledFeatures.value.webSearch : true),
+          functionCall: adminFeatures.value.functionCall && (previousAdminFeatures.functionCall ? userToggledFeatures.value.functionCall : true),
+          knowledgeBase: adminFeatures.value.knowledgeBase && (previousAdminFeatures.knowledgeBase ? userToggledFeatures.value.knowledgeBase : true),
         }
       }
       await loadProviderModels()

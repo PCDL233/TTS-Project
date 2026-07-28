@@ -53,7 +53,8 @@
             </div>
 
             <!-- 工具栏（放在输入框上方） -->
-            <div class="flex items-center gap-2 mb-2 flex-wrap">
+            <div class="chat-toolbar mb-2">
+                <div class="chat-toolbar-actions">
                 <!-- 上传图片 -->
                 <el-tooltip content="上传图片" placement="top">
                     <button
@@ -114,10 +115,11 @@
                 <el-divider v-if="chatStore.adminFeatures.thinking || chatStore.adminFeatures.webSearch || chatStore.adminFeatures.functionCall || chatStore.adminFeatures.knowledgeBase" direction="vertical" class="mx-1!" />
 
                 <!-- 深度思考 -->
-                <el-tooltip v-if="supportsMimoExtensions && chatStore.adminFeatures.thinking" content="深度思考" placement="top">
+                <el-tooltip v-if="chatStore.adminFeatures.thinking" :content="thinkingTooltip" placement="top">
                     <button
-                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
-                        :class="chatStore.features.thinking ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        class="toolbar-button flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
+                        :class="chatStore.features.thinking && canUseThinking ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        :aria-disabled="!canUseThinking"
                         @click="toggleFeature('thinking')"
                     >
                         <el-icon :size="14"><cpu /></el-icon>
@@ -126,10 +128,11 @@
                 </el-tooltip>
 
                 <!-- 联网搜索 -->
-                <el-tooltip v-if="supportsMimoExtensions && chatStore.adminFeatures.webSearch" content="联网搜索" placement="top">
+                <el-tooltip v-if="chatStore.adminFeatures.webSearch" :content="webSearchTooltip" placement="top">
                     <button
-                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
-                        :class="chatStore.features.webSearch ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        class="toolbar-button flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
+                        :class="chatStore.features.webSearch && canUseWebSearch ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        :aria-disabled="!canUseWebSearch"
                         @click="toggleFeature('webSearch')"
                     >
                         <el-icon :size="14"><search /></el-icon>
@@ -138,10 +141,11 @@
                 </el-tooltip>
 
                 <!-- 函数调用 -->
-                <el-tooltip v-if="chatStore.adminFeatures.functionCall" content="函数调用" placement="top">
+                <el-tooltip v-if="chatStore.adminFeatures.functionCall" :content="functionCallTooltip" placement="top">
                     <button
-                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
-                        :class="chatStore.features.functionCall ? 'bg-purple-50 border-purple-200 text-purple-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        class="toolbar-button flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
+                        :class="chatStore.features.functionCall && canUseFunctionCall ? 'bg-purple-50 border-purple-200 text-purple-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        :aria-disabled="!canUseFunctionCall"
                         @click="toggleFeature('functionCall')"
                     >
                         <el-icon :size="14"><magic-stick /></el-icon>
@@ -174,7 +178,9 @@
                     </div>
                 </el-tooltip>
 
-                <div class="ml-auto flex items-center gap-2">
+                </div>
+
+                <div class="chat-toolbar-model">
                     <!-- 厂商模型选择：从当前厂商官方 /models 接口动态加载 -->
                     <div class="flex items-center gap-1">
                         <el-select
@@ -291,8 +297,9 @@ import {
 } from '@element-plus/icons-vue'
 import { useChatStore } from '../stores/chat'
 import { useConfigStore } from '../stores/config'
+import { useMcpStore } from '../stores/mcp'
 import type { ChatMessage, ChatMessagePart, ChatFeatures } from '../types/chat'
-import { MIMO_BASE_URL_PRESETS, getBaseUrlOption } from '../types/llm'
+import { TOKEN_PLAN_BASE_URL_PRESETS, getBaseUrlOption } from '../types/llm'
 import { uploadFile } from '../api/upload'
 import { BACKEND_URL } from '../api/client'
 import { ElMessage } from 'element-plus'
@@ -303,6 +310,7 @@ const SUPPORTED_AUDIO_FORMATS = new Set(['mp3', 'wav', 'ogg', 'm4a'])
 
 const chatStore = useChatStore()
 const configStore = useConfigStore()
+const mcpStore = useMcpStore()
 
 // 知识库列表
 const knowledgeBases = ref<KnowledgeBase[]>([])
@@ -345,7 +353,18 @@ async function handleKnowledgeBaseChange(val: number | null) {
 
 loadKnowledgeBases()
 
-const supportsMimoExtensions = computed(() => MIMO_BASE_URL_PRESETS.has(configStore.config.baseUrlPreset))
+const isTokenPlanProvider = computed(() => TOKEN_PLAN_BASE_URL_PRESETS.has(configStore.config.baseUrlPreset))
+const canUseThinking = computed(() => true)
+const canUseWebSearch = computed(() => !isTokenPlanProvider.value)
+const canUseFunctionCall = computed(() => mcpStore.enabledServers.length > 0)
+
+const thinkingTooltip = computed(() => '深度思考')
+const webSearchTooltip = computed(() => (
+    canUseWebSearch.value ? '联网搜索' : 'Token Plan 端点不支持联网搜索，请切换到普通 API 或其他兼容厂商'
+))
+const functionCallTooltip = computed(() => (
+    canUseFunctionCall.value ? 'MCP 函数调用' : '请先添加并启用 MCP 工具服务器'
+))
 
 const availableModelOptions = computed(() => chatStore.availableModelOptions)
 
@@ -416,8 +435,24 @@ function handleKeydown(e: KeyboardEvent) {
 }
 
 function toggleFeature(key: keyof ChatFeatures) {
+    if (key === 'thinking' && !canUseThinking.value) {
+        ElMessage.warning(thinkingTooltip.value)
+        return
+    }
+    if (key === 'webSearch' && !canUseWebSearch.value) {
+        ElMessage.warning(webSearchTooltip.value)
+        return
+    }
+    if (key === 'functionCall' && !canUseFunctionCall.value) {
+        ElMessage.warning(functionCallTooltip.value)
+        return
+    }
     chatStore.updateFeatures({ [key]: !chatStore.features[key] })
 }
+
+watch([canUseWebSearch, () => chatStore.features.webSearch], ([canUse, enabled]) => {
+    if (!canUse && enabled) chatStore.updateFeatures({ webSearch: false })
+}, { immediate: true })
 
 async function handleSend() {
     if (!canSend.value) return
@@ -458,7 +493,7 @@ async function handleSend() {
     inputAudio.value = null
     inputVideo.value = null
 
-    await chatStore.sendMessage(userMessage)
+    await chatStore.sendMessage(userMessage, { knowledgeBaseId: selectedKbId.value })
 }
 
 function handleStop() {
@@ -563,6 +598,61 @@ function removeVideo() {
 </script>
 
 <style scoped>
+
+.chat-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.chat-toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    overflow: visible;
+}
+
+.chat-toolbar-actions > * {
+    flex: 0 0 auto;
+}
+
+.chat-toolbar-model {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.toolbar-button {
+    white-space: nowrap;
+}
+
+.toolbar-button[aria-disabled='true'] {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+@media (max-width: 640px) {
+    .chat-toolbar {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+
+    .chat-toolbar-model {
+        justify-content: flex-start;
+        width: 100%;
+    }
+
+    .chat-toolbar-model :deep(.el-select) {
+        width: 100% !important;
+    }
+}
+
 .chat-textarea :deep(.el-textarea__inner) {
     border-radius: 0.75rem;
     padding: 0.75rem 1rem;
