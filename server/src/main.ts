@@ -1,85 +1,104 @@
-import { NestFactory, Reflector } from '@nestjs/core'
-import { NestExpressApplication } from '@nestjs/platform-express'
-import { AppModule } from './app.module'
-import { ValidationPipe, Logger } from '@nestjs/common'
-import type { Request, Response, NextFunction } from 'express'
-import { join } from 'path'
-import { LoggingInterceptor } from './common/interceptors/logging.interceptor'
-import { OperationLogService } from './log/operation-log.service'
-import { RoleService } from './role/role.service'
-import { getClientIp } from './common/utils/ip.util'
+import { NestFactory, Reflector } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { AppModule } from './app.module';
+import { ValidationPipe, Logger } from '@nestjs/common';
+import type { Request, Response, NextFunction } from 'express';
+import { join } from 'path';
+import { randomUUID } from 'crypto';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { OperationLogService } from './log/operation-log.service';
+import { RoleService } from './role/role.service';
+import { getClientIp } from './common/utils/ip.util';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
-  const logger = new Logger('HTTP')
+  const logger = new Logger('HTTP');
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
-  })
+  });
 
-  app.useBodyParser('json', { limit: '10mb' })
-  app.useBodyParser('urlencoded', { limit: '10mb', extended: true })
+  app.useBodyParser('json', { limit: '10mb' });
+  app.useBodyParser('urlencoded', { limit: '10mb', extended: true });
 
   const allowedOrigins = process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim())
-    : ['http://localhost:3000']
+    : ['http://localhost:3000'];
 
   app.enableCors({
     origin: (origin, callback) => {
       if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true)
+        callback(null, true);
       } else {
-        callback(new Error(`CORS blocked: ${origin}`))
+        callback(new Error(`CORS blocked: ${origin}`));
       }
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
+    exposedHeaders: ['X-Request-Id'],
     maxAge: 86400,
-  })
+  });
 
   // 信任代理，使 req.ip 能正确获取真实客户端 IP
-  app.set('trust proxy', true)
+  app.set('trust proxy', true);
+
+  // 为每个请求补齐 requestId，错误响应和前端排查共用同一标识
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const incomingRequestId = req.headers['x-request-id'];
+    const requestId = Array.isArray(incomingRequestId)
+      ? incomingRequestId[0] || randomUUID()
+      : incomingRequestId || randomUUID();
+
+    req.headers['x-request-id'] = requestId;
+    res.setHeader('X-Request-Id', requestId);
+    next();
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       transform: true,
     }),
-  )
+  );
 
   // 静态资源
-  app.useStaticAssets(join(__dirname, '..', 'public'))
+  app.useStaticAssets(join(__dirname, '..', 'public'));
 
   // 全局请求日志中间件
   app.use((req: Request, res: Response, next: NextFunction) => {
-    const start = Date.now()
-    const ip = getClientIp(req) || 'unknown'
+    const start = Date.now();
+    const ip = getClientIp(req) || 'unknown';
     res.on('finish', () => {
-      const duration = Date.now() - start
-      const message = `[${ip}] ${req.method} ${req.originalUrl} ${res.statusCode} - ${duration}ms`
+      const duration = Date.now() - start;
+      const message = `[${ip}] ${req.method} ${req.originalUrl} ${res.statusCode} - ${duration}ms`;
       if (res.statusCode >= 500) {
-        logger.error(message)
+        logger.error(message);
       } else if (res.statusCode >= 400) {
-        logger.warn(message)
+        logger.warn(message);
       } else {
-        logger.log(message)
+        logger.log(message);
       }
-    })
-    next()
-  })
+    });
+    next();
+  });
 
-  app.setGlobalPrefix('api')
+  app.setGlobalPrefix('api');
+
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   // 注册全局拦截器
-  const operationLogService = app.get(OperationLogService)
-  const reflector = app.get(Reflector)
-  app.useGlobalInterceptors(new LoggingInterceptor(operationLogService, reflector))
+  const operationLogService = app.get(OperationLogService);
+  const reflector = app.get(Reflector);
+  app.useGlobalInterceptors(
+    new LoggingInterceptor(operationLogService, reflector),
+  );
 
   // 角色种子数据
-  const roleService = app.get(RoleService)
-  await roleService.seed()
+  const roleService = app.get(RoleService);
+  await roleService.seed();
 
-  const port = process.env.PORT ?? 3001
-  await app.listen(port)
-  logger.log(`Server running on http://localhost:${port}`)
+  const port = process.env.PORT ?? 3001;
+  await app.listen(port);
+  logger.log(`Server running on http://localhost:${port}`);
 }
-bootstrap()
+bootstrap();

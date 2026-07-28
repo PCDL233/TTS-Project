@@ -47,8 +47,11 @@
                     <el-select
                         v-else-if="currentConfig.key === 'default_model'"
                         v-model="currentConfig.value"
-                        placeholder="请选择模型"
+                        placeholder="请选择或输入模型"
                         class="w-full"
+                        filterable
+                        allow-create
+                        default-first-option
                     >
                         <el-option
                             v-for="opt in modelOptions"
@@ -99,13 +102,7 @@ import { ref, onMounted } from 'vue'
 import { adminApi } from '../../api/admin'
 import { ElMessage } from 'element-plus'
 
-const modelOptions = [
-    { value: 'mimo-v2.5-pro', label: 'MiMo-V2.5-Pro' },
-    { value: 'mimo-v2.5', label: 'MiMo-V2.5' },
-    { value: 'mimo-v2-pro', label: 'MiMo-V2-Pro' },
-    { value: 'mimo-v2-omni', label: 'MiMo-V2-Omni' },
-    { value: 'mimo-v2-flash', label: 'MiMo-V2-Flash' },
-]
+const modelOptions: Array<{ value: string; label: string }> = []
 
 const configs = ref<any[]>([])
 const loading = ref(false)

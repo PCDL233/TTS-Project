@@ -36,6 +36,10 @@ export function useChatTTS() {
       error.value = '没有可朗读的内容'
       return
     }
+    if (!configStore.isMimoProvider()) {
+      error.value = '当前朗读仅支持小米 MiMo TTS 接口，请在 API 设置中切换为 MiMo 端点'
+      return
+    }
 
     isLoading.value = true
     error.value = ''

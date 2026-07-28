@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import type { ChatConversation, ChatMessage, ChatFeatures } from '../types/chat'
+import { ref, computed, watch } from 'vue'
+import { CHAT_ROLE_PRESETS } from '../types/chat'
+import type { ChatConversation, ChatMessage, ChatFeatures, ChatRoleSettings } from '../types/chat'
 import { useMcpStore } from './mcp'
 import {
   fetchConversations as apiFetchConversations,
@@ -10,8 +11,50 @@ import {
   fetchMessages as apiFetchMessages,
   sendChatStream,
   fetchChatConfig,
+  fetchProviderChatModels,
 } from '../api/chat'
-import { CHAT_MODEL_OPTIONS, resolveModelOptions } from '../types/chat'
+import type { ChatModelOption } from '../types/chat'
+import { getApiErrorMessage } from '../api/error'
+
+interface SendMessageOptions {
+  knowledgeBaseId?: number | null
+}
+
+
+const ROLE_SETTINGS_STORAGE_KEY = 'chatRoleSettings'
+const DEFAULT_ROLE_SETTINGS: ChatRoleSettings = {
+  enabled: false,
+  presetId: 'professional_assistant',
+  customPrompt: '',
+}
+
+function loadStoredRoleSettings(): ChatRoleSettings {
+  try {
+    const raw = localStorage.getItem(ROLE_SETTINGS_STORAGE_KEY)
+    if (!raw) return { ...DEFAULT_ROLE_SETTINGS }
+    const parsed = JSON.parse(raw) as Partial<ChatRoleSettings>
+    const presetIds = new Set([...CHAT_ROLE_PRESETS.map((preset) => preset.id), 'custom'])
+    const presetId = parsed.presetId && presetIds.has(parsed.presetId)
+      ? parsed.presetId
+      : DEFAULT_ROLE_SETTINGS.presetId
+    return {
+      enabled: parsed.enabled === true,
+      presetId,
+      customPrompt: typeof parsed.customPrompt === 'string' ? parsed.customPrompt : '',
+    }
+  } catch {
+    return { ...DEFAULT_ROLE_SETTINGS }
+  }
+}
+
+function normalizeRoleSettings(settings: ChatRoleSettings): ChatRoleSettings | undefined {
+  if (!settings.enabled) return undefined
+  return {
+    enabled: true,
+    presetId: settings.presetId,
+    customPrompt: settings.presetId === 'custom' ? settings.customPrompt?.trim() : undefined,
+  }
+}
 
 export const useChatStore = defineStore('chat', () => {
   // MCP store reference (lazy to avoid circular dep)
@@ -27,12 +70,13 @@ export const useChatStore = defineStore('chat', () => {
   const loading = ref(false)
   const conversationsLoading = ref(false)
   const error = ref('')
-  const currentModel = ref('mimo-v2.5-pro')
+  const currentModel = ref('')
   // 管理员全局功能开关（控制 UI 按钮可见性）
   const adminFeatures = ref<ChatFeatures>({
     thinking: false,
     webSearch: false,
     functionCall: false,
+    roleSetting: false,
     knowledgeBase: false,
   })
   // 用户本地开关偏好（仅对 adminFeatures 中开启的功能生效）
@@ -40,6 +84,7 @@ export const useChatStore = defineStore('chat', () => {
     thinking: false,
     webSearch: false,
     functionCall: false,
+    roleSetting: true,
     knowledgeBase: false,
   })
   // 最终生效的功能（admin 关闭则整体关闭，admin 开启则取决于用户本地开关）
@@ -47,31 +92,54 @@ export const useChatStore = defineStore('chat', () => {
     thinking: adminFeatures.value.thinking && userToggledFeatures.value.thinking,
     webSearch: adminFeatures.value.webSearch && userToggledFeatures.value.webSearch,
     functionCall: adminFeatures.value.functionCall && userToggledFeatures.value.functionCall,
+    roleSetting: adminFeatures.value.roleSetting === true,
     knowledgeBase: adminFeatures.value.knowledgeBase && userToggledFeatures.value.knowledgeBase,
   }))
   const abortController = ref<AbortController | null>(null)
   const chatConfigLoaded = ref(false)
   const userSelectedModel = ref(false) // 标记用户是否手动选过模型
-  const availableModelOptions = ref(CHAT_MODEL_OPTIONS) // 默认使用硬编码回退值
+  const modelsLoading = ref(false)
+  const modelsError = ref('')
+  const providerModelSource = ref('')
+  const availableModelOptions = ref<ChatModelOption[]>([])
+  const roleSettings = ref<ChatRoleSettings>(loadStoredRoleSettings())
+
+  watch(
+    roleSettings,
+    (value) => {
+      localStorage.setItem(ROLE_SETTINGS_STORAGE_KEY, JSON.stringify(value))
+    },
+    { deep: true },
+  )
 
   // Getters
   const currentConversation = computed(() =>
     conversations.value.find((c) => c.id === currentConversationId.value),
   )
+  const currentRoleLabel = computed(() => {
+    if (!roleSettings.value.enabled) return '未启用'
+    if (roleSettings.value.presetId === 'custom') return '自定义角色'
+    return CHAT_ROLE_PRESETS.find((preset) => preset.id === roleSettings.value.presetId)?.name || '模型角色'
+  })
 
   // Actions
   async function loadConversations() {
     conversationsLoading.value = true
     try {
       conversations.value = await apiFetchConversations()
-    } catch (err: any) {
-      error.value = err.response?.data?.message || '加载会话列表失败'
+    } catch (err: unknown) {
+      error.value = getApiErrorMessage(err, '加载会话列表失败')
     } finally {
       conversationsLoading.value = false
     }
   }
 
   async function createNewChat(title?: string, knowledgeBaseId?: number | null) {
+    if (!currentModel.value) {
+      error.value = '请先选择或输入模型'
+      return null
+    }
+
     try {
       const conversation = await apiCreateConversation({
         title: title || '新对话',
@@ -83,8 +151,8 @@ export const useChatStore = defineStore('chat', () => {
       currentConversationId.value = conversation.id
       messages.value = []
       return conversation
-    } catch (err: any) {
-      error.value = err.response?.data?.message || '创建会话失败'
+    } catch (err: unknown) {
+      error.value = getApiErrorMessage(err, '创建会话失败')
       return null
     }
   }
@@ -100,8 +168,8 @@ export const useChatStore = defineStore('chat', () => {
     messages.value = []
     try {
       messages.value = await apiFetchMessages(id)
-    } catch (err: any) {
-      error.value = err.response?.data?.message || '加载消息失败'
+    } catch (err: unknown) {
+      error.value = getApiErrorMessage(err, '加载消息失败')
     }
   }
 
@@ -113,20 +181,36 @@ export const useChatStore = defineStore('chat', () => {
         currentConversationId.value = null
         messages.value = []
       }
-    } catch (err: any) {
-      error.value = err.response?.data?.message || '删除会话失败'
+    } catch (err: unknown) {
+      error.value = getApiErrorMessage(err, '删除会话失败')
     }
   }
 
-  async function sendMessage(userMessage: ChatMessage) {
+  async function sendMessage(userMessage: ChatMessage, options: SendMessageOptions = {}) {
     if (loading.value) return
+
+    if (!currentModel.value) {
+      error.value = '请先选择或输入模型'
+      return
+    }
+
+    if (features.value.roleSetting && roleSettings.value.enabled && roleSettings.value.presetId === 'custom' && !roleSettings.value.customPrompt?.trim()) {
+      error.value = '请输入自定义角色设定，或关闭角色设定'
+      return
+    }
 
     loading.value = true
     error.value = ''
 
+    const activeKnowledgeBaseId = features.value.knowledgeBase
+      ? options.knowledgeBaseId === undefined
+        ? (currentConversation.value?.knowledgeBaseId ?? undefined)
+        : (options.knowledgeBaseId ?? undefined)
+      : undefined
+
     // 确保有当前会话
     if (!currentConversationId.value) {
-      const conversation = await createNewChat(userMessage.content.slice(0, 20) || '新对话')
+      const conversation = await createNewChat(userMessage.content.slice(0, 20) || '新对话', activeKnowledgeBaseId)
       if (!conversation) {
         loading.value = false
         return
@@ -171,28 +255,10 @@ export const useChatStore = defineStore('chat', () => {
       contentParts: msg.contentParts,
     }))
 
-    // 构建 tools
-    const tools: any[] = []
-    if (features.value.webSearch) {
-      tools.push({ type: 'web_search' })
-    }
-    if (features.value.functionCall) {
-      tools.push({
-        type: 'function',
-        function: {
-          name: 'get_current_weather',
-          description: '获取指定城市的当前天气',
-          parameters: {
-            type: 'object',
-            properties: {
-              location: { type: 'string', description: '城市名称' },
-              unit: { type: 'string', enum: ['celsius', 'fahrenheit'] },
-            },
-            required: ['location'],
-          },
-        },
-      })
-    }
+    // 构建 MiMo 内置工具；MCP 函数调用由 mcpEnabled 交给后端 Agent 注入真实工具。
+    const tools = features.value.webSearch ? [{ type: 'web_search' as const }] : []
+    const mcp = getMcpStore()
+    const hasEnabledMcpServers = mcp.enabledServers.length > 0
 
     const params = {
       model: currentModel.value,
@@ -202,8 +268,9 @@ export const useChatStore = defineStore('chat', () => {
       tools: tools.length > 0 ? tools : undefined,
       tool_choice: tools.length > 0 ? 'auto' : undefined,
       conversationId: targetConversationId,
-      knowledgeBaseId: currentConversation.value?.knowledgeBaseId,
-      mcpEnabled: getMcpStore().mcpEnabled && getMcpStore().hasServers,
+      knowledgeBaseId: activeKnowledgeBaseId,
+      mcpEnabled: features.value.functionCall && hasEnabledMcpServers,
+      roleSettings: features.value.roleSetting ? normalizeRoleSettings(roleSettings.value) : undefined,
     }
 
     await sendChatStream(
@@ -290,42 +357,71 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  function updateRoleSettings(newSettings: Partial<ChatRoleSettings>) {
+    roleSettings.value = {
+      ...roleSettings.value,
+      ...newSettings,
+    }
+  }
+
   function updateModel(model: string) {
     userSelectedModel.value = true
     currentModel.value = model
   }
 
+  async function loadProviderModels(resetSelection = false) {
+    modelsLoading.value = true
+    modelsError.value = ''
+    try {
+      const providerModels = await fetchProviderChatModels()
+      availableModelOptions.value = providerModels.models
+      providerModelSource.value = providerModels.baseUrl
+
+      const values = providerModels.models.map((model) => model.value)
+      const shouldReset = resetSelection || !userSelectedModel.value || !values.includes(currentModel.value)
+      const nextModel = providerModels.defaultModel || values[0] || ''
+      if (shouldReset && nextModel) {
+        currentModel.value = nextModel
+        userSelectedModel.value = false
+      }
+    } catch (err: unknown) {
+      modelsError.value = getApiErrorMessage(err, '获取厂商模型列表失败')
+      providerModelSource.value = ''
+      availableModelOptions.value = currentModel.value
+        ? [{ value: currentModel.value, label: currentModel.value, description: '当前手动模型' }]
+        : []
+    } finally {
+      modelsLoading.value = false
+    }
+  }
+
   async function loadChatConfig() {
     try {
       const config = await fetchChatConfig()
-      // 用后端返回的模型列表生成 option 对象
-      if (config.models && config.models.length > 0) {
-        availableModelOptions.value = resolveModelOptions(config.models)
-      }
-      // 用后端返回的默认模型设置 currentModel（仅用户未手动选过时）
-      if (!userSelectedModel.value && config.defaultModel) {
-        currentModel.value = config.defaultModel
-      }
       // 用后端返回的功能开关更新 adminFeatures
       if (config.features) {
+        // 同步 userToggledFeatures：后台开关打开时即默认在前台启用；
+        // 用户在前台手动关闭后，保持当前选择，直到后台先关后开重新启用。
+        const previousAdminFeatures = { ...adminFeatures.value }
         adminFeatures.value = {
           thinking: config.features.thinking ?? false,
           webSearch: config.features.webSearch ?? false,
           functionCall: config.features.functionCall ?? false,
+          roleSetting: config.features.roleSetting ?? false,
           knowledgeBase: config.features.knowledgeBase ?? false,
         }
-        // 同步 userToggledFeatures：admin 关闭的功能强制关闭，
-        // admin 开启的功能保持用户原选择（默认不自动开启，由用户自己决定）
         userToggledFeatures.value = {
-          thinking: adminFeatures.value.thinking && userToggledFeatures.value.thinking,
-          webSearch: adminFeatures.value.webSearch && userToggledFeatures.value.webSearch,
-          functionCall: adminFeatures.value.functionCall && userToggledFeatures.value.functionCall,
-          knowledgeBase: adminFeatures.value.knowledgeBase && userToggledFeatures.value.knowledgeBase,
+          thinking: adminFeatures.value.thinking && (previousAdminFeatures.thinking ? userToggledFeatures.value.thinking : true),
+          webSearch: adminFeatures.value.webSearch && (previousAdminFeatures.webSearch ? userToggledFeatures.value.webSearch : true),
+          functionCall: adminFeatures.value.functionCall && (previousAdminFeatures.functionCall ? userToggledFeatures.value.functionCall : true),
+          roleSetting: true,
+          knowledgeBase: adminFeatures.value.knowledgeBase && (previousAdminFeatures.knowledgeBase ? userToggledFeatures.value.knowledgeBase : true),
         }
       }
+      await loadProviderModels()
       chatConfigLoaded.value = true
-    } catch (err: any) {
-      error.value = err.response?.data?.message || '加载聊天配置失败'
+    } catch (err: unknown) {
+      error.value = getApiErrorMessage(err, '加载聊天配置失败')
     }
   }
 
@@ -344,7 +440,13 @@ export const useChatStore = defineStore('chat', () => {
     features,
     adminFeatures,
     userToggledFeatures,
+    roleSettings,
+    currentRoleLabel,
+    rolePresets: CHAT_ROLE_PRESETS,
     chatConfigLoaded,
+    modelsLoading,
+    modelsError,
+    providerModelSource,
     availableModelOptions,
     currentConversation,
     loadConversations,
@@ -354,8 +456,10 @@ export const useChatStore = defineStore('chat', () => {
     sendMessage,
     stopGeneration,
     updateFeatures,
+    updateRoleSettings,
     updateModel,
     loadChatConfig,
+    loadProviderModels,
     clearError,
   }
 })

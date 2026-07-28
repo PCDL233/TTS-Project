@@ -1,0 +1,10 @@
+packages:
+  - .
+  - server
+
+onlyBuiltDependencies:
+  - '@swc/core'
+  - better-sqlite3
+  - onnxruntime-node
+  - protobufjs
+  - sharp

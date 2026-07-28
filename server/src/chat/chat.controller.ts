@@ -45,12 +45,21 @@ export class ChatController {
   @LogOperation('chat', 'create-conversation')
   async createConversation(
     @Req() req: RequestWithUser,
-    @Body() body: { title?: string; model?: string; features?: any; knowledgeBaseId?: number },
+    @Body()
+    body: {
+      title?: string;
+      model?: string;
+      features?: any;
+      knowledgeBaseId?: number;
+    },
   ) {
     this.logger.log(`[createConversation] 用户 ${req.user.userId}`);
+    if (!body.model) {
+      throw new BadRequestException('请先选择或输入模型');
+    }
     return this.chatService.createConversation(req.user.userId, {
       title: body.title || '新对话',
-      model: body.model || 'mimo-v2.5-pro',
+      model: body.model,
       features: body.features || {},
       knowledgeBaseId: body.knowledgeBaseId,
     });
@@ -62,7 +71,9 @@ export class ChatController {
     @Param('id') id: string,
     @Body() body: { title?: string; knowledgeBaseId?: number | null },
   ) {
-    this.logger.log(`[updateConversation] 用户 ${req.user.userId} 更新会话 ${id}`);
+    this.logger.log(
+      `[updateConversation] 用户 ${req.user.userId} 更新会话 ${id}`,
+    );
     return this.chatService.updateConversation(req.user.userId, Number(id), {
       title: body.title,
       knowledgeBaseId: body.knowledgeBaseId ?? undefined,
@@ -71,16 +82,26 @@ export class ChatController {
 
   @Delete('conversations/:id')
   @LogOperation('chat', 'delete-conversation')
-  async deleteConversation(@Req() req: RequestWithUser, @Param('id') id: string) {
-    this.logger.log(`[deleteConversation] 用户 ${req.user.userId} 删除会话 ${id}`);
+  async deleteConversation(
+    @Req() req: RequestWithUser,
+    @Param('id') id: string,
+  ) {
+    this.logger.log(
+      `[deleteConversation] 用户 ${req.user.userId} 删除会话 ${id}`,
+    );
     await this.chatService.removeConversation(req.user.userId, Number(id));
     return { success: true };
   }
 
   @Get('conversations/:id/messages')
   async getMessages(@Req() req: RequestWithUser, @Param('id') id: string) {
-    this.logger.log(`[getMessages] 用户 ${req.user.userId} 查询会话 ${id} 消息`);
-    const conversation = await this.chatService.findConversation(req.user.userId, Number(id));
+    this.logger.log(
+      `[getMessages] 用户 ${req.user.userId} 查询会话 ${id} 消息`,
+    );
+    const conversation = await this.chatService.findConversation(
+      req.user.userId,
+      Number(id),
+    );
     if (!conversation) {
       throw new ForbiddenException('无权访问该会话');
     }
@@ -96,7 +117,9 @@ export class ChatController {
     @Body() dto: ChatCompletionDto,
     @Res() res: Response,
   ) {
-    this.logger.log(`[completions] 用户 ${req.user.userId} 请求对话，model=${dto.model}, kb=${dto.knowledgeBaseId || 'none'}, mcp=${dto.mcpEnabled ?? false}`);
+    this.logger.log(
+      `[completions] 用户 ${req.user.userId} 请求对话，model=${dto.model}, kb=${dto.knowledgeBaseId || 'none'}, mcp=${dto.mcpEnabled ?? false}`,
+    );
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -132,8 +155,11 @@ export class ChatController {
             temperature: dto.temperature,
             max_completion_tokens: dto.max_completion_tokens,
             knowledgeBaseId: dto.knowledgeBaseId,
+            roleSettings: dto.roleSettings,
             mcpEnabled: true,
-            webSearchEnabled: dto.tools?.some((t: any) => t.type === 'web_search'),
+            webSearchEnabled: dto.tools?.some(
+              (t: any) => t.type === 'web_search',
+            ),
           })
         : this.chatService.streamChatCompletion(req.user.userId, dto);
 
@@ -178,16 +204,25 @@ export class ChatController {
     } catch (err) {
       this.logger.error(`[completions] 错误: ${(err as Error).message}`);
       if (!clientDisconnected) {
-        const errorMsg = err instanceof BadRequestException ? (err as Error).message : '对话请求处理失败，请稍后重试';
+        const errorMsg =
+          err instanceof BadRequestException
+            ? (err as Error).message
+            : '对话请求处理失败，请稍后重试';
         res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
       }
     } finally {
       clearInterval(heartbeat);
-      if (!clientDisconnected && dto.conversationId && (fullContent || fullReasoning)) {
+      if (
+        !clientDisconnected &&
+        dto.conversationId &&
+        (fullContent || fullReasoning)
+      ) {
         try {
           const lastUserMessage = dto.messages[dto.messages.length - 1];
           const fullToolCalls = Array.from(toolCallMap.values());
-          const fullAnnotations = Array.from(annotationsSet).map((s) => JSON.parse(s));
+          const fullAnnotations = Array.from(annotationsSet).map((s) =>
+            JSON.parse(s),
+          );
           await this.chatService.saveChatPair(
             dto.conversationId,
             lastUserMessage,
@@ -195,12 +230,17 @@ export class ChatController {
               content: fullContent,
               reasoningContent: fullReasoning,
               toolCalls: fullToolCalls.length > 0 ? fullToolCalls : undefined,
-              annotations: fullAnnotations.length > 0 ? fullAnnotations : undefined,
+              annotations:
+                fullAnnotations.length > 0 ? fullAnnotations : undefined,
             },
           );
-          this.logger.log(`[completions] 会话 ${dto.conversationId} 消息已保存`);
+          this.logger.log(
+            `[completions] 会话 ${dto.conversationId} 消息已保存`,
+          );
         } catch (saveErr) {
-          this.logger.error(`[completions] 保存消息失败: ${(saveErr as Error).message}`);
+          this.logger.error(
+            `[completions] 保存消息失败: ${(saveErr as Error).message}`,
+          );
         }
       }
       if (!clientDisconnected) {

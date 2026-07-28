@@ -53,7 +53,8 @@
             </div>
 
             <!-- 工具栏（放在输入框上方） -->
-            <div class="flex items-center gap-2 mb-2 flex-wrap">
+            <div class="chat-toolbar mb-2">
+                <div class="chat-toolbar-actions">
                 <!-- 上传图片 -->
                 <el-tooltip content="上传图片" placement="top">
                     <button
@@ -111,13 +112,14 @@
                     @change="handleVideoChange"
                 />
 
-                <el-divider v-if="chatStore.adminFeatures.thinking || chatStore.adminFeatures.webSearch || chatStore.adminFeatures.functionCall || chatStore.adminFeatures.knowledgeBase" direction="vertical" class="mx-1!" />
+                <el-divider direction="vertical" class="mx-1!" />
 
                 <!-- 深度思考 -->
-                <el-tooltip v-if="chatStore.adminFeatures.thinking" content="深度思考" placement="top">
+                <el-tooltip v-if="chatStore.adminFeatures.thinking" :content="thinkingTooltip" placement="top">
                     <button
-                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
-                        :class="chatStore.features.thinking ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        class="toolbar-button flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
+                        :class="chatStore.features.thinking && canUseThinking ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        :aria-disabled="!canUseThinking"
                         @click="toggleFeature('thinking')"
                     >
                         <el-icon :size="14"><cpu /></el-icon>
@@ -126,10 +128,11 @@
                 </el-tooltip>
 
                 <!-- 联网搜索 -->
-                <el-tooltip v-if="chatStore.adminFeatures.webSearch" content="联网搜索" placement="top">
+                <el-tooltip v-if="chatStore.adminFeatures.webSearch" :content="webSearchTooltip" placement="top">
                     <button
-                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
-                        :class="chatStore.features.webSearch ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        class="toolbar-button flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
+                        :class="chatStore.features.webSearch && canUseWebSearch ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        :aria-disabled="!canUseWebSearch"
                         @click="toggleFeature('webSearch')"
                     >
                         <el-icon :size="14"><search /></el-icon>
@@ -138,14 +141,27 @@
                 </el-tooltip>
 
                 <!-- 函数调用 -->
-                <el-tooltip v-if="chatStore.adminFeatures.functionCall" content="函数调用" placement="top">
+                <el-tooltip v-if="chatStore.adminFeatures.functionCall" :content="functionCallTooltip" placement="top">
                     <button
-                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
-                        :class="chatStore.features.functionCall ? 'bg-purple-50 border-purple-200 text-purple-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        class="toolbar-button flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
+                        :class="chatStore.features.functionCall && canUseFunctionCall ? 'bg-purple-50 border-purple-200 text-purple-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        :aria-disabled="!canUseFunctionCall"
                         @click="toggleFeature('functionCall')"
                     >
                         <el-icon :size="14"><magic-stick /></el-icon>
                         <span>函数调用</span>
+                    </button>
+                </el-tooltip>
+
+                <!-- 模型角色设定 -->
+                <el-tooltip v-if="chatStore.adminFeatures.roleSetting" :content="roleTooltip" placement="top">
+                    <button
+                        class="toolbar-button flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
+                        :class="chatStore.roleSettings.enabled ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        @click="roleDialogVisible = true"
+                    >
+                        <el-icon :size="14"><user /></el-icon>
+                        <span>{{ chatStore.roleSettings.enabled ? chatStore.currentRoleLabel : '角色设定' }}</span>
                     </button>
                 </el-tooltip>
 
@@ -174,22 +190,142 @@
                     </div>
                 </el-tooltip>
 
-                <div class="ml-auto flex items-center gap-2">
-                    <!-- 模型选择 -->
-                    <el-select
-                        v-model="chatStore.currentModel"
-                        size="small"
-                        style="width: 200px"
-                        @change="chatStore.updateModel"
-                    >
-                        <el-option
-                            v-for="opt in availableModelOptions"
-                            :key="opt.value"
-                            :label="opt.label"
-                            :value="opt.value"
-                        />
-                    </el-select>
                 </div>
+
+                <div class="chat-toolbar-model">
+                    <!-- 厂商模型选择：从当前厂商官方 /models 接口动态加载 -->
+                    <div class="flex items-center gap-1">
+                        <el-select
+                            v-model="chatStore.currentModel"
+                            class="model-select"
+                            size="small"
+                            style="width: clamp(180px, 24vw, 240px)"
+                            filterable
+                            allow-create
+                            default-first-option
+                            :loading="chatStore.modelsLoading"
+                            :no-data-text="modelNoDataText"
+                            placeholder="选择厂商模型"
+                            popper-class="chat-model-select-popper"
+                            :teleported="false"
+                            @change="chatStore.updateModel"
+                        >
+                            <el-option
+                                v-for="opt in availableModelOptions"
+                                :key="opt.value"
+                                :label="opt.label"
+                                :value="opt.value"
+                            >
+                                <div class="model-option" :title="opt.value">
+                                    <span class="model-option-label">{{ opt.label }}</span>
+                                    <span v-if="opt.description || opt.ownedBy" class="model-option-meta">
+                                        {{ opt.description || opt.ownedBy }}
+                                    </span>
+                                </div>
+                            </el-option>
+                        </el-select>
+                        <el-button
+                            text
+                            size="small"
+                            :loading="chatStore.modelsLoading"
+                            @click="refreshProviderModels"
+                        >
+                            <el-icon><refresh /></el-icon>
+                        </el-button>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <el-dialog
+                v-if="chatStore.adminFeatures.roleSetting"
+                v-model="roleDialogVisible"
+                title="模型角色设定"
+                width="560px"
+                append-to-body
+            >
+                <div class="role-settings-panel">
+                    <div class="role-settings-row">
+                        <div>
+                            <div class="role-settings-title">启用角色设定</div>
+                            <div class="role-settings-desc">关闭后不注入任何角色提示，模型按官方默认行为答复。</div>
+                        </div>
+                        <el-switch v-model="chatStore.roleSettings.enabled" />
+                    </div>
+
+                    <el-divider />
+
+                    <el-form label-position="top">
+                        <el-form-item label="选择角色示例">
+                            <el-select
+                                v-model="chatStore.roleSettings.presetId"
+                                class="w-full"
+                                placeholder="请选择角色"
+                                popper-class="role-select-popper"
+                            >
+                                <el-option
+                                    v-for="preset in chatStore.rolePresets"
+                                    :key="preset.id"
+                                    :label="preset.name"
+                                    :value="preset.id"
+                                >
+                                    <div class="role-option">
+                                        <span class="role-option-name">{{ preset.name }}</span>
+                                        <span class="role-option-desc">{{ preset.description }}</span>
+                                    </div>
+                                </el-option>
+                                <el-option label="自定义角色" value="custom">
+                                    <div class="role-option">
+                                        <span class="role-option-name">自定义角色</span>
+                                        <span class="role-option-desc">由你填写完整角色、人设、语气和输出规则。</span>
+                                    </div>
+                                </el-option>
+                            </el-select>
+                        </el-form-item>
+
+                        <el-form-item v-if="chatStore.roleSettings.presetId === 'custom'" label="自定义角色设定">
+                            <el-input
+                                v-model="chatStore.roleSettings.customPrompt"
+                                type="textarea"
+                                :rows="6"
+                                maxlength="2000"
+                                show-word-limit
+                                placeholder="例如：你是一名资深产品经理。回答必须先给结论，再给用户价值、实现路径、风险和验收标准，语气专业直接。"
+                            />
+                        </el-form-item>
+
+                        <el-alert
+                            v-else-if="currentRolePreset"
+                            type="info"
+                            :closable="false"
+                            show-icon
+                        >
+                            <template #title>{{ currentRolePreset.name }}</template>
+                            <div class="role-preset-preview">{{ currentRolePreset.prompt }}</div>
+                        </el-alert>
+                    </el-form>
+                </div>
+
+                <template #footer>
+                    <el-button @click="roleDialogVisible = false">完成</el-button>
+                </template>
+            </el-dialog>
+
+            <div v-if="chatStore.modelsError" class="model-error-banner mb-2">
+                <el-icon class="shrink-0 mt-0.5"><warning-filled /></el-icon>
+                <div class="min-w-0 flex-1">
+                    <div class="font-medium">未能自动获取 {{ currentProviderLabel }} 的模型列表</div>
+                    <div class="mt-0.5 text-amber-700/80">
+                        可直接在右侧模型框手动输入模型名继续使用。
+                        <el-tooltip :content="modelErrorDetail" placement="top" :show-after="200">
+                            <span class="underline decoration-dotted cursor-help">查看原因</span>
+                        </el-tooltip>
+                    </div>
+                </div>
+                <el-button link size="small" :loading="chatStore.modelsLoading" @click="refreshProviderModels">
+                    重试
+                </el-button>
             </div>
 
             <!-- 输入框 -->
@@ -244,11 +380,15 @@ import {
     VideoCamera,
     Loading,
     Collection,
+    Refresh,
+    WarningFilled,
+    User,
 } from '@element-plus/icons-vue'
 import { useChatStore } from '../stores/chat'
 import { useConfigStore } from '../stores/config'
+import { useMcpStore } from '../stores/mcp'
 import type { ChatMessage, ChatMessagePart, ChatFeatures } from '../types/chat'
-import { TOKEN_PLAN_CHAT_MODELS } from '../types/chat'
+import { TOKEN_PLAN_BASE_URL_PRESETS, getBaseUrlOption } from '../types/llm'
 import { uploadFile } from '../api/upload'
 import { BACKEND_URL } from '../api/client'
 import { ElMessage } from 'element-plus'
@@ -259,6 +399,15 @@ const SUPPORTED_AUDIO_FORMATS = new Set(['mp3', 'wav', 'ogg', 'm4a'])
 
 const chatStore = useChatStore()
 const configStore = useConfigStore()
+const mcpStore = useMcpStore()
+
+const roleDialogVisible = ref(false)
+const currentRolePreset = computed(() => (
+    chatStore.rolePresets.find((preset) => preset.id === chatStore.roleSettings.presetId) || null
+))
+const roleTooltip = computed(() => (
+    chatStore.roleSettings.enabled ? `模型角色设定：${chatStore.currentRoleLabel}` : '模型角色设定'
+))
 
 // 知识库列表
 const knowledgeBases = ref<KnowledgeBase[]>([])
@@ -301,21 +450,56 @@ async function handleKnowledgeBaseChange(val: number | null) {
 
 loadKnowledgeBases()
 
-const availableModelOptions = computed(() => {
-  const preset = configStore.config.baseUrlPreset
-  if (preset && preset.startsWith('token-plan')) {
-    return chatStore.availableModelOptions.filter(opt => TOKEN_PLAN_CHAT_MODELS.has(opt.value))
-  }
-  return chatStore.availableModelOptions
+const isTokenPlanProvider = computed(() => TOKEN_PLAN_BASE_URL_PRESETS.has(configStore.config.baseUrlPreset))
+const canUseThinking = computed(() => true)
+const canUseWebSearch = computed(() => !isTokenPlanProvider.value)
+const canUseFunctionCall = computed(() => mcpStore.enabledServers.length > 0)
+
+const thinkingTooltip = computed(() => '深度思考')
+const webSearchTooltip = computed(() => (
+    canUseWebSearch.value ? '联网搜索' : 'Token Plan 端点不支持联网搜索，请切换到普通 API 或其他兼容厂商'
+))
+const functionCallTooltip = computed(() => (
+    canUseFunctionCall.value ? 'MCP 函数调用' : '请先添加并启用 MCP 工具服务器'
+))
+
+const availableModelOptions = computed(() => chatStore.availableModelOptions)
+
+const currentProviderLabel = computed(() => {
+  if (configStore.config.baseUrlPreset === 'custom') return '自定义厂商'
+  return getBaseUrlOption(configStore.config.baseUrlPreset)?.label || '当前厂商'
 })
 
-// 如果当前模型不在可用列表中，自动切换到第一个可用模型
-watch(availableModelOptions, (options) => {
-  const values = options.map(o => o.value)
-  if (!values.includes(chatStore.currentModel) && values.length > 0) {
-    chatStore.updateModel(values[0])
-  }
-}, { immediate: true })
+const modelNoDataText = computed(() => (
+  chatStore.modelsError ? '获取失败，可手动输入模型名' : '暂无厂商模型，可手动输入模型名或点击刷新'
+))
+
+const modelErrorDetail = computed(() => {
+  const message = chatStore.modelsError.trim()
+  if (!message) return ''
+  return message.length > 220 ? `${message.slice(0, 220)}...` : message
+})
+
+let providerReloadTimer: ReturnType<typeof setTimeout> | null = null
+const providerConfigKey = computed(() => [
+  configStore.config.baseUrlPreset,
+  configStore.config.baseUrlCustom,
+  configStore.config.apiAuthType,
+  configStore.config.apiKey,
+].join('|'))
+
+watch(providerConfigKey, () => {
+  if (!configStore.loaded) return
+  if (providerReloadTimer) clearTimeout(providerReloadTimer)
+  // API 设置保存有 500ms 防抖，这里稍后刷新，确保后端已持久化新的厂商配置。
+  providerReloadTimer = setTimeout(() => {
+    chatStore.loadProviderModels(true)
+  }, 800)
+})
+
+function refreshProviderModels() {
+  chatStore.loadProviderModels(true)
+}
 
 const inputText = ref('')
 const inputImages = ref<string[]>([])
@@ -330,6 +514,7 @@ const videoInputRef = ref<HTMLInputElement>()
 const canSend = computed(() => {
     if (chatStore.loading) return false
     if (uploadingVideo.value) return false
+    if (!chatStore.currentModel.trim()) return false
     if (inputText.value.trim()) return true
     if (inputImages.value.length > 0) return true
     if (inputAudio.value) return true
@@ -347,8 +532,24 @@ function handleKeydown(e: KeyboardEvent) {
 }
 
 function toggleFeature(key: keyof ChatFeatures) {
+    if (key === 'thinking' && !canUseThinking.value) {
+        ElMessage.warning(thinkingTooltip.value)
+        return
+    }
+    if (key === 'webSearch' && !canUseWebSearch.value) {
+        ElMessage.warning(webSearchTooltip.value)
+        return
+    }
+    if (key === 'functionCall' && !canUseFunctionCall.value) {
+        ElMessage.warning(functionCallTooltip.value)
+        return
+    }
     chatStore.updateFeatures({ [key]: !chatStore.features[key] })
 }
+
+watch([canUseWebSearch, () => chatStore.features.webSearch], ([canUse, enabled]) => {
+    if (!canUse && enabled) chatStore.updateFeatures({ webSearch: false })
+}, { immediate: true })
 
 async function handleSend() {
     if (!canSend.value) return
@@ -389,7 +590,7 @@ async function handleSend() {
     inputAudio.value = null
     inputVideo.value = null
 
-    await chatStore.sendMessage(userMessage)
+    await chatStore.sendMessage(userMessage, { knowledgeBaseId: selectedKbId.value })
 }
 
 function handleStop() {
@@ -494,6 +695,61 @@ function removeVideo() {
 </script>
 
 <style scoped>
+
+.chat-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.chat-toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    overflow: visible;
+}
+
+.chat-toolbar-actions > * {
+    flex: 0 0 auto;
+}
+
+.chat-toolbar-model {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.toolbar-button {
+    white-space: nowrap;
+}
+
+.toolbar-button[aria-disabled='true'] {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+@media (max-width: 640px) {
+    .chat-toolbar {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+
+    .chat-toolbar-model {
+        justify-content: flex-start;
+        width: 100%;
+    }
+
+    .chat-toolbar-model :deep(.el-select) {
+        width: 100% !important;
+    }
+}
+
 .chat-textarea :deep(.el-textarea__inner) {
     border-radius: 0.75rem;
     padding: 0.75rem 1rem;
@@ -507,6 +763,151 @@ function removeVideo() {
     background-color: #ffffff;
     border-color: #d1d5db;
     box-shadow: 0 0 0 1px #d1d5db;
+}
+
+
+
+.role-settings-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.role-settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.role-settings-title {
+    color: #111827;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.role-settings-desc {
+    margin-top: 0.25rem;
+    color: #6b7280;
+    font-size: 0.75rem;
+    line-height: 1.25rem;
+}
+
+.role-option {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0.35rem 0;
+    line-height: normal;
+}
+
+.role-option-name {
+    color: #374151;
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.role-option-desc,
+.role-preset-preview {
+    color: #6b7280;
+    font-size: 0.75rem;
+    line-height: 1.25rem;
+    white-space: normal;
+}
+
+:global(.role-select-popper) {
+    min-width: min(520px, calc(100vw - 2rem)) !important;
+}
+
+:global(.role-select-popper .el-select-dropdown__item) {
+    height: auto;
+    min-height: 52px;
+    padding: 0.45rem 0.75rem;
+    line-height: normal;
+    white-space: normal;
+}
+
+:global(.role-select-popper .el-select-dropdown__item .role-option) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    line-height: normal;
+}
+
+:global(.role-select-popper .el-select-dropdown__item .role-option-name) {
+    color: #374151;
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+:global(.role-select-popper .el-select-dropdown__item .role-option-desc) {
+    color: #6b7280;
+    font-size: 0.75rem;
+    line-height: 1.25rem;
+    white-space: normal;
+}
+
+.model-error-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    border: 1px solid #fde68a;
+    border-radius: 0.75rem;
+    background: #fffbeb;
+    padding: 0.5rem 0.75rem;
+    color: #b45309;
+    font-size: 0.75rem;
+    line-height: 1.25rem;
+}
+
+.model-select :deep(.el-input__inner) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 12px;
+}
+
+.model-select :deep(.chat-model-select-popper) {
+    min-width: min(360px, calc(100vw - 2rem)) !important;
+    max-width: min(460px, calc(100vw - 2rem));
+}
+
+.model-select :deep(.el-select-dropdown__list) {
+    padding: 0.25rem;
+}
+
+.model-select :deep(.el-select-dropdown__item) {
+    height: auto;
+    min-height: 34px;
+    line-height: normal;
+    padding: 0;
+    white-space: normal;
+}
+
+.model-select :deep(.el-select-dropdown__item.selected) {
+    font-weight: 600;
+}
+
+.model-option {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    width: 100%;
+    padding: 0.45rem 0.75rem;
+    white-space: normal;
+    word-break: break-all;
+}
+
+.model-option-label {
+    color: #374151;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.25rem;
+}
+
+.model-option-meta {
+    color: #9ca3af;
+    font-size: 11px;
+    line-height: 1rem;
+    word-break: break-word;
 }
 
 .kb-select-active :deep(.el-input__wrapper) {
@@ -523,3 +924,4 @@ function removeVideo() {
     box-shadow: 0 0 0 1px #e5e7eb inset;
 }
 </style>
+

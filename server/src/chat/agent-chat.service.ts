@@ -5,6 +5,7 @@ import { ChatService } from './chat.service';
 import { McpClientManager } from '../mcp/mcp-client-manager.service';
 import { McpToolService } from '../mcp/mcp-tool.service';
 import { McpServerConfig } from '../mcp/mcp-server-config.entity';
+import type { ChatRoleSettings } from './chat-role.util';
 
 const MAX_AGENT_TURNS = 10;
 const TOOL_TIMEOUT_MS = 30000;
@@ -40,6 +41,7 @@ export class AgentChatService {
       temperature?: number;
       max_completion_tokens?: number;
       knowledgeBaseId?: number;
+      roleSettings?: ChatRoleSettings;
       mcpEnabled?: boolean;
       webSearchEnabled?: boolean;
     },
@@ -90,10 +92,14 @@ export class AgentChatService {
         temperature: dto.temperature,
         max_completion_tokens: dto.max_completion_tokens,
         knowledgeBaseId: dto.knowledgeBaseId,
+        roleSettings: dto.roleSettings,
       });
 
       // 如果 LLM 返回了文本内容且没有 tool_calls，即为最终回复
-      if ((llmResponse.content || llmResponse.reasoningContent) && llmResponse.toolCalls.length === 0) {
+      if (
+        (llmResponse.content || llmResponse.reasoningContent) &&
+        llmResponse.toolCalls.length === 0
+      ) {
         finalAssistantMessage = {
           content: llmResponse.content,
           reasoningContent: llmResponse.reasoningContent,
@@ -182,7 +188,10 @@ export class AgentChatService {
             const result = await Promise.race([
               this.toolService.callTool(entry, parsed.toolName, args),
               new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error('工具调用超时')), TOOL_TIMEOUT_MS),
+                setTimeout(
+                  () => reject(new Error('工具调用超时')),
+                  TOOL_TIMEOUT_MS,
+                ),
               ),
             ]);
             return {
@@ -251,9 +260,12 @@ export class AgentChatService {
     }
 
     if (turnCount >= MAX_AGENT_TURNS && !finalAssistantMessage) {
-      this.logger.warn(`[Agent] 用户 ${userId} 达到最大轮次 ${MAX_AGENT_TURNS}`);
+      this.logger.warn(
+        `[Agent] 用户 ${userId} 达到最大轮次 ${MAX_AGENT_TURNS}`,
+      );
       finalAssistantMessage = {
-        content: '（工具调用次数达到上限，未能完成全部操作。请尝试简化您的请求。）',
+        content:
+          '（工具调用次数达到上限，未能完成全部操作。请尝试简化您的请求。）',
         reasoningContent: '',
         toolCalls: [],
         annotations: [],
@@ -269,7 +281,8 @@ export class AgentChatService {
       for (let i = 0; i < fullContent.length; i += chunkSize) {
         yield {
           content: fullContent.slice(i, i + chunkSize),
-          reasoningContent: i === 0 ? finalAssistantMessage.reasoningContent : '',
+          reasoningContent:
+            i === 0 ? finalAssistantMessage.reasoningContent : '',
           toolCalls: null,
           annotations: i === 0 ? finalAssistantMessage.annotations : null,
           finishReason: i + chunkSize >= fullContent.length ? 'stop' : null,

@@ -64,7 +64,14 @@
       <el-tab-pane label="模型配置" name="models">
         <el-form label-width="120px">
           <el-form-item label="默认模型">
-            <el-select v-model="modelConfig.defaultModel" style="width: 300px">
+            <el-select
+              v-model="modelConfig.defaultModel"
+              style="width: 360px"
+              filterable
+              allow-create
+              default-first-option
+              placeholder="选择或输入默认模型"
+            >
               <el-option
                 v-for="model in modelConfig.models"
                 :key="model"
@@ -72,6 +79,18 @@
                 :value="model"
               />
             </el-select>
+          </el-form-item>
+          <el-form-item label="可用模型">
+            <el-input
+              v-model="modelListText"
+              type="textarea"
+              :rows="8"
+              placeholder="每行一个模型名；聊天页默认从当前厂商官方接口获取"
+              style="width: 520px"
+            />
+            <div class="text-xs text-gray-400 mt-1">
+              用户聊天页会根据当前 API 厂商从官方 /models 接口获取模型；这里仅保留旧版手动候选配置。
+            </div>
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="saveModelConfig">保存</el-button>
@@ -93,6 +112,10 @@
           <el-form-item label="函数调用">
             <el-switch v-model="featureConfig.functionCall" />
             <span class="ml-2 text-sm text-gray-500">允许AI调用外部函数</span>
+          </el-form-item>
+          <el-form-item label="角色设定">
+            <el-switch v-model="featureConfig.roleSetting" />
+            <span class="ml-2 text-sm text-gray-500">允许用户在智能助手输入框中选择模型角色</span>
           </el-form-item>
           <el-form-item label="知识库">
             <el-switch v-model="featureConfig.knowledgeBase" />
@@ -146,11 +169,13 @@ const modelConfig = ref({
   models: [] as string[],
   defaultModel: '',
 })
+const modelListText = ref('')
 
 const featureConfig = ref({
   thinking: true,
   webSearch: true,
   functionCall: true,
+  roleSetting: true,
   knowledgeBase: true,
 })
 
@@ -198,6 +223,7 @@ async function loadModelConfig() {
   try {
     const res = await adminApi.getChatModels()
     modelConfig.value = res.data
+    modelListText.value = modelConfig.value.models.join('\n')
   } catch {
     ElMessage.error('加载模型配置失败')
   }
@@ -205,7 +231,11 @@ async function loadModelConfig() {
 
 async function saveModelConfig() {
   try {
-    await adminApi.updateChatModels({ defaultModel: modelConfig.value.defaultModel })
+    const models = modelListText.value
+      .split(/[,\n]/)
+      .map((model) => model.trim())
+      .filter(Boolean)
+    await adminApi.updateChatModels({ models, defaultModel: modelConfig.value.defaultModel })
     ElMessage.success('保存成功')
     chatStore.loadChatConfig()
   } catch {

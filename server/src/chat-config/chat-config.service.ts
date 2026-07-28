@@ -14,17 +14,13 @@ export class ChatConfigService {
     const presets = [
       {
         key: 'available_models',
-        value: JSON.stringify([
-          'mimo-v2.5-pro',
-          'mimo-v2.5',
-          'mimo-v2-pro',
-        ]),
-        description: '可用模型列表',
+        value: JSON.stringify([]),
+        description: '兼容旧版管理页的手动模型列表；智能助手输入框会改用当前厂商 /models 官方接口',
       },
       {
         key: 'default_model',
-        value: 'mimo-v2.5-pro',
-        description: '默认AI模型',
+        value: '',
+        description: '兼容旧版管理页的默认模型；智能助手优先使用厂商接口返回的首个模型',
       },
       {
         key: 'feature_thinking',
@@ -40,6 +36,11 @@ export class ChatConfigService {
         key: 'feature_function_call',
         value: 'true',
         description: '函数调用开关',
+      },
+      {
+        key: 'feature_role_setting',
+        value: 'true',
+        description: '模型角色设定开关',
       },
       {
         key: 'feature_knowledge_base',
@@ -93,6 +94,17 @@ export class ChatConfigService {
     }
   }
 
+  async updateModels(models: string[], defaultModel: string): Promise<void> {
+    const uniqueModels = Array.from(new Set(models.map((model) => model.trim()).filter(Boolean)));
+    if (defaultModel && !uniqueModels.includes(defaultModel)) {
+      uniqueModels.unshift(defaultModel);
+    }
+    await this.updateMultiple({
+      available_models: JSON.stringify(uniqueModels),
+      default_model: defaultModel || uniqueModels[0] || '',
+    });
+  }
+
   async getModels(): Promise<{ models: string[]; defaultModel: string }> {
     const configs = await this.findByKeys([
       'available_models',
@@ -100,7 +112,7 @@ export class ChatConfigService {
     ]);
     return {
       models: JSON.parse(configs.available_models || '[]'),
-      defaultModel: configs.default_model || 'mimo-v2.5-pro',
+      defaultModel: configs.default_model || '',
     };
   }
 
@@ -109,12 +121,14 @@ export class ChatConfigService {
       'feature_thinking',
       'feature_web_search',
       'feature_function_call',
+      'feature_role_setting',
       'feature_knowledge_base',
     ]);
     return {
       thinking: configs.feature_thinking === 'true',
       webSearch: configs.feature_web_search === 'true',
       functionCall: configs.feature_function_call === 'true',
+      roleSetting: configs.feature_role_setting === 'true',
       knowledgeBase: configs.feature_knowledge_base === 'true',
     };
   }

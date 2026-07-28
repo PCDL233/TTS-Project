@@ -1,11 +1,22 @@
-import { Injectable, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ChatConversation } from './chat-conversation.entity';
 import { ChatMessage } from './chat-message.entity';
 import { ConfigService } from '../config/config.service';
+import { ChatConfigService } from '../chat-config/chat-config.service';
 import { RagService } from '../knowledge-base/rag.service';
 import { KnowledgeBase } from '../knowledge-base/knowledge-base.entity';
+import {
+  prependChatRolePrompt,
+  resolveChatRolePrompt,
+  type ChatRoleSettings,
+} from './chat-role.util';
 
 @Injectable()
 export class ChatService {
@@ -19,6 +30,7 @@ export class ChatService {
     @InjectRepository(KnowledgeBase)
     private kbRepository: Repository<KnowledgeBase>,
     private readonly configService: ConfigService,
+    private readonly chatConfigService: ChatConfigService,
     private readonly ragService: RagService,
   ) {}
 
@@ -32,16 +44,29 @@ export class ChatService {
     });
   }
 
-  async findConversation(userId: number, id: number): Promise<ChatConversation | null> {
+  async findConversation(
+    userId: number,
+    id: number,
+  ): Promise<ChatConversation | null> {
     return this.conversationRepository.findOne({ where: { id, userId } });
   }
 
-  async createConversation(userId: number, data: Partial<ChatConversation>): Promise<ChatConversation> {
-    const conversation = this.conversationRepository.create({ ...data, userId });
+  async createConversation(
+    userId: number,
+    data: Partial<ChatConversation>,
+  ): Promise<ChatConversation> {
+    const conversation = this.conversationRepository.create({
+      ...data,
+      userId,
+    });
     return this.conversationRepository.save(conversation);
   }
 
-  async updateConversation(userId: number, id: number, data: Partial<ChatConversation>): Promise<ChatConversation> {
+  async updateConversation(
+    userId: number,
+    id: number,
+    data: Partial<ChatConversation>,
+  ): Promise<ChatConversation> {
     const conversation = await this.findConversation(userId, id);
     if (!conversation) throw new BadRequestException('Conversation not found');
     Object.assign(conversation, data);
@@ -122,6 +147,7 @@ export class ChatService {
       temperature?: number;
       max_completion_tokens?: number;
       knowledgeBaseId?: number;
+      roleSettings?: ChatRoleSettings;
     },
   ): Promise<{
     baseUrl: string;
@@ -131,16 +157,22 @@ export class ChatService {
     const config = await this.configService.getConfig(userId);
     if (!config.apiKey) {
       this.logger.warn('[buildApiRequest] API Key 未配置');
-      throw new BadRequestException('API Key 未配置，请先在「API 设置」中填写有效的 API Key');
+      throw new BadRequestException(
+        'API Key 未配置，请先在「API 设置」中填写有效的 API Key',
+      );
     }
 
     // RAG 增强：如果指定了知识库，注入上下文
     let messages = dto.messages;
     if (dto.knowledgeBaseId) {
       try {
-        const lastUserMessage = dto.messages.filter((m) => m.role === 'user').pop();
+        const lastUserMessage = dto.messages
+          .filter((m) => m.role === 'user')
+          .pop();
         if (lastUserMessage?.content) {
-          const kb = await this.kbRepository.findOne({ where: { id: dto.knowledgeBaseId } });
+          const kb = await this.kbRepository.findOne({
+            where: { id: dto.knowledgeBaseId },
+          });
           const context = await this.ragService.retrieveContext(
             lastUserMessage.content,
             dto.knowledgeBaseId,
@@ -148,30 +180,51 @@ export class ChatService {
             kb?.embeddingModel,
           );
           if (context) {
-            messages = this.ragService.buildAugmentedMessages(dto.messages, context);
-            this.logger.log(`[buildApiRequest] 已注入 RAG 上下文，知识库=${dto.knowledgeBaseId}`);
+            messages = this.ragService.buildAugmentedMessages(
+              dto.messages,
+              context,
+            );
+            this.logger.log(
+              `[buildApiRequest] 已注入 RAG 上下文，知识库=${dto.knowledgeBaseId}`,
+            );
           }
         }
       } catch (ragErr) {
-        this.logger.warn(`[buildApiRequest] RAG 检索失败，降级处理: ${(ragErr as Error).message}`);
+        this.logger.warn(
+          `[buildApiRequest] RAG 检索失败，降级处理: ${(ragErr as Error).message}`,
+        );
       }
     }
 
+    let rolePrompt: string | null = null;
+    if (dto.roleSettings?.enabled) {
+      const features = await this.chatConfigService.getFeatures();
+      if (features.roleSetting) {
+        rolePrompt = resolveChatRolePrompt(dto.roleSettings);
+        this.logger.log('[buildApiRequest] 已注入模型角色设定');
+      } else {
+        this.logger.warn('[buildApiRequest] 后台已关闭模型角色设定，忽略本次角色设置');
+      }
+    }
+    messages = prependChatRolePrompt(messages, rolePrompt);
+
     const baseUrl = this.configService.getEffectiveBaseUrl(config);
+    const isTokenPlanApi = this.configService.isTokenPlanApi(config);
 
     // Token Plan 仅支持 8 款模型，mimo-v2-flash 不在支持列表中
     const tokenPlanUnsupportedModels = ['mimo-v2-flash'];
-    if (tokenPlanUnsupportedModels.includes(dto.model) && config.baseUrlPreset?.startsWith('token-plan')) {
+    if (tokenPlanUnsupportedModels.includes(dto.model) && isTokenPlanApi) {
       throw new BadRequestException(
-        `当前 API 配置（Token Plan）不支持 ${dto.model} 模型。Token Plan 仅支持 MiMo-V2.5-Pro、MiMo-V2.5、MiMo-V2-Pro、MiMo-V2-Omni 及 TTS 系列模型，请切换为普通 API 端点或选择其他模型。`
+        `当前 API 配置（Token Plan）不支持 ${dto.model} 模型。Token Plan 仅支持 MiMo-V2.5-Pro、MiMo-V2.5、MiMo-V2-Pro、MiMo-V2-Omni 及 TTS 系列模型，请切换为普通 API 端点或选择其他模型。`,
       );
     }
 
-    // Token Plan 端点不支持联网搜索（web_search）
+    // 联网搜索 / 深度思考在多家 OpenAI 兼容厂商中存在兼容实现；除已知不支持的 Token Plan 外，
+    // 不再按 MiMo 厂商限制，交由上游模型接口按自身能力处理。
     const hasWebSearch = dto.tools?.some((t: any) => t.type === 'web_search');
-    if (hasWebSearch && config.baseUrlPreset?.startsWith('token-plan')) {
+    if (hasWebSearch && isTokenPlanApi) {
       throw new BadRequestException(
-        '当前 API 配置（Token Plan）不支持联网搜索（web_search）功能。Token Plan 与普通 API 是两个独立计费体系，即使已在普通 API 开通联网服务，Token Plan 端点仍无法使用。请切换为「默认」或「国内加速」API 端点，或关闭联网搜索后重试。'
+        '当前 API 配置（Token Plan）不支持联网搜索（web_search）功能。请切换到普通 API 或其他兼容厂商，或关闭联网搜索后重试。',
       );
     }
 
@@ -196,17 +249,16 @@ export class ChatService {
 
     if (dto.thinking) body.thinking = dto.thinking;
     if (dto.tools && dto.tools.length > 0) body.tools = dto.tools;
-    if (dto.tool_choice) body.tool_choice = dto.tool_choice;
+    if (dto.tool_choice && dto.tools && dto.tools.length > 0)
+      body.tool_choice = dto.tool_choice;
     if (dto.response_format) body.response_format = dto.response_format;
     if (dto.temperature !== undefined) body.temperature = dto.temperature;
-    if (dto.max_completion_tokens !== undefined) body.max_completion_tokens = dto.max_completion_tokens;
+    if (dto.max_completion_tokens !== undefined)
+      body.max_completion_tokens = dto.max_completion_tokens;
 
     return {
       baseUrl,
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': config.apiKey,
-      },
+      headers: this.configService.buildApiHeaders(config),
       body,
     };
   }
@@ -225,6 +277,7 @@ export class ChatService {
       temperature?: number;
       max_completion_tokens?: number;
       knowledgeBaseId?: number;
+      roleSettings?: ChatRoleSettings;
     },
   ): Promise<{
     content: string;
@@ -237,7 +290,9 @@ export class ChatService {
     const { baseUrl, headers, body } = await this.buildApiRequest(userId, dto);
     body.stream = false;
 
-    this.logger.debug(`[callChatCompletion] 非流式请求 tools 数量: ${body.tools?.length ?? 0}`);
+    this.logger.debug(
+      `[callChatCompletion] 非流式请求 tools 数量: ${body.tools?.length ?? 0}`,
+    );
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
@@ -247,8 +302,12 @@ export class ChatService {
 
     if (!response.ok) {
       const text = await response.text();
-      this.logger.error(`[callChatCompletion] MiMo API 返回 ${response.status}: ${text}`);
-      throw new BadRequestException(`Chat API error: ${response.status} - ${text}`);
+      this.logger.error(
+        `[callChatCompletion] 模型 API 返回 ${response.status}: ${text}`,
+      );
+      throw new BadRequestException(
+        `Chat API error: ${response.status} - ${text}`,
+      );
     }
 
     const data = await response.json();
@@ -280,12 +339,15 @@ export class ChatService {
       temperature?: number;
       max_completion_tokens?: number;
       knowledgeBaseId?: number;
+      roleSettings?: ChatRoleSettings;
     },
   ): AsyncGenerator<any, void, unknown> {
     const { baseUrl, headers, body } = await this.buildApiRequest(userId, dto);
     body.stream = true;
 
-    this.logger.debug(`[streamChatCompletion] 请求体 tools 数量: ${body.tools?.length ?? 0}`);
+    this.logger.debug(
+      `[streamChatCompletion] 请求体 tools 数量: ${body.tools?.length ?? 0}`,
+    );
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
@@ -295,8 +357,12 @@ export class ChatService {
 
     if (!response.ok) {
       const text = await response.text();
-      this.logger.error(`[streamChatCompletion] MiMo API 返回 ${response.status}: ${text}`);
-      throw new BadRequestException(`Chat API error: ${response.status} - ${text}`);
+      this.logger.error(
+        `[streamChatCompletion] 模型 API 返回 ${response.status}: ${text}`,
+      );
+      throw new BadRequestException(
+        `Chat API error: ${response.status} - ${text}`,
+      );
     }
 
     const reader = response.body?.getReader();
@@ -345,15 +411,18 @@ export class ChatService {
                   yieldedAnnotationUrls.add(a.url);
                   return true;
                 });
-                annotations = uniqueAnnotations.length > 0 ? uniqueAnnotations : null;
+                annotations =
+                  uniqueAnnotations.length > 0 ? uniqueAnnotations : null;
                 if (annotations) {
-                  this.logger.debug(`[streamChatCompletion] 收到 annotations: ${JSON.stringify(annotations)}`);
+                  this.logger.debug(
+                    `[streamChatCompletion] 收到 annotations: ${JSON.stringify(annotations)}`,
+                  );
                 }
               }
               // 记录联网搜索用量
               if (data.usage?.web_search_usage) {
                 this.logger.log(
-                  `[streamChatCompletion] 联网搜索用量: tool_usage=${data.usage.web_search_usage.tool_usage}, page_usage=${data.usage.web_search_usage.page_usage}`
+                  `[streamChatCompletion] 联网搜索用量: tool_usage=${data.usage.web_search_usage.tool_usage}, page_usage=${data.usage.web_search_usage.page_usage}`,
                 );
               }
               yield {
@@ -366,14 +435,17 @@ export class ChatService {
               };
             }
           } catch (parseErr) {
-            this.logger.debug(`[streamChatCompletion] SSE 数据解析失败: ${dataStr}`);
+            this.logger.debug(
+              `[streamChatCompletion] SSE 数据解析失败: ${dataStr}`,
+            );
           }
         }
       }
-      this.logger.log(`[streamChatCompletion] 流式完成，共 ${chunkCount} 个 chunk`);
+      this.logger.log(
+        `[streamChatCompletion] 流式完成，共 ${chunkCount} 个 chunk`,
+      );
     } finally {
       reader.releaseLock();
     }
   }
-
 }

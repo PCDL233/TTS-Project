@@ -23,6 +23,7 @@ export function useTTS() {
   const canGenerate = computed(() => {
     const { config } = configStore
     if (!config.apiKey) return false
+    if (!configStore.isMimoProvider()) return false
 
     switch (config.mode) {
       case 'preset':
@@ -44,6 +45,10 @@ export function useTTS() {
     }
     if (!text.trim()) {
       error.value = '请输入要合成的文本'
+      return null
+    }
+    if (!configStore.isMimoProvider()) {
+      error.value = '当前语音合成仅支持小米 MiMo TTS 接口，请在 API 设置中切换为 MiMo 端点'
       return null
     }
 

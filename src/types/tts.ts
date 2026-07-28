@@ -1,46 +1,8 @@
 export type TTSMode = 'preset' | 'design' | 'clone'
 
-export type BaseUrlPreset = 'default' | 'token-plan-cn' | 'token-plan-sgp' | 'token-plan-ams' | 'custom'
-
-export interface BaseUrlOption {
-  value: BaseUrlPreset
-  label: string
-  url: string
-  description: string
-}
-
-export const BASE_URL_OPTIONS: BaseUrlOption[] = [
-  {
-    value: 'default',
-    label: '普通 API',
-    url: 'https://api.xiaomimimo.com/v1',
-    description: '按量计费，适合通用场景',
-  },
-  {
-    value: 'token-plan-cn',
-    label: 'Token Plan - 中国集群',
-    url: 'https://token-plan-cn.xiaomimimo.com/v1',
-    description: '订阅套餐，中国节点',
-  },
-  {
-    value: 'token-plan-sgp',
-    label: 'Token Plan - 新加坡集群',
-    url: 'https://token-plan-sgp.xiaomimimo.com/v1',
-    description: '订阅套餐，新加坡节点',
-  },
-  {
-    value: 'token-plan-ams',
-    label: 'Token Plan - 欧洲集群',
-    url: 'https://token-plan-ams.xiaomimimo.com/v1',
-    description: '订阅套餐，欧洲节点',
-  },
-  {
-    value: 'custom',
-    label: '自定义',
-    url: '',
-    description: '手动输入 Base URL',
-  },
-]
+import type { ApiAuthType, BaseUrlPreset } from './llm'
+export type { ApiAuthType, BaseUrlPreset } from './llm'
+export { BASE_URL_OPTIONS } from './llm'
 
 export type PresetVoice =
   | 'mimo_default'
@@ -149,6 +111,7 @@ export interface TTSConfig {
   apiKey: string
   baseUrlPreset: BaseUrlPreset
   baseUrlCustom: string
+  apiAuthType: ApiAuthType
   mode: TTSMode
   model: string
   presetVoice: PresetVoice

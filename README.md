@@ -83,16 +83,13 @@ MiMo-默认、冰糖、茉莉、苏打、白桦、Mia、Chloe、Milo、Dean
 ### 环境要求
 
 - Node.js >= 18
-- npm >= 9
+- pnpm >= 10（推荐通过 Corepack 启用）
 
 ### 安装依赖
 
 ```bash
-# 前端（项目根目录）
-npm install
-
-# 后端
-cd server && npm install
+# 项目根目录（pnpm workspace 会同时安装前端与 server/ 后端依赖）
+pnpm install
 ```
 
 ### 配置环境变量
@@ -118,28 +115,27 @@ JWT_SECRET=MiMo-TTS-JWT-Secret-Change-Me-Please
 
 ```bash
 # 一键启动前后端（推荐）
-npm run dev:all
+pnpm dev:all
 
 # 分别启动
-npm run dev                 # 前端（端口 3000）
-cd server && npm run start:dev  # 后端（端口 3001）
+pnpm dev                 # 前端（端口 3000）
+pnpm -C server start:dev  # 后端（端口 3001）
 ```
 
 ### 生产构建
 
 ```bash
-npm run build       # 前端（输出到 dist/）
-cd server && npm run build  # 后端（输出到 server/dist/）
+pnpm build       # 前端（输出到 dist/）
+pnpm -C server build  # 后端（输出到 server/dist/）
 ```
 
 ### 后端工具命令
 
 ```bash
-cd server
-npm run format        # Prettier 格式化
-npm run test          # Jest 单元测试
-npm run test:cov      # 测试覆盖率
-npm run test:e2e      # 端到端测试
+pnpm -C server format        # Prettier 格式化
+pnpm -C server test          # Jest 单元测试
+pnpm -C server test:cov      # 测试覆盖率
+pnpm -C server test:e2e      # 端到端测试
 ```
 
 ## 项目结构

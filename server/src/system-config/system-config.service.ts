@@ -17,7 +17,7 @@ export class SystemConfigService {
       { key: 'system_name', value: 'MiMo 智能助手', description: '系统名称' },
       { key: 'default_base_url', value: 'https://api.xiaomimimo.com/v1', description: '默认 Base URL' },
       { key: 'allow_register', value: 'true', description: '是否允许用户注册' },
-      { key: 'default_model', value: 'mimo-v2.5-pro', description: '默认AI模型' },
+      { key: 'default_model', value: '', description: '默认AI模型（聊天页优先从厂商接口获取）' },
       { key: 'default_audio_format', value: 'wav', description: '默认音频格式' },
       { key: 'default_style_mode', value: 'natural', description: '默认风格控制方式' },
     ]
@@ -55,13 +55,6 @@ export class SystemConfigService {
   }
 
   private async syncBaseUrlToUsers(baseUrl: string) {
-    const presetMap: Record<string, string> = {
-      'https://api.xiaomimimo.com/v1': 'default',
-      'https://token-plan-cn.xiaomimimo.com/v1': 'token-plan-cn',
-      'https://token-plan-sgp.xiaomimimo.com/v1': 'token-plan-sgp',
-      'https://token-plan-ams.xiaomimimo.com/v1': 'token-plan-ams',
-    }
-    const preset = presetMap[baseUrl] || 'default'
-    await this.configService.updateAllUsersBaseUrlPreset(preset)
+    await this.configService.updateAllUsersBaseUrl(baseUrl)
   }
 }
