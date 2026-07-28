@@ -1,18 +1,31 @@
 import { client, BACKEND_URL } from './client'
-import type { ChatConversation, ChatMessage, ChatCompletionParams, StreamChunk, ChatFeatures } from '../types/chat'
+import type { ChatConversation, ChatMessage, ChatCompletionParams, StreamChunk, ChatFeatures, ChatModelOption } from '../types/chat'
 import { getApiErrorMessage, type ApiErrorResponse } from './error'
 
-/** 从后端动态加载聊天配置（模型列表 + 功能开关） */
+/** 从后端动态加载聊天功能开关 */
 export async function fetchChatConfig(): Promise<{
-  models: string[]
-  defaultModel: string
   features: ChatFeatures
 }> {
-  const [modelsRes, featuresRes] = await Promise.all([
-    client.get<{ models: string[]; defaultModel: string }>('/chat/config/models'),
-    client.get<ChatFeatures>('/chat/config/features'),
-  ])
-  return { ...modelsRes.data, features: featuresRes.data }
+  const featuresRes = await client.get<ChatFeatures>('/chat/config/features')
+  return { features: featuresRes.data }
+}
+
+/** 根据当前用户选择的厂商配置，从厂商官方 /models 接口加载模型列表 */
+export async function fetchProviderChatModels(): Promise<{
+  models: ChatModelOption[]
+  defaultModel: string
+  baseUrlPreset: string
+  baseUrl: string
+  fetchedAt: string
+}> {
+  const response = await client.get<{
+    models: ChatModelOption[]
+    defaultModel: string
+    baseUrlPreset: string
+    baseUrl: string
+    fetchedAt: string
+  }>('/chat/config/provider-models')
+  return response.data
 }
 
 export async function fetchConversations(): Promise<ChatConversation[]> {

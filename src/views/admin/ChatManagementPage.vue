@@ -85,14 +85,11 @@
               v-model="modelListText"
               type="textarea"
               :rows="8"
-              placeholder="每行一个模型名，例如：
-gpt-4.1
-deepseek-chat
-qwen-plus"
+              placeholder="每行一个模型名；聊天页默认从当前厂商官方接口获取"
               style="width: 520px"
             />
             <div class="text-xs text-gray-400 mt-1">
-              用户聊天页支持直接输入自定义模型名；这里配置常用候选列表。
+              用户聊天页会根据当前 API 厂商从官方 /models 接口获取模型；这里仅保留旧版手动候选配置。
             </div>
           </el-form-item>
           <el-form-item>

@@ -17,7 +17,7 @@ export class ChatConversation {
   @Column({ default: '新对话' })
   title: string;
 
-  @Column({ default: 'mimo-v2.5-pro' })
+  @Column({ default: '' })
   model: string;
 
   @Column({ type: 'simple-json', default: '{}' })

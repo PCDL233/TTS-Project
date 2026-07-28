@@ -48,9 +48,12 @@ export class ChatController {
     @Body() body: { title?: string; model?: string; features?: any; knowledgeBaseId?: number },
   ) {
     this.logger.log(`[createConversation] 用户 ${req.user.userId}`);
+    if (!body.model) {
+      throw new BadRequestException('请先选择或输入模型');
+    }
     return this.chatService.createConversation(req.user.userId, {
       title: body.title || '新对话',
-      model: body.model || 'mimo-v2.5-pro',
+      model: body.model,
       features: body.features || {},
       knowledgeBaseId: body.knowledgeBaseId,
     });

@@ -103,44 +103,18 @@ export interface ChatCompletionParams {
   mcpEnabled?: boolean
 }
 
-export const CHAT_MODEL_OPTIONS = [
-  { value: 'mimo-v2.5-pro', label: 'MiMo-V2.5-Pro', description: 'MiMo 旗舰模型，综合能力强' },
-  { value: 'mimo-v2.5', label: 'MiMo-V2.5', description: 'MiMo 标准模型，均衡性能' },
-  { value: 'mimo-v2-pro', label: 'MiMo-V2-Pro', description: 'MiMo 上一代 Pro 模型' },
-  { value: 'mimo-v2-omni', label: 'MiMo-V2-Omni', description: 'MiMo 多模态模型' },
-  { value: 'mimo-v2-flash', label: 'MiMo-V2-Flash', description: 'MiMo 轻量高速模型' },
-  { value: 'gpt-4.1', label: 'GPT-4.1', description: 'OpenAI 通用高能力模型' },
-  { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', description: 'OpenAI 轻量高性价比模型' },
-  { value: 'gpt-4o', label: 'GPT-4o', description: 'OpenAI 多模态模型' },
-  { value: 'deepseek-chat', label: 'DeepSeek Chat', description: 'DeepSeek 通用对话模型' },
-  { value: 'deepseek-reasoner', label: 'DeepSeek Reasoner', description: 'DeepSeek 推理模型' },
-  { value: 'qwen-plus', label: 'Qwen Plus', description: '通义千问均衡模型' },
-  { value: 'qwen-max', label: 'Qwen Max', description: '通义千问高能力模型' },
-  { value: 'moonshot-v1-8k', label: 'Moonshot V1 8K', description: 'Kimi Open Platform 模型' },
-  { value: 'glm-4-plus', label: 'GLM-4-Plus', description: '智谱 GLM 模型' },
-  { value: 'openai/gpt-4o-mini', label: 'OpenRouter GPT-4o Mini', description: 'OpenRouter 模型名示例' },
-  { value: 'Qwen/Qwen2.5-72B-Instruct', label: 'SiliconFlow Qwen2.5-72B', description: 'SiliconFlow 模型名示例' },
-]
-
-/** 模型元数据映射表：value → { label, description } */
-export const MODEL_META: Record<string, { label: string; description: string }> = Object.fromEntries(
-  CHAT_MODEL_OPTIONS.map((opt) => [opt.value, { label: opt.label, description: opt.description }]),
-)
-
-/** 根据模型 value 生成带 label/description 的 option 对象 */
-export function resolveModelOptions(modelValues: string[]) {
-  return modelValues.map((value) => {
-    const meta = MODEL_META[value]
-    return meta
-      ? { value, label: meta.label, description: meta.description }
-      : { value, label: value, description: '' }
-  })
+export interface ChatModelOption {
+  value: string
+  label: string
+  description: string
+  ownedBy?: string
 }
 
-/** Token Plan 支持的聊天模型（共8款，不含 mimo-v2-flash） */
-export const TOKEN_PLAN_CHAT_MODELS = new Set([
-  'mimo-v2.5-pro',
-  'mimo-v2.5',
-  'mimo-v2-pro',
-  'mimo-v2-omni',
-])
+/** 将后端或厂商接口返回的模型名转换为下拉选项。 */
+export function resolveModelOptions(modelValues: string[]): ChatModelOption[] {
+  return modelValues.map((value) => ({
+    value,
+    label: value,
+    description: '',
+  }))
+}

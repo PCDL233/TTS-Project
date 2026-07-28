@@ -14,30 +14,13 @@ export class ChatConfigService {
     const presets = [
       {
         key: 'available_models',
-        value: JSON.stringify([
-          'mimo-v2.5-pro',
-          'mimo-v2.5',
-          'mimo-v2-pro',
-          'mimo-v2-omni',
-          'mimo-v2-flash',
-          'gpt-4.1',
-          'gpt-4.1-mini',
-          'gpt-4o',
-          'deepseek-chat',
-          'deepseek-reasoner',
-          'qwen-plus',
-          'qwen-max',
-          'moonshot-v1-8k',
-          'glm-4-plus',
-          'openai/gpt-4o-mini',
-          'Qwen/Qwen2.5-72B-Instruct',
-        ]),
-        description: '可用模型列表',
+        value: JSON.stringify([]),
+        description: '兼容旧版管理页的手动模型列表；智能助手输入框会改用当前厂商 /models 官方接口',
       },
       {
         key: 'default_model',
-        value: 'mimo-v2.5-pro',
-        description: '默认AI模型',
+        value: '',
+        description: '兼容旧版管理页的默认模型；智能助手优先使用厂商接口返回的首个模型',
       },
       {
         key: 'feature_thinking',
@@ -113,7 +96,7 @@ export class ChatConfigService {
     }
     await this.updateMultiple({
       available_models: JSON.stringify(uniqueModels),
-      default_model: defaultModel || uniqueModels[0] || 'mimo-v2.5-pro',
+      default_model: defaultModel || uniqueModels[0] || '',
     });
   }
 
@@ -124,7 +107,7 @@ export class ChatConfigService {
     ]);
     return {
       models: JSON.parse(configs.available_models || '[]'),
-      defaultModel: configs.default_model || 'mimo-v2.5-pro',
+      defaultModel: configs.default_model || '',
     };
   }
 

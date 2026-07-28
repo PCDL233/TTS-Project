@@ -10,8 +10,9 @@ import {
   fetchMessages as apiFetchMessages,
   sendChatStream,
   fetchChatConfig,
+  fetchProviderChatModels,
 } from '../api/chat'
-import { CHAT_MODEL_OPTIONS, resolveModelOptions } from '../types/chat'
+import type { ChatModelOption } from '../types/chat'
 import { getApiErrorMessage } from '../api/error'
 
 export const useChatStore = defineStore('chat', () => {
@@ -28,7 +29,7 @@ export const useChatStore = defineStore('chat', () => {
   const loading = ref(false)
   const conversationsLoading = ref(false)
   const error = ref('')
-  const currentModel = ref('mimo-v2.5-pro')
+  const currentModel = ref('')
   // 管理员全局功能开关（控制 UI 按钮可见性）
   const adminFeatures = ref<ChatFeatures>({
     thinking: false,
@@ -53,7 +54,10 @@ export const useChatStore = defineStore('chat', () => {
   const abortController = ref<AbortController | null>(null)
   const chatConfigLoaded = ref(false)
   const userSelectedModel = ref(false) // 标记用户是否手动选过模型
-  const availableModelOptions = ref(CHAT_MODEL_OPTIONS) // 默认使用硬编码回退值
+  const modelsLoading = ref(false)
+  const modelsError = ref('')
+  const providerModelSource = ref('')
+  const availableModelOptions = ref<ChatModelOption[]>([])
 
   // Getters
   const currentConversation = computed(() =>
@@ -73,6 +77,11 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   async function createNewChat(title?: string, knowledgeBaseId?: number | null) {
+    if (!currentModel.value) {
+      error.value = '请先选择或输入模型'
+      return null
+    }
+
     try {
       const conversation = await apiCreateConversation({
         title: title || '新对话',
@@ -121,6 +130,11 @@ export const useChatStore = defineStore('chat', () => {
 
   async function sendMessage(userMessage: ChatMessage) {
     if (loading.value) return
+
+    if (!currentModel.value) {
+      error.value = '请先选择或输入模型'
+      return
+    }
 
     loading.value = true
     error.value = ''
@@ -296,17 +310,35 @@ export const useChatStore = defineStore('chat', () => {
     currentModel.value = model
   }
 
+  async function loadProviderModels(resetSelection = false) {
+    modelsLoading.value = true
+    modelsError.value = ''
+    try {
+      const providerModels = await fetchProviderChatModels()
+      availableModelOptions.value = providerModels.models
+      providerModelSource.value = providerModels.baseUrl
+
+      const values = providerModels.models.map((model) => model.value)
+      const shouldReset = resetSelection || !userSelectedModel.value || !values.includes(currentModel.value)
+      const nextModel = providerModels.defaultModel || values[0] || ''
+      if (shouldReset && nextModel) {
+        currentModel.value = nextModel
+        userSelectedModel.value = false
+      }
+    } catch (err: unknown) {
+      modelsError.value = getApiErrorMessage(err, '获取厂商模型列表失败')
+      providerModelSource.value = ''
+      availableModelOptions.value = currentModel.value
+        ? [{ value: currentModel.value, label: currentModel.value, description: '当前手动模型' }]
+        : []
+    } finally {
+      modelsLoading.value = false
+    }
+  }
+
   async function loadChatConfig() {
     try {
       const config = await fetchChatConfig()
-      // 用后端返回的模型列表生成 option 对象
-      if (config.models && config.models.length > 0) {
-        availableModelOptions.value = resolveModelOptions(config.models)
-      }
-      // 用后端返回的默认模型设置 currentModel（仅用户未手动选过时）
-      if (!userSelectedModel.value && config.defaultModel) {
-        currentModel.value = config.defaultModel
-      }
       // 用后端返回的功能开关更新 adminFeatures
       if (config.features) {
         adminFeatures.value = {
@@ -324,6 +356,7 @@ export const useChatStore = defineStore('chat', () => {
           knowledgeBase: adminFeatures.value.knowledgeBase && userToggledFeatures.value.knowledgeBase,
         }
       }
+      await loadProviderModels()
       chatConfigLoaded.value = true
     } catch (err: unknown) {
       error.value = getApiErrorMessage(err, '加载聊天配置失败')
@@ -346,6 +379,9 @@ export const useChatStore = defineStore('chat', () => {
     adminFeatures,
     userToggledFeatures,
     chatConfigLoaded,
+    modelsLoading,
+    modelsError,
+    providerModelSource,
     availableModelOptions,
     currentConversation,
     loadConversations,
@@ -357,6 +393,7 @@ export const useChatStore = defineStore('chat', () => {
     updateFeatures,
     updateModel,
     loadChatConfig,
+    loadProviderModels,
     clearError,
   }
 })

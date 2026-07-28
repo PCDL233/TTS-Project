@@ -58,7 +58,7 @@ export class AuthService {
     await this.configService.createConfig(user.id, {
       ...resolvedBaseUrl,
       apiAuthType: 'auto',
-      model: defaultModel?.value || 'mimo-v2.5-pro',
+      model: defaultModel?.value || '',
       audioFormat: defaultAudioFormat?.value || 'wav',
       styleMode: defaultStyleMode?.value || 'natural',
     })

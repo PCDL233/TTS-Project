@@ -103,7 +103,7 @@ export const BASE_URL_OPTIONS: BaseUrlOption[] = [
     value: 'openrouter',
     label: 'OpenRouter',
     url: 'https://openrouter.ai/api/v1',
-    description: 'OpenRouter 聚合接口，模型名通常形如 openai/gpt-4o、anthropic/claude-*。',
+    description: 'OpenRouter 聚合接口，模型名以官方模型列表为准。',
     authType: 'bearer',
   },
   {
