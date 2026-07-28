@@ -33,6 +33,9 @@ import { KnowledgeBase } from './knowledge-base/knowledge-base.entity';
 import { KnowledgeDocument } from './knowledge-base/knowledge-document.entity';
 import { KnowledgeChunk } from './knowledge-base/knowledge-chunk.entity';
 import { McpServerConfig } from './mcp/mcp-server-config.entity';
+import { AgentModule } from './agent/agent.module';
+import { Agent } from './agent/agent.entity';
+import { AgentVersion } from './agent/agent-version.entity';
 
 const entities = [
   AudioTag,
@@ -50,6 +53,8 @@ const entities = [
   KnowledgeDocument,
   KnowledgeChunk,
   McpServerConfig,
+  Agent,
+  AgentVersion,
 ];
 
 @Module({
@@ -76,6 +81,7 @@ const entities = [
     ChatConfigModule,
     KnowledgeBaseModule,
     McpModule,
+    AgentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

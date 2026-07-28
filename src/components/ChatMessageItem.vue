@@ -150,6 +150,38 @@
                             </div>
                         </div>
 
+                        <!-- 智能体运行轨迹 -->
+                        <details v-if="message.agentTrace && message.agentTrace.length > 0" class="mt-3 border border-gray-200 rounded-lg bg-white overflow-hidden">
+                            <summary class="px-3 py-2 cursor-pointer text-xs font-medium text-gray-600 bg-gray-50 select-none">
+                                智能体运行轨迹 · {{ message.agentTrace.length }} 个节点
+                            </summary>
+                            <div class="divide-y divide-gray-100">
+                                <div v-for="step in message.agentTrace" :key="step.nodeId" class="px-3 py-2">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <div class="flex items-center gap-2 min-w-0">
+                                            <span class="w-2 h-2 rounded-full shrink-0" :class="traceStatusClass(step.status)"></span>
+                                            <span class="text-xs font-medium text-gray-700 truncate">{{ step.label }}</span>
+                                        </div>
+                                        <span class="text-xs text-gray-400 shrink-0">{{ traceStatusLabel(step.status) }}<template v-if="step.durationMs !== undefined"> · {{ step.durationMs }} ms</template></span>
+                                    </div>
+                                    <div v-if="step.error || step.summary" class="mt-1 pl-4 text-xs text-gray-500 break-all">{{ step.error || step.summary }}</div>
+                                </div>
+                            </div>
+                        </details>
+
+                        <!-- 智能体知识引用 -->
+                        <div v-if="message.citations && message.citations.length > 0" class="mt-3">
+                            <div class="text-xs text-gray-500 mb-1.5">知识来源</div>
+                            <div class="grid gap-2 sm:grid-cols-2">
+                                <el-tooltip v-for="citation in message.citations" :key="citation.chunkId" :content="citation.content" placement="top" :show-after="300">
+                                    <div class="px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700">
+                                        <div class="font-medium truncate">{{ citation.documentName }}</div>
+                                        <div class="mt-1 text-blue-500 truncate">{{ citation.source }} · 片段 {{ citation.chunkIndex + 1 }}</div>
+                                    </div>
+                                </el-tooltip>
+                            </div>
+                        </div>
+
                         <!-- MCP 工具调用事件 -->
                         <div v-if="message.mcpEvents && message.mcpEvents.length > 0" class="mt-3 space-y-2">
                             <McpToolCallCard
@@ -284,6 +316,16 @@ const avatarSrc = computed(() => {
 })
 
 const avatarIcon = computed(() => UserFilled)
+
+function traceStatusClass(status: 'running' | 'success' | 'error') {
+    if (status === 'success') return 'bg-green-500'
+    if (status === 'error') return 'bg-red-500'
+    return 'bg-blue-500 animate-pulse'
+}
+
+function traceStatusLabel(status: 'running' | 'success' | 'error') {
+    return status === 'success' ? '完成' : status === 'error' ? '失败' : '运行中'
+}
 
 const avatarClass = computed(() => {
     return props.message.role === 'user'

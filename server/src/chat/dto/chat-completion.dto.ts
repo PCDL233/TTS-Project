@@ -113,7 +113,8 @@ class ToolDto {
 
 export class ChatCompletionDto {
   @IsString()
-  model: string;
+  @IsOptional()
+  model?: string;
 
   @IsArray()
   @ValidateNested({ each: true })

@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  Index,
+} from 'typeorm';
 import { User } from '../user/user.entity';
 
 @Entity()
@@ -31,8 +40,16 @@ export class ChatConversation {
   createdAt: Date;
 
   @Index()
-  @Column({ nullable: true })
-  knowledgeBaseId: number;
+  @Column({ type: 'integer', nullable: true })
+  knowledgeBaseId: number | null;
+
+  @Index()
+  @Column({ type: 'integer', nullable: true })
+  agentId: number | null;
+
+  @Index()
+  @Column({ type: 'integer', nullable: true })
+  agentVersionId: number | null;
 
   @UpdateDateColumn({ type: 'datetime' })
   updatedAt: Date;

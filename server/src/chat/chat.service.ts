@@ -104,6 +104,8 @@ export class ChatService {
       reasoningContent?: string;
       toolCalls?: any[];
       annotations?: any[];
+      agentTrace?: any[];
+      citations?: any[];
     },
   ): Promise<void> {
     // 顺序保存，确保用户消息的 createdAt 早于助手消息
@@ -123,6 +125,8 @@ export class ChatService {
       reasoningContent: assistantResponse.reasoningContent || '',
       toolCalls: assistantResponse.toolCalls,
       annotations: assistantResponse.annotations,
+      agentTrace: assistantResponse.agentTrace,
+      citations: assistantResponse.citations,
     });
 
     await this.conversationRepository.update(
@@ -203,7 +207,9 @@ export class ChatService {
         rolePrompt = resolveChatRolePrompt(dto.roleSettings);
         this.logger.log('[buildApiRequest] 已注入模型角色设定');
       } else {
-        this.logger.warn('[buildApiRequest] 后台已关闭模型角色设定，忽略本次角色设置');
+        this.logger.warn(
+          '[buildApiRequest] 后台已关闭模型角色设定，忽略本次角色设置',
+        );
       }
     }
     messages = prependChatRolePrompt(messages, rolePrompt);

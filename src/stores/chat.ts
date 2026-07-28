@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { CHAT_ROLE_PRESETS } from '../types/chat'
 import type { ChatConversation, ChatMessage, ChatFeatures, ChatRoleSettings } from '../types/chat'
+import { mergeAgentWorkflowChunk } from '../utils/agent-stream'
 import { useMcpStore } from './mcp'
 import {
   fetchConversations as apiFetchConversations,
@@ -71,6 +72,7 @@ export const useChatStore = defineStore('chat', () => {
   const conversationsLoading = ref(false)
   const error = ref('')
   const currentModel = ref('')
+  const selectedAgentId = ref<number | null>(null)
   // 管理员全局功能开关（控制 UI 按钮可见性）
   const adminFeatures = ref<ChatFeatures>({
     thinking: false,
@@ -116,6 +118,7 @@ export const useChatStore = defineStore('chat', () => {
   const currentConversation = computed(() =>
     conversations.value.find((c) => c.id === currentConversationId.value),
   )
+  const isAgentMode = computed(() => Boolean(currentConversation.value?.agentVersionId || selectedAgentId.value))
   const currentRoleLabel = computed(() => {
     if (!roleSettings.value.enabled) return '未启用'
     if (roleSettings.value.presetId === 'custom') return '自定义角色'
@@ -134,8 +137,8 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  async function createNewChat(title?: string, knowledgeBaseId?: number | null) {
-    if (!currentModel.value) {
+  async function createNewChat(title?: string, knowledgeBaseId?: number | null, agentId = selectedAgentId.value) {
+    if (!agentId && !currentModel.value) {
       error.value = '请先选择或输入模型'
       return null
     }
@@ -143,13 +146,15 @@ export const useChatStore = defineStore('chat', () => {
     try {
       const conversation = await apiCreateConversation({
         title: title || '新对话',
-        model: currentModel.value,
-        features: features.value,
-        knowledgeBaseId: knowledgeBaseId ?? undefined,
+        model: agentId ? undefined : currentModel.value,
+        features: agentId ? undefined : features.value,
+        knowledgeBaseId: agentId ? undefined : (knowledgeBaseId ?? undefined),
+        agentId: agentId || undefined,
       })
       conversations.value.unshift(conversation)
       currentConversationId.value = conversation.id
       messages.value = []
+      selectedAgentId.value = conversation.agentId ?? null
       return conversation
     } catch (err: unknown) {
       error.value = getApiErrorMessage(err, '创建会话失败')
@@ -165,6 +170,7 @@ export const useChatStore = defineStore('chat', () => {
       loading.value = false
     }
     currentConversationId.value = id
+    selectedAgentId.value = conversations.value.find((conversation) => conversation.id === id)?.agentId ?? null
     messages.value = []
     try {
       messages.value = await apiFetchMessages(id)
@@ -180,6 +186,7 @@ export const useChatStore = defineStore('chat', () => {
       if (currentConversationId.value === id) {
         currentConversationId.value = null
         messages.value = []
+        selectedAgentId.value = null
       }
     } catch (err: unknown) {
       error.value = getApiErrorMessage(err, '删除会话失败')
@@ -189,12 +196,12 @@ export const useChatStore = defineStore('chat', () => {
   async function sendMessage(userMessage: ChatMessage, options: SendMessageOptions = {}) {
     if (loading.value) return
 
-    if (!currentModel.value) {
+    if (!isAgentMode.value && !currentModel.value) {
       error.value = '请先选择或输入模型'
       return
     }
 
-    if (features.value.roleSetting && roleSettings.value.enabled && roleSettings.value.presetId === 'custom' && !roleSettings.value.customPrompt?.trim()) {
+    if (!isAgentMode.value && features.value.roleSetting && roleSettings.value.enabled && roleSettings.value.presetId === 'custom' && !roleSettings.value.customPrompt?.trim()) {
       error.value = '请输入自定义角色设定，或关闭角色设定'
       return
     }
@@ -202,7 +209,7 @@ export const useChatStore = defineStore('chat', () => {
     loading.value = true
     error.value = ''
 
-    const activeKnowledgeBaseId = features.value.knowledgeBase
+    const activeKnowledgeBaseId = !isAgentMode.value && features.value.knowledgeBase
       ? options.knowledgeBaseId === undefined
         ? (currentConversation.value?.knowledgeBaseId ?? undefined)
         : (options.knowledgeBaseId ?? undefined)
@@ -256,7 +263,7 @@ export const useChatStore = defineStore('chat', () => {
     }))
 
     // 构建 MiMo 内置工具；MCP 函数调用由 mcpEnabled 交给后端 Agent 注入真实工具。
-    const tools = features.value.webSearch ? [{ type: 'web_search' as const }] : []
+    const tools = !isAgentMode.value && features.value.webSearch ? [{ type: 'web_search' as const }] : []
     const mcp = getMcpStore()
     const hasEnabledMcpServers = mcp.enabledServers.length > 0
 
@@ -269,8 +276,8 @@ export const useChatStore = defineStore('chat', () => {
       tool_choice: tools.length > 0 ? 'auto' : undefined,
       conversationId: targetConversationId,
       knowledgeBaseId: activeKnowledgeBaseId,
-      mcpEnabled: features.value.functionCall && hasEnabledMcpServers,
-      roleSettings: features.value.roleSetting ? normalizeRoleSettings(roleSettings.value) : undefined,
+      mcpEnabled: !isAgentMode.value && features.value.functionCall && hasEnabledMcpServers,
+      roleSettings: !isAgentMode.value && features.value.roleSetting ? normalizeRoleSettings(roleSettings.value) : undefined,
     }
 
     await sendChatStream(
@@ -299,6 +306,8 @@ export const useChatStore = defineStore('chat', () => {
           })
           return
         }
+
+        if (mergeAgentWorkflowChunk(lastMsg, chunk)) return
 
         if (chunk.content) {
           lastMsg.content += chunk.content
@@ -341,6 +350,14 @@ export const useChatStore = defineStore('chat', () => {
       },
       abortController.value.signal,
     )
+  }
+
+  async function startNewChatWithAgent(agentId: number | null) {
+    if (loading.value) return null
+    currentConversationId.value = null
+    messages.value = []
+    selectedAgentId.value = agentId
+    return createNewChat(undefined, undefined, agentId)
   }
 
   function stopGeneration() {
@@ -437,6 +454,8 @@ export const useChatStore = defineStore('chat', () => {
     conversationsLoading,
     error,
     currentModel,
+    selectedAgentId,
+    isAgentMode,
     features,
     adminFeatures,
     userToggledFeatures,
@@ -451,6 +470,7 @@ export const useChatStore = defineStore('chat', () => {
     currentConversation,
     loadConversations,
     createNewChat,
+    startNewChatWithAgent,
     selectConversation,
     deleteConversation,
     sendMessage,

@@ -1,3 +1,5 @@
+import type { AgentCitation, AgentTraceStep, AgentNodeType } from './agent'
+
 export type ChatRolePresetId =
   | 'professional_assistant'
   | 'code_mentor'
@@ -96,6 +98,8 @@ export interface ChatMessage {
     }
   }
   createdAt?: number | string
+  agentTrace?: AgentTraceStep[]
+  citations?: AgentCitation[]
   // MCP Agent 临时事件（不持久化到数据库）
   mcpEvents?: Array<
     | { type: 'tool_call_start'; toolCalls: any[] }
@@ -110,6 +114,10 @@ export interface ChatConversation {
   model: string
   features: ChatFeatures
   knowledgeBaseId?: number
+  agentId?: number | null
+  agentVersionId?: number | null
+  agentName?: string
+  agentVersion?: number
   createdAt?: string
   updatedAt?: string
 }
@@ -131,12 +139,34 @@ export interface StreamChunk {
   usage?: any
   error?: string
   // MCP Agent 新增
-  type?: 'tool_call_start' | 'tool_call_result'
+  type?:
+    | 'tool_call_start'
+    | 'tool_call_result'
+    | 'agent_selected'
+    | 'agent_run_start'
+    | 'agent_node_start'
+    | 'agent_node_finish'
+    | 'agent_node_error'
+    | 'agent_run_finish'
   toolCallId?: string
   name?: string
   status?: 'success' | 'error'
   result?: string
+  runId?: string
+  nodeId?: string
+  nodeType?: AgentNodeType
+  label?: string
+  durationMs?: number
+  summary?: string
+  input?: unknown
+  output?: unknown
+  trace?: AgentTraceStep[]
+  citations?: AgentCitation[]
+  agentId?: number
+  agentName?: string
+  version?: number
 }
+
 
 export interface ChatCompletionParams {
   model: string

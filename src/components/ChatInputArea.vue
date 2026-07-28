@@ -112,6 +112,7 @@
                     @change="handleVideoChange"
                 />
 
+                <template v-if="!chatStore.isAgentMode">
                 <el-divider direction="vertical" class="mx-1!" />
 
                 <!-- 深度思考 -->
@@ -189,10 +190,11 @@
                         </el-select>
                     </div>
                 </el-tooltip>
+                </template>
 
                 </div>
 
-                <div class="chat-toolbar-model">
+                <div v-if="!chatStore.isAgentMode" class="chat-toolbar-model">
                     <!-- 厂商模型选择：从当前厂商官方 /models 接口动态加载 -->
                     <div class="flex items-center gap-1">
                         <el-select
@@ -312,7 +314,7 @@
                 </template>
             </el-dialog>
 
-            <div v-if="chatStore.modelsError" class="model-error-banner mb-2">
+            <div v-if="!chatStore.isAgentMode && chatStore.modelsError" class="model-error-banner mb-2">
                 <el-icon class="shrink-0 mt-0.5"><warning-filled /></el-icon>
                 <div class="min-w-0 flex-1">
                     <div class="font-medium">未能自动获取 {{ currentProviderLabel }} 的模型列表</div>

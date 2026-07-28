@@ -38,6 +38,7 @@ export async function createConversation(data: {
   model?: string
   features?: ChatFeatures
   knowledgeBaseId?: number
+  agentId?: number
 }): Promise<ChatConversation> {
   const response = await client.post<ChatConversation>('/chat/conversations', data)
   return response.data

@@ -28,6 +28,18 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/agents',
+      name: 'Agents',
+      component: () => import('../views/AgentsPage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/agents/:id/edit',
+      name: 'AgentEditor',
+      component: () => import('../views/AgentEditorPage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/knowledge-base',
       name: 'KnowledgeBase',
       component: () => import('../views/KnowledgeBasePage.vue'),

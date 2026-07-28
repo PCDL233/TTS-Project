@@ -25,28 +25,39 @@
                         </span>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
-                        <div class="flex items-center gap-1">
-                            <el-tag
-                                :type="mcpStore.mcpEnabled ? 'success' : 'info'"
-                                size="small"
-                            >
-                                <el-icon class="mr-0.5"><connection /></el-icon>
-                                MCP
-                            </el-tag>
-                            <el-tooltip content="MCP 工具开关">
-                                <el-switch
-                                    v-model="mcpStore.mcpEnabled"
-                                    size="small"
-                                    :disabled="!mcpStore.hasServers"
-                                />
-                            </el-tooltip>
-                        </div>
-                        <el-tooltip content="管理 MCP 服务器">
-                            <el-button plain size="small" @click="$router.push('/mcp-servers')">
-                                <el-icon class="mr-0.5"><setting /></el-icon>
-                                管理
-                            </el-button>
-                        </el-tooltip>
+                        <el-select
+                            :model-value="assistantSelection"
+                            class="assistant-selector"
+                            size="small"
+                            :loading="agentStore.loading"
+                            :title="assistantSelectionLabel"
+                            @change="changeAssistant"
+                        >
+                            <el-option label="通用助手" value="general" />
+                            <el-option
+                                v-if="unavailableSelectedAgent"
+                                :label="unavailableSelectedAgent.label"
+                                :value="unavailableSelectedAgent.value"
+                                disabled
+                            />
+                            <el-option
+                                v-for="agent in agentStore.publishedAgents"
+                                :key="agent.id"
+                                :label="agent.name"
+                                :value="String(agent.id)"
+                            />
+                        </el-select>
+                        <el-tag v-if="chatStore.isAgentMode" type="success" size="small">
+                            {{ currentAgentLabel }}
+                        </el-tag>
+                        <template v-if="!chatStore.isAgentMode">
+                            <div class="flex items-center gap-1">
+                                <el-tag :type="mcpStore.mcpEnabled ? 'success' : 'info'" size="small">
+                                    <el-icon class="mr-0.5"><connection /></el-icon>MCP
+                                </el-tag>
+                                <el-tooltip content="MCP 工具开关"><el-switch v-model="mcpStore.mcpEnabled" size="small" :disabled="!mcpStore.hasServers" /></el-tooltip>
+                            </div>
+                        </template>
                     </div>
                 </div>
 
@@ -73,16 +84,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import {
     Expand,
     Fold,
-    Setting,
     Connection,
 } from '@element-plus/icons-vue'
 import { useConfigStore } from '../stores/config'
 import { useChatStore } from '../stores/chat'
 import { useMcpStore } from '../stores/mcp'
+import { useAgentStore } from '../stores/agent'
 import ChatSidebar from '../components/ChatSidebar.vue'
 import ChatMessageList from '../components/ChatMessageList.vue'
 import ChatInputArea from '../components/ChatInputArea.vue'
@@ -91,6 +102,33 @@ import AppHeader from '../components/AppHeader.vue'
 const configStore = useConfigStore()
 const chatStore = useChatStore()
 const mcpStore = useMcpStore()
+const agentStore = useAgentStore()
+
+const assistantSelection = computed(() => chatStore.selectedAgentId ? String(chatStore.selectedAgentId) : 'general')
+const unavailableSelectedAgent = computed(() => {
+  const id = chatStore.selectedAgentId
+  if (!id || agentStore.publishedAgents.some((agent) => agent.id === id)) return null
+  const name = chatStore.currentConversation?.agentName || `智能体 #${id}`
+  return { value: String(id), label: `${name}（历史固定版本）` }
+})
+const currentAgentLabel = computed(() => {
+  const conversation = chatStore.currentConversation
+  const name = conversation?.agentName
+    || agentStore.publishedAgents.find((agent) => agent.id === chatStore.selectedAgentId)?.name
+    || '智能体'
+  const version = conversation?.agentVersion
+  return version ? `${name} · 固定 v${version}` : `${name} · 固定版本`
+})
+const assistantSelectionLabel = computed(() => {
+  if (!chatStore.selectedAgentId) return '通用助手'
+  return chatStore.currentConversation?.agentName
+    || agentStore.publishedAgents.find((agent) => agent.id === chatStore.selectedAgentId)?.name
+    || `智能体 #${chatStore.selectedAgentId}`
+})
+
+async function changeAssistant(value: string) {
+  await chatStore.startNewChatWithAgent(value === 'general' ? null : Number(value))
+}
 
 const sidebarCollapsed = ref(false)
 
@@ -100,6 +138,14 @@ onMounted(async () => {
         chatStore.loadConversations(),
         chatStore.loadChatConfig(),
         mcpStore.loadServers(),
+        agentStore.loadAgents(),
     ])
 })
 </script>
+
+<style scoped>
+.assistant-selector {
+    width: 220px;
+    min-width: 220px;
+}
+</style>

@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  Index,
+} from 'typeorm';
 
 export interface MessagePart {
   type: 'text' | 'image_url' | 'input_audio' | 'video_url';
@@ -45,6 +51,27 @@ export class ChatMessage {
     site_name: string;
     logo_url: string;
     publish_time: string;
+  }>;
+
+  @Column({ type: 'simple-json', nullable: true })
+  agentTrace: Array<{
+    nodeId: string;
+    nodeType: string;
+    label: string;
+    status: 'running' | 'success' | 'error';
+    durationMs?: number;
+    summary?: string;
+    error?: string;
+  }>;
+
+  @Column({ type: 'simple-json', nullable: true })
+  citations: Array<{
+    documentId: number;
+    documentName: string;
+    chunkId: number;
+    chunkIndex: number;
+    source: string;
+    content: string;
   }>;
 
   @CreateDateColumn({ type: 'datetime' })

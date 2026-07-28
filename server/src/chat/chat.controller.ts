@@ -1,27 +1,28 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Patch,
+  BadRequestException,
   Body,
+  Controller,
   Delete,
-  Param,
-  Res,
-  Req,
+  ForbiddenException,
+  Get,
   HttpStatus,
   Logger,
+  Param,
+  Patch,
+  Post,
+  Req,
+  Res,
   UseGuards,
-  ForbiddenException,
-  BadRequestException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import type { RequestWithUser } from '../common/interfaces/request-with-user.interface';
-
 import { ChatService } from './chat.service';
 import { ChatCompletionDto } from './dto/chat-completion.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { LogOperation } from '../common/decorators/log-operation.decorator';
 import { AgentChatService } from './agent-chat.service';
+import { AgentService } from '../agent/agent.service';
+import { AgentWorkflowExecutor } from '../agent/agent-workflow-executor.service';
 
 @Controller('chat')
 @UseGuards(JwtAuthGuard)
@@ -31,14 +32,29 @@ export class ChatController {
   constructor(
     private readonly chatService: ChatService,
     private readonly agentChatService: AgentChatService,
+    private readonly agentService: AgentService,
+    private readonly workflowExecutor: AgentWorkflowExecutor,
   ) {}
-
-  // ========== 会话接口 ==========
 
   @Get('conversations')
   async getConversations(@Req() req: RequestWithUser) {
-    this.logger.log(`[getConversations] 用户 ${req.user.userId}`);
-    return this.chatService.findConversations(req.user.userId);
+    const conversations = await this.chatService.findConversations(
+      req.user.userId,
+    );
+    const descriptors = await this.agentService.getVersionDescriptors(
+      req.user.userId,
+      conversations
+        .map((conversation) => conversation.agentVersionId)
+        .filter((id): id is number => !!id),
+    );
+    return conversations.map((conversation) =>
+      Object.assign(
+        conversation,
+        conversation.agentVersionId
+          ? descriptors.get(conversation.agentVersionId)
+          : undefined,
+      ),
+    );
   }
 
   @Post('conversations')
@@ -51,29 +67,47 @@ export class ChatController {
       model?: string;
       features?: any;
       knowledgeBaseId?: number;
+      agentId?: number;
     },
   ) {
-    this.logger.log(`[createConversation] 用户 ${req.user.userId}`);
-    if (!body.model) {
-      throw new BadRequestException('请先选择或输入模型');
+    if (body.agentId) {
+      const { agent, version } = await this.agentService.getPublishedVersion(
+        req.user.userId,
+        body.agentId,
+      );
+      const conversation = await this.chatService.createConversation(
+        req.user.userId,
+        {
+          title: body.title || agent.name,
+          model: '',
+          features: {},
+          knowledgeBaseId: null,
+          agentId: agent.id,
+          agentVersionId: version.id,
+        },
+      );
+      return Object.assign(conversation, {
+        agentName: agent.name,
+        agentVersion: version.version,
+      });
     }
+    if (!body.model) throw new BadRequestException('请先选择或输入模型');
     return this.chatService.createConversation(req.user.userId, {
       title: body.title || '新对话',
       model: body.model,
       features: body.features || {},
       knowledgeBaseId: body.knowledgeBaseId,
+      agentId: null,
+      agentVersionId: null,
     });
   }
 
   @Patch('conversations/:id')
-  async updateConversation(
+  updateConversation(
     @Req() req: RequestWithUser,
     @Param('id') id: string,
     @Body() body: { title?: string; knowledgeBaseId?: number | null },
   ) {
-    this.logger.log(
-      `[updateConversation] 用户 ${req.user.userId} 更新会话 ${id}`,
-    );
     return this.chatService.updateConversation(req.user.userId, Number(id), {
       title: body.title,
       knowledgeBaseId: body.knowledgeBaseId ?? undefined,
@@ -86,29 +120,19 @@ export class ChatController {
     @Req() req: RequestWithUser,
     @Param('id') id: string,
   ) {
-    this.logger.log(
-      `[deleteConversation] 用户 ${req.user.userId} 删除会话 ${id}`,
-    );
     await this.chatService.removeConversation(req.user.userId, Number(id));
     return { success: true };
   }
 
   @Get('conversations/:id/messages')
   async getMessages(@Req() req: RequestWithUser, @Param('id') id: string) {
-    this.logger.log(
-      `[getMessages] 用户 ${req.user.userId} 查询会话 ${id} 消息`,
-    );
     const conversation = await this.chatService.findConversation(
       req.user.userId,
       Number(id),
     );
-    if (!conversation) {
-      throw new ForbiddenException('无权访问该会话');
-    }
+    if (!conversation) throw new ForbiddenException('无权访问该会话');
     return this.chatService.findMessages(Number(id));
   }
-
-  // ========== 流式对话接口 ==========
 
   @Post('completions')
   @LogOperation('chat', 'completions')
@@ -117,9 +141,17 @@ export class ChatController {
     @Body() dto: ChatCompletionDto,
     @Res() res: Response,
   ) {
-    this.logger.log(
-      `[completions] 用户 ${req.user.userId} 请求对话，model=${dto.model}, kb=${dto.knowledgeBaseId || 'none'}, mcp=${dto.mcpEnabled ?? false}`,
-    );
+    const conversation = dto.conversationId
+      ? await this.chatService.findConversation(
+          req.user.userId,
+          dto.conversationId,
+        )
+      : null;
+    if (dto.conversationId && !conversation)
+      throw new ForbiddenException('无权访问该会话');
+    if (!conversation?.agentVersionId && !dto.model)
+      throw new BadRequestException('请先选择或输入模型');
+
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -128,124 +160,154 @@ export class ChatController {
     let clientDisconnected = false;
     let fullContent = '';
     let fullReasoning = '';
+    let agentTrace: any[] | undefined;
+    let citations: any[] | undefined;
     const toolCallMap = new Map<string, any>();
     const annotationsSet = new Set<string>();
-    const mcpToolCalls: any[] = [];
-
-    // 监听客户端断开
-    req.on('close', () => {
+    const workflowAbort = new AbortController();
+    res.on('close', () => {
       clientDisconnected = true;
-      this.logger.debug(`[completions] 用户 ${req.user.userId} 客户端断开连接`);
+      workflowAbort.abort();
     });
-
-    // 心跳机制
     const heartbeat = setInterval(() => {
-      if (!clientDisconnected) {
-        res.write(': heartbeat\n\n');
-      }
-    }, 30000);
+      if (!clientDisconnected) res.write(': heartbeat\n\n');
+    }, 15_000);
 
     try {
-      const useAgent = dto.mcpEnabled === true;
-      const stream = useAgent
-        ? this.agentChatService.streamAgentCompletion(req.user.userId, {
-            model: dto.model,
-            messages: dto.messages,
-            thinking: dto.thinking,
-            temperature: dto.temperature,
-            max_completion_tokens: dto.max_completion_tokens,
-            knowledgeBaseId: dto.knowledgeBaseId,
-            roleSettings: dto.roleSettings,
-            mcpEnabled: true,
-            webSearchEnabled: dto.tools?.some(
-              (t: any) => t.type === 'web_search',
-            ),
-          })
-        : this.chatService.streamChatCompletion(req.user.userId, dto);
-
-      for await (const chunk of stream) {
-        if (clientDisconnected) break;
-
-        if (chunk.type === 'tool_call_start') {
-          mcpToolCalls.push({ phase: 'start', ...chunk });
-          res.write(`data: ${JSON.stringify(chunk)}\n\n`);
-          continue;
-        }
-        if (chunk.type === 'tool_call_result') {
-          mcpToolCalls.push({ phase: 'result', ...chunk });
-          res.write(`data: ${JSON.stringify(chunk)}\n\n`);
-          continue;
-        }
-
-        if (chunk.content) fullContent += chunk.content;
-        if (chunk.reasoningContent) fullReasoning += chunk.reasoningContent;
-        if (chunk.toolCalls) {
-          for (const tc of chunk.toolCalls) {
-            const existing = toolCallMap.get(tc.id);
-            if (existing) {
-              existing.function.arguments += tc.function.arguments || '';
-            } else {
-              toolCallMap.set(tc.id, { ...tc, function: { ...tc.function } });
+      if (conversation?.agentVersionId) {
+        const { agent, version } =
+          await this.agentService.getVersionForConversation(
+            req.user.userId,
+            conversation.agentVersionId,
+          );
+        res.write(
+          `data: ${JSON.stringify({ type: 'agent_selected', agentId: agent.id, agentName: agent.name, version: version.version })}\n\n`,
+        );
+        const lastUserMessage = dto.messages[dto.messages.length - 1];
+        const query =
+          lastUserMessage?.content ||
+          lastUserMessage?.contentParts?.find((part) => part.type === 'text')
+            ?.text ||
+          '';
+        for await (const event of this.workflowExecutor.execute(
+          req.user.userId,
+          version.graphSnapshot,
+          {
+            query,
+            history: dto.messages.slice(0, -1),
+            contentParts: lastUserMessage?.contentParts,
+            signal: workflowAbort.signal,
+          },
+        )) {
+          if (clientDisconnected) break;
+          res.write(`data: ${JSON.stringify(event)}\n\n`);
+          if (event.type === 'agent_run_finish') {
+            agentTrace = event.trace;
+            citations = event.citations;
+            const content = event.content || '';
+            for (let i = 0; i < content.length; i += 20) {
+              const chunk = content.slice(i, i + 20);
+              fullContent += chunk;
+              res.write(
+                `data: ${JSON.stringify({ content: chunk, finishReason: i + 20 >= content.length ? 'stop' : null })}\n\n`,
+              );
             }
           }
         }
-        if (chunk.annotations) {
-          for (const anno of chunk.annotations) {
-            annotationsSet.add(JSON.stringify(anno));
-          }
-        }
-        res.write(`data: ${JSON.stringify(chunk)}\n\n`);
-      }
+      } else {
+        const useMcpAgent = dto.mcpEnabled === true;
+        const stream = useMcpAgent
+          ? this.agentChatService.streamAgentCompletion(req.user.userId, {
+              model: dto.model!,
+              messages: dto.messages,
+              thinking: dto.thinking,
+              temperature: dto.temperature,
+              max_completion_tokens: dto.max_completion_tokens,
+              knowledgeBaseId: dto.knowledgeBaseId,
+              roleSettings: dto.roleSettings,
+              mcpEnabled: true,
+              webSearchEnabled: dto.tools?.some(
+                (tool) => tool.type === 'web_search',
+              ),
+            })
+          : this.chatService.streamChatCompletion(req.user.userId, {
+              ...dto,
+              model: dto.model!,
+            });
 
-      if (!clientDisconnected) {
-        res.write('data: [DONE]\n\n');
-        this.logger.log(`[completions] 用户 ${req.user.userId} 对话完成`);
+        for await (const chunk of stream) {
+          if (clientDisconnected) break;
+          if (
+            chunk.type === 'tool_call_start' ||
+            chunk.type === 'tool_call_result'
+          ) {
+            res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+            continue;
+          }
+          if (chunk.content) fullContent += chunk.content;
+          if (chunk.reasoningContent) fullReasoning += chunk.reasoningContent;
+          if (chunk.toolCalls) {
+            for (const toolCall of chunk.toolCalls) {
+              const existing = toolCallMap.get(toolCall.id);
+              if (existing)
+                existing.function.arguments +=
+                  toolCall.function.arguments || '';
+              else
+                toolCallMap.set(toolCall.id, {
+                  ...toolCall,
+                  function: { ...toolCall.function },
+                });
+            }
+          }
+          if (chunk.annotations) {
+            for (const annotation of chunk.annotations)
+              annotationsSet.add(JSON.stringify(annotation));
+          }
+          res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+        }
       }
-    } catch (err) {
-      this.logger.error(`[completions] 错误: ${(err as Error).message}`);
+      if (!clientDisconnected) res.write('data: [DONE]\n\n');
+    } catch (error) {
+      this.logger.error(`[completions] ${(error as Error).message}`);
       if (!clientDisconnected) {
-        const errorMsg =
-          err instanceof BadRequestException
-            ? (err as Error).message
+        const message =
+          error instanceof BadRequestException
+            ? error.message
             : '对话请求处理失败，请稍后重试';
-        res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
+        res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
       }
     } finally {
       clearInterval(heartbeat);
       if (
         !clientDisconnected &&
         dto.conversationId &&
-        (fullContent || fullReasoning)
+        (fullContent || fullReasoning || agentTrace)
       ) {
         try {
           const lastUserMessage = dto.messages[dto.messages.length - 1];
-          const fullToolCalls = Array.from(toolCallMap.values());
-          const fullAnnotations = Array.from(annotationsSet).map((s) =>
-            JSON.parse(s),
-          );
           await this.chatService.saveChatPair(
             dto.conversationId,
             lastUserMessage,
             {
               content: fullContent,
               reasoningContent: fullReasoning,
-              toolCalls: fullToolCalls.length > 0 ? fullToolCalls : undefined,
-              annotations:
-                fullAnnotations.length > 0 ? fullAnnotations : undefined,
+              toolCalls: Array.from(toolCallMap.values()).length
+                ? Array.from(toolCallMap.values())
+                : undefined,
+              annotations: annotationsSet.size
+                ? Array.from(annotationsSet).map((value) => JSON.parse(value))
+                : undefined,
+              agentTrace,
+              citations,
             },
           );
-          this.logger.log(
-            `[completions] 会话 ${dto.conversationId} 消息已保存`,
-          );
-        } catch (saveErr) {
+        } catch (saveError) {
           this.logger.error(
-            `[completions] 保存消息失败: ${(saveErr as Error).message}`,
+            `[completions] 保存消息失败: ${(saveError as Error).message}`,
           );
         }
       }
-      if (!clientDisconnected) {
-        res.end();
-      }
+      if (!clientDisconnected) res.end();
     }
   }
 }

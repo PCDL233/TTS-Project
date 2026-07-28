@@ -55,7 +55,7 @@ import { ElMessageBox } from 'element-plus'
 const chatStore = useChatStore()
 
 async function handleNewChat() {
-    await chatStore.createNewChat()
+    await chatStore.startNewChatWithAgent(chatStore.selectedAgentId)
 }
 
 async function handleDelete(id: number) {

@@ -27,6 +27,20 @@
                         智能助手
                     </router-link>
                     <router-link
+                        to="/agents"
+                        class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
+                        :class="$route.path.startsWith('/agents') ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                    >
+                        智能体
+                    </router-link>
+                    <router-link
+                        to="/mcp-servers"
+                        class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
+                        :class="$route.path === '/mcp-servers' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                    >
+                        MCP
+                    </router-link>
+                    <router-link
                         to="/knowledge-base"
                         class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
                         :class="$route.path === '/knowledge-base' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"

@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { KnowledgeChunk } from './knowledge-chunk.entity';
+import { KnowledgeBase } from './knowledge-base.entity';
+import type { AgentCitation } from '../agent/agent.types';
 import { EmbeddingService } from './embedding.service';
 import { VectorDbService } from './vector-db.service';
 
@@ -13,6 +15,8 @@ export class RagService {
   constructor(
     @InjectRepository(KnowledgeChunk)
     private chunkRepository: Repository<KnowledgeChunk>,
+    @InjectRepository(KnowledgeBase)
+    private knowledgeBaseRepository: Repository<KnowledgeBase>,
     private readonly embeddingService: EmbeddingService,
     private readonly vectorDbService: VectorDbService,
   ) {}
@@ -23,7 +27,9 @@ export class RagService {
     topK: number = 5,
     modelName?: string,
   ): Promise<string> {
-    this.logger.log(`RAG 检索: knowledgeBaseId=${knowledgeBaseId}, query="${query.slice(0, 50)}..."`);
+    this.logger.log(
+      `RAG 检索: knowledgeBaseId=${knowledgeBaseId}, query="${query.slice(0, 50)}..."`,
+    );
 
     // 1. 向量化 query
     const queryEmbedding = await this.embeddingService.embed(
@@ -32,7 +38,11 @@ export class RagService {
     );
 
     // 2. 搜索相似 chunks
-    const results = this.vectorDbService.search(knowledgeBaseId, queryEmbedding, topK);
+    const results = this.vectorDbService.search(
+      knowledgeBaseId,
+      queryEmbedding,
+      topK,
+    );
     if (results.length === 0) {
       this.logger.warn('RAG 检索未找到相似内容');
       return '';
@@ -66,8 +76,63 @@ export class RagService {
     return context.trim();
   }
 
+  async retrieveWithCitations(
+    query: string,
+    knowledgeBaseId: number,
+    topK: number = 5,
+    userId?: number,
+  ): Promise<{ context: string; citations: AgentCitation[] }> {
+    const knowledgeBase = await this.knowledgeBaseRepository.findOne({
+      where: userId ? { id: knowledgeBaseId, userId } : { id: knowledgeBaseId },
+    });
+    if (!knowledgeBase) throw new Error('知识库不存在或无权访问');
+
+    const queryEmbedding = await this.embeddingService.embed(
+      query,
+      knowledgeBase.embeddingModel,
+    );
+    const results = this.vectorDbService.search(
+      knowledgeBaseId,
+      queryEmbedding,
+      topK,
+    );
+    if (results.length === 0) return { context: '', citations: [] };
+
+    const chunkIds = results.map((result) => result.chunkId);
+    const chunks = await this.chunkRepository.find({
+      where: { id: In(chunkIds), knowledgeBaseId },
+      relations: { document: true },
+    });
+    const chunkMap = new Map(chunks.map((chunk) => [chunk.id, chunk]));
+    const citations: AgentCitation[] = [];
+    let context = '';
+    for (const chunkId of chunkIds) {
+      const chunk = chunkMap.get(chunkId);
+      if (!chunk) continue;
+      const source =
+        chunk.metadata?.source ||
+        chunk.document?.originalName ||
+        `文档 ${chunk.documentId}`;
+      const entry = `[来源: ${source}，片段 ${chunk.chunkIndex + 1}]\n${chunk.content}\n\n`;
+      if (context.length + entry.length > this.maxContextLength) break;
+      context += entry;
+      citations.push({
+        documentId: chunk.documentId,
+        documentName: chunk.document?.originalName || source,
+        chunkId: chunk.id,
+        chunkIndex: chunk.chunkIndex,
+        source,
+        content: chunk.content.slice(0, 500),
+      });
+    }
+    return { context: context.trim(), citations };
+  }
   buildAugmentedMessages(
-    originalMessages: Array<{ role: string; content?: string; contentParts?: any[] }>,
+    originalMessages: Array<{
+      role: string;
+      content?: string;
+      contentParts?: any[];
+    }>,
     context: string,
   ): Array<{ role: string; content?: string; contentParts?: any[] }> {
     if (!context) return originalMessages;
