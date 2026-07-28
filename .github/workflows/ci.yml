@@ -66,4 +66,4 @@ jobs:
           JWT_SECRET: ci-test-jwt-secret
           AES_SECRET_KEY: ci-test-aes-secret-key-32bytes!!
           PORT: '3001'
-        run: pnpm -C server test -- --passWithNoTests
+        run: pnpm -C server test --passWithNoTests
