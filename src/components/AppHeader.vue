@@ -83,6 +83,7 @@
                     <el-icon><question-filled /></el-icon>
                     帮助
                 </el-button>
+                <ThemeToggle />
                 <el-divider direction="vertical" />
                 <el-dropdown @command="handleUserCommand">
                     <span class="flex items-center gap-2 cursor-pointer">
@@ -135,6 +136,7 @@ import { useConfigStore } from '../stores/config'
 import { useAuthStore } from '../stores/auth'
 import { useSystemConfig } from '../composables/useSystemConfig'
 import ApiKeyDialog from './ApiKeyDialog.vue'
+import ThemeToggle from './ThemeToggle.vue'
 
 defineProps<{
     showHelp?: boolean

@@ -1,5 +1,8 @@
 <template>
     <div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div class="fixed right-4 top-4 z-50">
+            <ThemeToggle />
+        </div>
         <div class="w-full max-w-md">
             <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
                 <div class="flex items-center justify-center gap-3 mb-8">
@@ -98,6 +101,7 @@ import { MagicStick, User, Lock } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import { useSystemConfig } from '../composables/useSystemConfig'
+import ThemeToggle from '../components/ThemeToggle.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()

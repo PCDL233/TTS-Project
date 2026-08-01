@@ -8,6 +8,7 @@ import './style.css'
 import App from './App.vue'
 import router from './router'
 import { useSystemConfig } from './composables/useSystemConfig'
+import { initializeTheme } from './composables/useTheme'
 
 import VueECharts from 'vue-echarts'
 import { use } from 'echarts/core'
@@ -21,6 +22,8 @@ console.log('[MiMo TTS] main.ts loaded')
 console.log('[MiMo TTS] Vue version:', version)
 
 try {
+  initializeTheme()
+
   const app = createApp(App)
   const pinia = createPinia()
 
