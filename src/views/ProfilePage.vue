@@ -10,6 +10,7 @@
                     <h1 class="text-lg font-bold text-gray-800">MiMo 智能助手</h1>
                 </div>
                 <div class="flex items-center gap-3">
+                    <ThemeToggle />
                     <el-button size="small" @click="$router.push('/')">
                         <el-icon><home-filled /></el-icon>
                         返回首页
@@ -94,6 +95,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { uploadAvatar } from '../api/upload'
 import { ElMessage } from 'element-plus'
+import ThemeToggle from '../components/ThemeToggle.vue'
 
 const authStore = useAuthStore()
 

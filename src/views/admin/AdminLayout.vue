@@ -78,6 +78,7 @@
                     当前位置：{{ currentTitle }}
                 </div>
                 <div class="flex items-center gap-4">
+                    <ThemeToggle />
                     <el-button size="small" @click="$router.push('/')">
                         <el-icon><home-filled /></el-icon>
                         返回前台
@@ -122,6 +123,7 @@ import { computed, ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../../stores/auth";
 import { useSystemConfig } from "../../composables/useSystemConfig";
+import ThemeToggle from "../../components/ThemeToggle.vue";
 import {
     ArrowDown,
     HomeFilled,
