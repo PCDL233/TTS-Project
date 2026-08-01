@@ -1,6 +1,15 @@
 <template>
-    <div class="border-t border-gray-200 bg-white p-4 shrink-0">
-        <div class="max-w-3xl mx-auto">
+    <div
+        class="chat-input-root bg-white p-4 shrink-0 flex flex-col relative"
+        :style="{ height: `${inputAreaHeight}px`, minHeight: `${minimumInputAreaHeight}px` }"
+    >
+        <div
+            class="chat-input-resize-handle"
+            title="拖拽调整输入区高度"
+            @mousedown.prevent="startInputResize"
+        ></div>
+        <div class="max-w-3xl mx-auto w-full h-full flex flex-col min-h-0">
+            <div ref="inputControlsRef" class="chat-input-controls shrink-0">
             <!-- 附件预览 -->
             <div v-if="inputImages.length > 0 || inputAudio" class="mb-3 flex flex-wrap gap-2">
                 <div
@@ -158,20 +167,31 @@
                 <el-tooltip v-if="chatStore.adminFeatures.roleSetting" :content="roleTooltip" placement="top">
                     <button
                         class="toolbar-button flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
-                        :class="chatStore.roleSettings.enabled ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        :class="chatStore.features.roleSetting ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
                         @click="roleDialogVisible = true"
                     >
                         <el-icon :size="14"><user /></el-icon>
-                        <span>{{ chatStore.roleSettings.enabled ? chatStore.currentRoleLabel : '角色设定' }}</span>
+                        <span>{{ chatStore.features.roleSetting ? chatStore.currentRoleLabel : '角色设定' }}</span>
                     </button>
                 </el-tooltip>
 
-                <!-- 知识库选择 -->
-                <el-tooltip v-if="chatStore.adminFeatures.knowledgeBase" content="选择知识库进行检索增强" placement="top">
+                <!-- 知识库增强 -->
+                <el-tooltip v-if="chatStore.adminFeatures.knowledgeBase" :content="knowledgeBaseTooltip" placement="top">
+                    <button
+                        class="toolbar-button flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
+                        :class="chatStore.features.knowledgeBase ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
+                        @click="toggleFeature('knowledgeBase')"
+                    >
+                        <el-icon :size="14"><collection /></el-icon>
+                        <span>知识库</span>
+                    </button>
+                </el-tooltip>
+
+                <el-tooltip v-if="chatStore.adminFeatures.knowledgeBase && chatStore.features.knowledgeBase" content="选择知识库进行检索增强" placement="top">
                     <div>
                         <el-select
                             v-model="selectedKbId"
-                            placeholder="知识库"
+                            placeholder="选择知识库"
                             clearable
                             size="small"
                             style="width: 160px"
@@ -253,12 +273,12 @@
                             <div class="role-settings-title">启用角色设定</div>
                             <div class="role-settings-desc">关闭后不注入任何角色提示，模型按官方默认行为答复。</div>
                         </div>
-                        <el-switch v-model="chatStore.roleSettings.enabled" />
+                        <el-switch v-model="roleFeatureEnabled" />
                     </div>
 
                     <el-divider />
 
-                    <el-form label-position="top">
+                    <el-form label-position="top" :disabled="!roleFeatureEnabled">
                         <el-form-item label="选择角色示例">
                             <el-select
                                 v-model="chatStore.roleSettings.presetId"
@@ -330,14 +350,15 @@
                 </el-button>
             </div>
 
+            </div>
+
             <!-- 输入框 -->
-            <div class="relative">
+            <div class="chat-editor-wrap relative flex-1 min-h-0">
                 <el-input
                     v-model="inputText"
                     type="textarea"
-                    :rows="3"
                     placeholder="输入消息...（Shift+Enter 换行）"
-                    class="chat-textarea"
+                    class="chat-textarea h-full"
                     resize="none"
                     @keydown="handleKeydown"
                 />
@@ -370,7 +391,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import {
     PictureRounded,
     Mic,
@@ -407,8 +428,15 @@ const roleDialogVisible = ref(false)
 const currentRolePreset = computed(() => (
     chatStore.rolePresets.find((preset) => preset.id === chatStore.roleSettings.presetId) || null
 ))
+const roleFeatureEnabled = computed({
+    get: () => chatStore.features.roleSetting,
+    set: (enabled: boolean) => {
+        chatStore.updateFeatures({ roleSetting: enabled })
+        chatStore.updateRoleSettings({ enabled })
+    },
+})
 const roleTooltip = computed(() => (
-    chatStore.roleSettings.enabled ? `模型角色设定：${chatStore.currentRoleLabel}` : '模型角色设定'
+    chatStore.features.roleSetting ? `模型角色设定：${chatStore.currentRoleLabel}` : '点击后在弹窗中启用模型角色设定'
 ))
 
 // 知识库列表
@@ -464,6 +492,9 @@ const webSearchTooltip = computed(() => (
 const functionCallTooltip = computed(() => (
     canUseFunctionCall.value ? 'MCP 函数调用' : '请先添加并启用 MCP 工具服务器'
 ))
+const knowledgeBaseTooltip = computed(() => (
+    chatStore.features.knowledgeBase ? '知识库检索增强已启用' : '点击启用知识库检索增强'
+))
 
 const availableModelOptions = computed(() => chatStore.availableModelOptions)
 
@@ -502,6 +533,87 @@ watch(providerConfigKey, () => {
 function refreshProviderModels() {
   chatStore.loadProviderModels(true)
 }
+
+const INPUT_AREA_HEIGHT_STORAGE_KEY = 'assistantInputAreaHeight'
+// 基础最小高度用于首次渲染；实际最小值会根据工具栏换行后的高度自动抬升。
+const INPUT_AREA_MIN_HEIGHT = 300
+const INPUT_AREA_MAX_HEIGHT = 420
+const INPUT_AREA_DEFAULT_HEIGHT = 300
+const INPUT_EDITOR_MIN_HEIGHT = 112
+const INPUT_AREA_VERTICAL_PADDING = 32
+const INPUT_AREA_SAFETY_GAP = 12
+
+const inputControlsRef = ref<HTMLElement | null>(null)
+const minimumInputAreaHeight = ref(INPUT_AREA_MIN_HEIGHT)
+let inputControlsResizeObserver: ResizeObserver | null = null
+
+function maximumInputAreaHeight() {
+    return Math.max(INPUT_AREA_MAX_HEIGHT, minimumInputAreaHeight.value)
+}
+
+function clampInputHeight(value: number) {
+    return Math.min(maximumInputAreaHeight(), Math.max(minimumInputAreaHeight.value, value))
+}
+
+function loadInputAreaHeight() {
+    const stored = Number(localStorage.getItem(INPUT_AREA_HEIGHT_STORAGE_KEY))
+    return Number.isFinite(stored) ? Math.max(INPUT_AREA_MIN_HEIGHT, stored) : INPUT_AREA_DEFAULT_HEIGHT
+}
+
+const inputAreaHeight = ref(loadInputAreaHeight())
+
+function updateMinimumInputAreaHeight() {
+    const controlsHeight = inputControlsRef.value?.getBoundingClientRect().height ?? 0
+    const dynamicMinimum = Math.ceil(
+        controlsHeight + INPUT_EDITOR_MIN_HEIGHT + INPUT_AREA_VERTICAL_PADDING + INPUT_AREA_SAFETY_GAP,
+    )
+    minimumInputAreaHeight.value = Math.max(INPUT_AREA_MIN_HEIGHT, dynamicMinimum)
+    const clampedHeight = clampInputHeight(inputAreaHeight.value)
+    if (clampedHeight !== inputAreaHeight.value) {
+        inputAreaHeight.value = clampedHeight
+        localStorage.setItem(INPUT_AREA_HEIGHT_STORAGE_KEY, String(clampedHeight))
+    }
+}
+
+let inputResizeStartY = 0
+let inputResizeStartHeight = INPUT_AREA_DEFAULT_HEIGHT
+
+function stopInputResize() {
+    document.removeEventListener('mousemove', handleInputResizeMove)
+    document.removeEventListener('mouseup', stopInputResize)
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+}
+
+function handleInputResizeMove(event: MouseEvent) {
+    const nextHeight = clampInputHeight(inputResizeStartHeight + inputResizeStartY - event.clientY)
+    inputAreaHeight.value = nextHeight
+    localStorage.setItem(INPUT_AREA_HEIGHT_STORAGE_KEY, String(nextHeight))
+}
+
+function startInputResize(event: MouseEvent) {
+    inputResizeStartY = event.clientY
+    inputResizeStartHeight = inputAreaHeight.value
+    document.body.style.cursor = 'row-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', handleInputResizeMove)
+    document.addEventListener('mouseup', stopInputResize)
+}
+
+onMounted(async () => {
+    await nextTick()
+    updateMinimumInputAreaHeight()
+    if (inputControlsRef.value) {
+        inputControlsResizeObserver = new ResizeObserver(updateMinimumInputAreaHeight)
+        inputControlsResizeObserver.observe(inputControlsRef.value)
+    }
+})
+
+onUnmounted(() => {
+    stopInputResize()
+    inputControlsResizeObserver?.disconnect()
+    if (providerReloadTimer) clearTimeout(providerReloadTimer)
+})
 
 const inputText = ref('')
 const inputImages = ref<string[]>([])
@@ -698,6 +810,36 @@ function removeVideo() {
 
 <style scoped>
 
+.chat-input-root {
+    border-top: 1px solid #e5e7eb;
+}
+
+.chat-input-resize-handle {
+    position: absolute;
+    top: -4px;
+    left: 0;
+    right: 0;
+    height: 8px;
+    cursor: row-resize;
+    z-index: 10;
+}
+
+.chat-input-resize-handle::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #e5e7eb;
+    transition: background-color 0.15s ease;
+}
+
+.chat-input-resize-handle:hover::after {
+    height: 2px;
+    background: #60a5fa;
+}
+
 .chat-toolbar {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -752,7 +894,21 @@ function removeVideo() {
     }
 }
 
+.chat-editor-wrap {
+    min-height: 112px;
+}
+
+.chat-textarea {
+    display: flex;
+}
+
+.chat-textarea :deep(.el-textarea) {
+    display: flex;
+    height: 100%;
+}
+
 .chat-textarea :deep(.el-textarea__inner) {
+    height: 100% !important;
     border-radius: 0.75rem;
     padding: 0.75rem 1rem;
     padding-right: 5rem;

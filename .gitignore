@@ -33,3 +33,4 @@ settings.local.json
 .env.local
 .env.*.local
 server/.env
+server/public/uploads/knowledge-base

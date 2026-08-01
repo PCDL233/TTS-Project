@@ -23,6 +23,14 @@ interface SendMessageOptions {
 
 
 const ROLE_SETTINGS_STORAGE_KEY = 'chatRoleSettings'
+const USER_FEATURES_STORAGE_KEY = 'chatUserToggledFeatures'
+const DEFAULT_USER_TOGGLED_FEATURES: ChatFeatures = {
+  thinking: false,
+  webSearch: false,
+  functionCall: false,
+  roleSetting: false,
+  knowledgeBase: false,
+}
 const DEFAULT_ROLE_SETTINGS: ChatRoleSettings = {
   enabled: false,
   presetId: 'professional_assistant',
@@ -45,6 +53,23 @@ function loadStoredRoleSettings(): ChatRoleSettings {
     }
   } catch {
     return { ...DEFAULT_ROLE_SETTINGS }
+  }
+}
+
+function loadStoredUserToggledFeatures(): ChatFeatures {
+  try {
+    const raw = localStorage.getItem(USER_FEATURES_STORAGE_KEY)
+    if (!raw) return { ...DEFAULT_USER_TOGGLED_FEATURES }
+    const parsed = JSON.parse(raw) as Partial<ChatFeatures>
+    return {
+      thinking: parsed.thinking === true,
+      webSearch: parsed.webSearch === true,
+      functionCall: parsed.functionCall === true,
+      roleSetting: parsed.roleSetting === true,
+      knowledgeBase: parsed.knowledgeBase === true,
+    }
+  } catch {
+    return { ...DEFAULT_USER_TOGGLED_FEATURES }
   }
 }
 
@@ -82,19 +107,14 @@ export const useChatStore = defineStore('chat', () => {
     knowledgeBase: false,
   })
   // 用户本地开关偏好（仅对 adminFeatures 中开启的功能生效）
-  const userToggledFeatures = ref<ChatFeatures>({
-    thinking: false,
-    webSearch: false,
-    functionCall: false,
-    roleSetting: true,
-    knowledgeBase: false,
-  })
+  const userToggledFeatures = ref<ChatFeatures>(loadStoredUserToggledFeatures())
+  const roleSettings = ref<ChatRoleSettings>(loadStoredRoleSettings())
   // 最终生效的功能（admin 关闭则整体关闭，admin 开启则取决于用户本地开关）
   const features = computed<ChatFeatures>(() => ({
     thinking: adminFeatures.value.thinking && userToggledFeatures.value.thinking,
     webSearch: adminFeatures.value.webSearch && userToggledFeatures.value.webSearch,
     functionCall: adminFeatures.value.functionCall && userToggledFeatures.value.functionCall,
-    roleSetting: adminFeatures.value.roleSetting === true,
+    roleSetting: adminFeatures.value.roleSetting && userToggledFeatures.value.roleSetting && roleSettings.value.enabled,
     knowledgeBase: adminFeatures.value.knowledgeBase && userToggledFeatures.value.knowledgeBase,
   }))
   const abortController = ref<AbortController | null>(null)
@@ -104,12 +124,19 @@ export const useChatStore = defineStore('chat', () => {
   const modelsError = ref('')
   const providerModelSource = ref('')
   const availableModelOptions = ref<ChatModelOption[]>([])
-  const roleSettings = ref<ChatRoleSettings>(loadStoredRoleSettings())
 
   watch(
     roleSettings,
     (value) => {
       localStorage.setItem(ROLE_SETTINGS_STORAGE_KEY, JSON.stringify(value))
+    },
+    { deep: true },
+  )
+
+  watch(
+    userToggledFeatures,
+    (value) => {
+      localStorage.setItem(USER_FEATURES_STORAGE_KEY, JSON.stringify(value))
     },
     { deep: true },
   )
@@ -415,11 +442,9 @@ export const useChatStore = defineStore('chat', () => {
   async function loadChatConfig() {
     try {
       const config = await fetchChatConfig()
-      // 用后端返回的功能开关更新 adminFeatures
+      // 用后端返回的功能开关更新 adminFeatures。后台只控制入口可见性，
+      // 不再替用户默认开启；管理员关闭时强制清空对应本地启用状态。
       if (config.features) {
-        // 同步 userToggledFeatures：后台开关打开时即默认在前台启用；
-        // 用户在前台手动关闭后，保持当前选择，直到后台先关后开重新启用。
-        const previousAdminFeatures = { ...adminFeatures.value }
         adminFeatures.value = {
           thinking: config.features.thinking ?? false,
           webSearch: config.features.webSearch ?? false,
@@ -428,11 +453,14 @@ export const useChatStore = defineStore('chat', () => {
           knowledgeBase: config.features.knowledgeBase ?? false,
         }
         userToggledFeatures.value = {
-          thinking: adminFeatures.value.thinking && (previousAdminFeatures.thinking ? userToggledFeatures.value.thinking : true),
-          webSearch: adminFeatures.value.webSearch && (previousAdminFeatures.webSearch ? userToggledFeatures.value.webSearch : true),
-          functionCall: adminFeatures.value.functionCall && (previousAdminFeatures.functionCall ? userToggledFeatures.value.functionCall : true),
-          roleSetting: true,
-          knowledgeBase: adminFeatures.value.knowledgeBase && (previousAdminFeatures.knowledgeBase ? userToggledFeatures.value.knowledgeBase : true),
+          thinking: adminFeatures.value.thinking && userToggledFeatures.value.thinking,
+          webSearch: adminFeatures.value.webSearch && userToggledFeatures.value.webSearch,
+          functionCall: adminFeatures.value.functionCall && userToggledFeatures.value.functionCall,
+          roleSetting: adminFeatures.value.roleSetting && userToggledFeatures.value.roleSetting,
+          knowledgeBase: adminFeatures.value.knowledgeBase && userToggledFeatures.value.knowledgeBase,
+        }
+        if (!adminFeatures.value.roleSetting && roleSettings.value.enabled) {
+          roleSettings.value = { ...roleSettings.value, enabled: false }
         }
       }
       await loadProviderModels()

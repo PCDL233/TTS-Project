@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '../config/config.service';
+import { canUseMimoTts, MIMO_TTS_ERROR_MESSAGE } from './tts-provider.util';
 
 @Injectable()
 export class TtsService {
@@ -16,6 +17,10 @@ export class TtsService {
     if (!config.apiKey) {
       this.logger.warn('[generate] API Key 未配置');
       throw new BadRequestException('API Key 未配置，请先在「API 设置」中填写有效的 API Key');
+    }
+    if (!canUseMimoTts(config, dto.model)) {
+      this.logger.warn(`[generate] 拒绝非 MiMo TTS 请求: preset=${config.baseUrlPreset}, model=${dto.model}`);
+      throw new BadRequestException(MIMO_TTS_ERROR_MESSAGE);
     }
     const baseUrl = this.configService.getEffectiveBaseUrl(config);
     this.logger.log(`[generate] 请求模型 API: ${baseUrl}/chat/completions`);
@@ -55,6 +60,10 @@ export class TtsService {
     if (!config.apiKey) {
       this.logger.warn('[generateStream] API Key 未配置');
       throw new BadRequestException('API Key 未配置，请先在「API 设置」中填写有效的 API Key');
+    }
+    if (!canUseMimoTts(config, dto.model)) {
+      this.logger.warn(`[generateStream] 拒绝非 MiMo TTS 请求: preset=${config.baseUrlPreset}, model=${dto.model}`);
+      throw new BadRequestException(MIMO_TTS_ERROR_MESSAGE);
     }
     const baseUrl = this.configService.getEffectiveBaseUrl(config);
     this.logger.log(`[generateStream] 请求模型 API (流式): ${baseUrl}/chat/completions`);

@@ -163,6 +163,9 @@ const menuItems: MenuItem[] = [
         icon: "ChatDotSquare",
         children: [
             { path: "/admin/chat", label: "会话消息" },
+            { path: "/admin/agents", label: "智能体审计" },
+            { path: "/admin/mcp-servers", label: "MCP 审计" },
+            { path: "/admin/knowledge-bases", label: "知识库审计" },
         ],
     },
     {
@@ -178,6 +181,7 @@ const menuItems: MenuItem[] = [
         icon: "CollectionTag",
         children: [
             { path: "/admin/audio-tags", label: "音频标签" },
+            { path: "/admin/tts-history", label: "生成历史" },
         ],
     },
 ];

@@ -8,15 +8,33 @@
                 <!-- 左侧配置面板 -->
                 <aside
                     class="w-80 bg-white rounded-xl border border-gray-200 shrink-0 overflow-hidden"
+                    :class="ttsBlocked ? 'opacity-60 pointer-events-none' : ''"
                 >
                     <VoiceConfigPanel />
                 </aside>
 
                 <!-- 右侧主区 -->
                 <div v-loading="pageLoading" class="flex-1 flex flex-col gap-4 min-w-0">
+                    <el-alert
+                        v-if="ttsBlocked"
+                        type="warning"
+                        show-icon
+                        :closable="false"
+                        class="shrink-0"
+                    >
+                        <template #title>当前配置不支持语音合成</template>
+                        <div class="flex items-center justify-between gap-3 flex-wrap">
+                            <span>{{ ttsBlockReason }}</span>
+                            <el-button type="primary" size="small" @click="apiDialogVisible = true">
+                                打开 API 设置
+                            </el-button>
+                        </div>
+                    </el-alert>
+
                     <!-- 文本输入 -->
                     <div
                         class="bg-white rounded-xl border border-gray-200 p-5 flex-1 min-h-0"
+                        :class="ttsBlocked ? 'opacity-60 pointer-events-none' : ''"
                     >
                         <TextInputArea
                             ref="textInputRef"
@@ -47,7 +65,7 @@
                     />
 
                     <!-- 生成历史 -->
-                    <HistoryPanel @play="onPlayHistory" @clear="clearAudio" />
+                    <HistoryPanel :disabled="ttsBlocked" @play="onPlayHistory" @clear="clearAudio" />
                 </div>
             </div>
         </main>
@@ -120,11 +138,12 @@
                 </div>
             </div>
         </el-dialog>
+        <ApiKeyDialog v-model="apiDialogVisible" />
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useConfigStore } from "../stores/config";
 import { useHistoryStore } from "../stores/history";
 import { useTTS } from "../composables/useTTS";
@@ -135,6 +154,8 @@ import HistoryPanel from "../components/HistoryPanel.vue";
 import AppHeader from "../components/AppHeader.vue";
 import { base64ToBlob } from "../utils/audio";
 import type { TTSHistoryItem } from "../types/tts";
+import { isMimoTtsModel } from "../types/tts";
+import ApiKeyDialog from "../components/ApiKeyDialog.vue";
 
 const configStore = useConfigStore();
 const historyStore = useHistoryStore();
@@ -153,6 +174,16 @@ const {
 const showHelp = ref(false);
 const pageLoading = ref(false);
 const textInputRef = ref<InstanceType<typeof TextInputArea>>();
+const apiDialogVisible = ref(false);
+const ttsBlocked = computed(() => (
+    !configStore.isMimoProvider() || !isMimoTtsModel(configStore.config.model)
+));
+const ttsBlockReason = computed(() => {
+    if (!configStore.isMimoProvider()) {
+        return "语音合成仅支持小米 MiMo 端点，当前 API 设置为其他厂商。";
+    }
+    return "当前模型不是 MiMo TTS 模型，请选择 mimo-v2.5-tts、mimo-v2.5-tts-voicedesign 或 mimo-v2.5-tts-voiceclone。";
+});
 
 async function onGenerate(text: string) {
     const result = await generate(text);

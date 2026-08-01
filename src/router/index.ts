@@ -86,6 +86,10 @@ const router = createRouter({
         { path: 'system-config', name: 'AdminSystemConfig', component: () => import('../views/admin/SystemConfigPage.vue') },
         { path: 'audio-tags', name: 'AdminAudioTags', component: () => import('../views/admin/AudioTagsPage.vue') },
         { path: 'chat', name: 'AdminChat', component: () => import('../views/admin/ChatManagementPage.vue') },
+        { path: 'agents', name: 'AdminAgentsAudit', component: () => import('../views/admin/AgentAuditPage.vue') },
+        { path: 'mcp-servers', name: 'AdminMcpAudit', component: () => import('../views/admin/McpAuditPage.vue') },
+        { path: 'knowledge-bases', name: 'AdminKnowledgeBaseAudit', component: () => import('../views/admin/KnowledgeBaseAuditPage.vue') },
+        { path: 'tts-history', name: 'AdminTtsHistory', component: () => import('../views/admin/TtsHistoryPage.vue') },
       ],
     },
     {

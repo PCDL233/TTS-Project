@@ -8,6 +8,7 @@ import {
   OneToMany,
   Index,
 } from 'typeorm';
+import type { Relation } from 'typeorm';
 import { KnowledgeBase } from './knowledge-base.entity';
 import { KnowledgeChunk } from './knowledge-chunk.entity';
 
@@ -24,7 +25,7 @@ export class KnowledgeDocument {
 
   @ManyToOne(() => KnowledgeBase, (kb) => kb.documents, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'knowledgeBaseId' })
-  knowledgeBase: KnowledgeBase;
+  knowledgeBase: Relation<KnowledgeBase>;
 
   @Column()
   filename: string;
@@ -48,7 +49,7 @@ export class KnowledgeDocument {
   errorMessage: string;
 
   @OneToMany(() => KnowledgeChunk, (chunk) => chunk.document, { cascade: true })
-  chunks: KnowledgeChunk[];
+  chunks: Relation<KnowledgeChunk[]>;
 
   @CreateDateColumn({ type: 'datetime' })
   createdAt: Date;

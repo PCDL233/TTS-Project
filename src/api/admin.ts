@@ -144,4 +144,39 @@ export const adminApi = {
   updateChatFeatures(data: Record<string, boolean>) {
     return client.put('/admin/chat-config/features', data)
   },
+
+  // 资源审计
+  getAgents(params?: { page?: number; pageSize?: number; username?: string; published?: string }) {
+    return client.get('/admin/agents', { params })
+  },
+  getAgent(id: number) {
+    return client.get(`/admin/agents/${id}`)
+  },
+  deleteAgent(id: number) {
+    return client.delete(`/admin/agents/${id}`)
+  },
+  getMcpServers(params?: { page?: number; pageSize?: number; username?: string; enabled?: string }) {
+    return client.get('/admin/mcp/servers', { params })
+  },
+  getMcpServer(id: number) {
+    return client.get(`/admin/mcp/servers/${id}`)
+  },
+  deleteMcpServer(id: number) {
+    return client.delete(`/admin/mcp/servers/${id}`)
+  },
+  getKnowledgeBases(params?: { page?: number; pageSize?: number; username?: string; status?: string }) {
+    return client.get('/admin/knowledge-bases', { params })
+  },
+  getKnowledgeBaseDocuments(id: number) {
+    return client.get(`/admin/knowledge-bases/${id}/documents`)
+  },
+  deleteKnowledgeBase(id: number) {
+    return client.delete(`/admin/knowledge-bases/${id}`)
+  },
+  getTtsHistory(params?: { page?: number; pageSize?: number; username?: string; mode?: string }) {
+    return client.get('/admin/tts/history', { params })
+  },
+  deleteTtsHistory(id: number) {
+    return client.delete(`/admin/tts/history/${id}`)
+  },
 }

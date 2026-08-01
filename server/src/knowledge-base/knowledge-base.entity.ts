@@ -8,6 +8,7 @@ import {
   JoinColumn,
   OneToMany,
 } from 'typeorm';
+import type { Relation } from 'typeorm';
 import { User } from '../user/user.entity';
 import { KnowledgeDocument } from './knowledge-document.entity';
 
@@ -53,7 +54,7 @@ export class KnowledgeBase {
   embeddingBatchSize: number;
 
   @OneToMany(() => KnowledgeDocument, (doc) => doc.knowledgeBase, { cascade: true })
-  documents: KnowledgeDocument[];
+  documents: Relation<KnowledgeDocument[]>;
 
   @CreateDateColumn({ type: 'datetime' })
   createdAt: Date;

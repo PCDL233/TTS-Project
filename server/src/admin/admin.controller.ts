@@ -13,6 +13,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'
 import { RolesGuard } from '../common/guards/roles.guard'
 import { Roles } from '../common/decorators/roles.decorator'
+import { LogOperation } from '../common/decorators/log-operation.decorator'
 import { escapeLike } from '../common/utils/escape-like.util'
 import { UserService } from '../user/user.service'
 import { LoginLogService } from '../log/login-log.service'
@@ -22,8 +23,15 @@ import { User } from '../user/user.entity'
 import { LoginLog } from '../log/login-log.entity'
 import { ChatConversation } from '../chat/chat-conversation.entity'
 import { ChatMessage } from '../chat/chat-message.entity'
+import { Agent } from '../agent/agent.entity'
+import { AgentVersion } from '../agent/agent-version.entity'
+import { McpServerConfig } from '../mcp/mcp-server-config.entity'
+import { redactMcpTransport } from '../mcp/mcp-redaction.util'
+import { KnowledgeBase } from '../knowledge-base/knowledge-base.entity'
+import { KnowledgeDocument } from '../knowledge-base/knowledge-document.entity'
+import { KnowledgeBaseService } from '../knowledge-base/knowledge-base.service'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository, Between } from 'typeorm'
+import { Repository, Between, In } from 'typeorm'
 import type { RequestWithUser } from '../common/interfaces/request-with-user.interface'
 
 @Controller('admin')
@@ -34,6 +42,7 @@ export class AdminController {
     private readonly userService: UserService,
     private readonly loginLogService: LoginLogService,
     private readonly operationLogService: OperationLogService,
+    private readonly knowledgeBaseService: KnowledgeBaseService,
     @InjectRepository(History)
     private historyRepository: Repository<History>,
     @InjectRepository(User)
@@ -44,6 +53,16 @@ export class AdminController {
     private conversationRepository: Repository<ChatConversation>,
     @InjectRepository(ChatMessage)
     private messageRepository: Repository<ChatMessage>,
+    @InjectRepository(Agent)
+    private agentRepository: Repository<Agent>,
+    @InjectRepository(AgentVersion)
+    private agentVersionRepository: Repository<AgentVersion>,
+    @InjectRepository(McpServerConfig)
+    private mcpServerRepository: Repository<McpServerConfig>,
+    @InjectRepository(KnowledgeBase)
+    private knowledgeBaseRepository: Repository<KnowledgeBase>,
+    @InjectRepository(KnowledgeDocument)
+    private knowledgeDocumentRepository: Repository<KnowledgeDocument>,
   ) {}
 
   // ========== 用户管理 ==========
@@ -383,6 +402,254 @@ export class AdminController {
     await this.messageRepository.delete({ conversationId: Number(id) })
     await this.conversationRepository.delete(Number(id))
     return { success: true }
+  }
+
+  // ========== 资源审计管理 ==========
+  @Get('agents')
+  async getAgents(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('username') username?: string,
+    @Query('published') published?: string,
+  ) {
+    const pageNum = this.normalizePage(page)
+    const pageSizeNum = this.normalizePageSize(pageSize)
+    const qb = this.agentRepository
+      .createQueryBuilder('agent')
+      .withDeleted()
+      .orderBy('agent.updatedAt', 'DESC')
+      .skip((pageNum - 1) * pageSizeNum)
+      .take(pageSizeNum)
+
+    if (username) {
+      qb.andWhere(
+        "agent.userId IN (SELECT id FROM user WHERE username LIKE :username ESCAPE '\\')",
+        { username: `%${escapeLike(username)}%` },
+      )
+    }
+    if (published === 'true') qb.andWhere('agent.publishedVersionId IS NOT NULL')
+    if (published === 'false') qb.andWhere('agent.publishedVersionId IS NULL')
+
+    const [items, total] = await qb.getManyAndCount()
+    const owners = await this.getUserSummaries(items.map((item) => item.userId))
+    return [
+      items.map((item) => ({
+        id: item.id,
+        userId: item.userId,
+        owner: owners.get(item.userId) || null,
+        name: item.name,
+        description: item.description,
+        publishedVersionId: item.publishedVersionId,
+        archivedAt: item.archivedAt,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      })),
+      total,
+    ]
+  }
+
+  @Get('agents/:id')
+  async getAgent(@Param('id') id: string) {
+    const agent = await this.agentRepository
+      .createQueryBuilder('agent')
+      .withDeleted()
+      .where('agent.id = :id', { id: Number(id) })
+      .getOne()
+    if (!agent) throw new BadRequestException('智能体不存在')
+
+    const publishedVersion = agent.publishedVersionId
+      ? await this.agentVersionRepository.findOne({ where: { id: agent.publishedVersionId } })
+      : null
+    const owners = await this.getUserSummaries([agent.userId])
+    return {
+      ...agent,
+      owner: owners.get(agent.userId) || null,
+      publishedVersion: publishedVersion
+        ? { id: publishedVersion.id, version: publishedVersion.version, publishedAt: publishedVersion.publishedAt }
+        : null,
+    }
+  }
+
+  @Delete('agents/:id')
+  @LogOperation('智能体审计', '归档智能体')
+  async deleteAgent(@Param('id') id: string) {
+    const agent = await this.agentRepository.findOne({ where: { id: Number(id) } })
+    if (!agent) throw new BadRequestException('智能体不存在或已归档')
+    await this.agentRepository.softDelete(agent.id)
+    return { success: true }
+  }
+
+  @Get('mcp/servers')
+  async getMcpServers(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('username') username?: string,
+    @Query('enabled') enabled?: string,
+  ) {
+    const pageNum = this.normalizePage(page)
+    const pageSizeNum = this.normalizePageSize(pageSize)
+    const qb = this.mcpServerRepository
+      .createQueryBuilder('server')
+      .orderBy('server.updatedAt', 'DESC')
+      .skip((pageNum - 1) * pageSizeNum)
+      .take(pageSizeNum)
+
+    if (username) {
+      qb.andWhere(
+        "server.userId IN (SELECT id FROM user WHERE username LIKE :username ESCAPE '\\')",
+        { username: `%${escapeLike(username)}%` },
+      )
+    }
+    if (enabled === 'true') qb.andWhere('server.enabled = :enabled', { enabled: true })
+    if (enabled === 'false') qb.andWhere('server.enabled = :enabled', { enabled: false })
+
+    const [items, total] = await qb.getManyAndCount()
+    const owners = await this.getUserSummaries(items.map((item) => item.userId))
+    return [items.map((item) => this.toMcpAuditItem(item, owners.get(item.userId))), total]
+  }
+
+  @Get('mcp/servers/:id')
+  async getMcpServer(@Param('id') id: string) {
+    const server = await this.mcpServerRepository.findOne({ where: { id: Number(id) } })
+    if (!server) throw new BadRequestException('MCP 服务不存在')
+    const owners = await this.getUserSummaries([server.userId])
+    return this.toMcpAuditItem(server, owners.get(server.userId))
+  }
+
+  @Delete('mcp/servers/:id')
+  @LogOperation('MCP 审计', '删除 MCP 服务')
+  async deleteMcpServer(@Param('id') id: string) {
+    const server = await this.mcpServerRepository.findOne({ where: { id: Number(id) } })
+    if (!server) throw new BadRequestException('MCP 服务不存在')
+    await this.mcpServerRepository.delete(server.id)
+    return { success: true }
+  }
+
+  @Get('knowledge-bases')
+  async getKnowledgeBases(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('username') username?: string,
+    @Query('status') status?: string,
+  ) {
+    const pageNum = this.normalizePage(page)
+    const pageSizeNum = this.normalizePageSize(pageSize)
+    const qb = this.knowledgeBaseRepository
+      .createQueryBuilder('kb')
+      .orderBy('kb.updatedAt', 'DESC')
+      .skip((pageNum - 1) * pageSizeNum)
+      .take(pageSizeNum)
+
+    if (username) {
+      qb.andWhere(
+        "kb.userId IN (SELECT id FROM user WHERE username LIKE :username ESCAPE '\\')",
+        { username: `%${escapeLike(username)}%` },
+      )
+    }
+    if (status) qb.andWhere('kb.status = :status', { status })
+
+    const [items, total] = await qb.getManyAndCount()
+    const owners = await this.getUserSummaries(items.map((item) => item.userId))
+    return [
+      items.map((item) => ({
+        ...item,
+        owner: owners.get(item.userId) || null,
+      })),
+      total,
+    ]
+  }
+
+  @Get('knowledge-bases/:id/documents')
+  async getKnowledgeBaseDocuments(@Param('id') id: string) {
+    const knowledgeBaseId = Number(id)
+    const kb = await this.knowledgeBaseRepository.findOne({ where: { id: knowledgeBaseId } })
+    if (!kb) throw new BadRequestException('知识库不存在')
+    return this.knowledgeDocumentRepository.find({
+      where: { knowledgeBaseId },
+      order: { createdAt: 'DESC' },
+    })
+  }
+
+  @Delete('knowledge-bases/:id')
+  @LogOperation('知识库审计', '删除知识库')
+  async deleteKnowledgeBase(@Param('id') id: string) {
+    const kb = await this.knowledgeBaseRepository.findOne({ where: { id: Number(id) } })
+    if (!kb) throw new BadRequestException('知识库不存在')
+    await this.knowledgeBaseService.remove(kb.userId, kb.id)
+    return { success: true }
+  }
+
+  @Get('tts/history')
+  async getTtsHistory(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('username') username?: string,
+    @Query('mode') mode?: string,
+  ) {
+    const pageNum = this.normalizePage(page)
+    const pageSizeNum = this.normalizePageSize(pageSize)
+    const qb = this.historyRepository
+      .createQueryBuilder('history')
+      .orderBy('history.createdAt', 'DESC')
+      .skip((pageNum - 1) * pageSizeNum)
+      .take(pageSizeNum)
+
+    if (username) {
+      qb.andWhere(
+        "history.userId IN (SELECT id FROM user WHERE username LIKE :username ESCAPE '\\')",
+        { username: `%${escapeLike(username)}%` },
+      )
+    }
+    if (mode) qb.andWhere('history.mode = :mode', { mode })
+
+    const [items, total] = await qb.getManyAndCount()
+    const owners = await this.getUserSummaries(items.map((item) => item.userId).filter((userId): userId is number => userId !== null))
+    return [
+      items.map(({ audioBase64, ...item }) => ({
+        ...item,
+        owner: item.userId ? owners.get(item.userId) || null : null,
+        hasAudio: Boolean(audioBase64),
+      })),
+      total,
+    ]
+  }
+
+  @Delete('tts/history/:id')
+  @LogOperation('语音生成历史', '删除生成历史')
+  async deleteTtsHistory(@Param('id') id: string) {
+    const history = await this.historyRepository.findOne({ where: { id: Number(id) } })
+    if (!history) throw new BadRequestException('生成历史不存在')
+    await this.historyRepository.delete(history.id)
+    return { success: true }
+  }
+
+  private normalizePage(page?: string): number {
+    return Math.max(1, Number(page) || 1)
+  }
+
+  private normalizePageSize(pageSize?: string): number {
+    return Math.min(100, Math.max(1, Number(pageSize) || 20))
+  }
+
+  private async getUserSummaries(userIds: number[]): Promise<Map<number, { id: number; username: string; nickname: string }>> {
+    const uniqueIds = [...new Set(userIds)]
+    if (uniqueIds.length === 0) return new Map()
+    const users = await this.userRepository.find({
+      select: { id: true, username: true, nickname: true },
+      where: { id: In(uniqueIds) },
+    })
+    return new Map(users.map((user) => [user.id, { id: user.id, username: user.username, nickname: user.nickname }]))
+  }
+
+  private toMcpAuditItem(
+    server: McpServerConfig,
+    owner: { id: number; username: string; nickname: string } | undefined,
+  ) {
+    return {
+      ...server,
+      owner: owner || null,
+      transport: redactMcpTransport(server.transport),
+    }
   }
 
   private fillTrend(rows: { date: string; count: string | number }[], days: number): { date: string; count: number }[] {

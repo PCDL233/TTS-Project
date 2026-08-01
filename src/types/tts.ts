@@ -1,5 +1,16 @@
 export type TTSMode = 'preset' | 'design' | 'clone'
 
+export const MIMO_TTS_MODELS = new Set([
+  'mimo-v2.5-tts',
+  'mimo-v2.5-tts-voicedesign',
+  'mimo-v2.5-tts-voiceclone',
+])
+
+export function isMimoTtsModel(model: string): boolean {
+  return MIMO_TTS_MODELS.has(model.trim())
+}
+
+import { MIMO_BASE_URL_PRESETS } from './llm'
 import type { ApiAuthType, BaseUrlPreset } from './llm'
 export type { ApiAuthType, BaseUrlPreset } from './llm'
 export { BASE_URL_OPTIONS } from './llm'
@@ -121,4 +132,10 @@ export interface TTSConfig {
   styleMode: 'natural' | 'tag'
   styleText: string
   audioFormat: AudioFormat
+}
+
+export function canUseTts(config: Pick<TTSConfig, 'apiKey' | 'baseUrlPreset' | 'model'>): boolean {
+  return Boolean(config.apiKey.trim())
+    && MIMO_BASE_URL_PRESETS.has(config.baseUrlPreset)
+    && isMimoTtsModel(config.model)
 }

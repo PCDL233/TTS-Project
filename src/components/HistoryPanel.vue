@@ -7,6 +7,7 @@
         size="small"
         link
         type="danger"
+        :disabled="disabled"
         @click="clearHistory"
       >
         清空
@@ -22,8 +23,9 @@
         <div
           v-for="item in history"
           :key="item.id"
-          class="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-orange-50 transition-colors group"
-          @click="playHistory(item)"
+          class="p-3 bg-gray-50 rounded-lg transition-colors group"
+          :class="disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:bg-orange-50'"
+          @click="handlePlayHistory($event, item)"
         >
           <div class="flex items-start justify-between gap-2">
             <div class="flex-1 min-w-0">
@@ -37,7 +39,8 @@
               size="small"
               link
               class="opacity-0 group-hover:opacity-100"
-              @click.stop="deleteItem(item.id)"
+              :disabled="disabled"
+              @click="handleDelete($event, item.id)"
             >
               <el-icon><close /></el-icon>
             </el-button>
@@ -55,6 +58,10 @@ import { ElMessageBox } from 'element-plus'
 import { useHistoryStore } from '../stores/history'
 import type { TTSHistoryItem } from '../types/tts'
 
+const props = defineProps<{
+  disabled?: boolean
+}>()
+
 const emit = defineEmits<{
   play: [item: TTSHistoryItem]
   clear: []
@@ -63,8 +70,18 @@ const emit = defineEmits<{
 const historyStore = useHistoryStore()
 const { items: history } = storeToRefs(historyStore)
 
-function playHistory(item: TTSHistoryItem) {
+function handlePlayHistory(event: MouseEvent, item: TTSHistoryItem) {
+  event.preventDefault()
+  event.stopPropagation()
+  if (props.disabled) return
   emit('play', item)
+}
+
+function handleDelete(event: MouseEvent, id: number | string) {
+  event.preventDefault()
+  event.stopPropagation()
+  if (props.disabled) return
+  deleteItem(id)
 }
 
 function deleteItem(id: number | string) {

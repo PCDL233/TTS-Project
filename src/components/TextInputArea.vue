@@ -15,12 +15,13 @@
           :on-change="onTextFileChange"
           accept=".txt"
         >
-          <el-button size="small">
+          <el-button native-type="button" size="small">
             <el-icon><document /></el-icon>
             上传文本
           </el-button>
         </el-upload>
         <el-button
+          native-type="button"
           size="small"
           @click="showExamples = true"
         >
@@ -28,6 +29,7 @@
           示例
         </el-button>
         <el-button
+          native-type="button"
           size="small"
           @click="clearText"
         >
@@ -72,7 +74,8 @@
         <el-button
           v-if="loading"
           size="large"
-          @click="$emit('stop')"
+          native-type="button"
+          @click="handleStop"
         >
           <el-icon><video-pause /></el-icon>
           停止
@@ -82,7 +85,8 @@
           size="large"
           :loading="loading"
           :disabled="!canGenerate || !text.trim()"
-          @click="$emit('generate', text)"
+          native-type="button"
+          @click="handleGenerate"
         >
           <el-icon><microphone /></el-icon>
           {{ loading ? '生成中...' : '生成语音' }}
@@ -174,6 +178,19 @@ const examples = [
 function getVoiceLabel() {
   const voice = PRESET_VOICES.find(v => v.value === configStore.config.presetVoice)
   return voice?.label || configStore.config.presetVoice
+}
+
+function handleStop(event: MouseEvent) {
+  event.preventDefault()
+  event.stopPropagation()
+  emit('stop')
+}
+
+function handleGenerate(event: MouseEvent) {
+  event.preventDefault()
+  event.stopPropagation()
+  if (!props.canGenerate || !text.value.trim() || props.loading) return
+  emit('generate', text.value)
 }
 
 function clearText() {

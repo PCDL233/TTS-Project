@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { TTSConfig, TTSMode, PresetVoice, BaseUrlPreset, ApiAuthType } from '../types/tts'
-import { MODEL_MAP } from '../types/tts'
+import { MODEL_MAP, isMimoTtsModel } from '../types/tts'
 import { getBaseUrlOption, MIMO_BASE_URL_PRESETS, normalizeBaseUrlPreset } from '../types/llm'
 import { client } from '../api/client'
 import { ElMessage } from 'element-plus'
@@ -90,6 +90,16 @@ export const useConfigStore = defineStore('config', () => {
     return MIMO_BASE_URL_PRESETS.has(config.value.baseUrlPreset)
   }
 
+  function canUseTts(): boolean {
+    return Boolean(config.value.apiKey.trim())
+      && isMimoProvider()
+      && isMimoTtsModel(config.value.model)
+  }
+
+  function isMimoTtsCompatible(): boolean {
+    return isMimoProvider() && isMimoTtsModel(config.value.model)
+  }
+
   function updateMode(mode: TTSMode) {
     config.value.mode = mode
     config.value.model = MODEL_MAP[mode]
@@ -147,6 +157,8 @@ export const useConfigStore = defineStore('config', () => {
     updateApiAuthType,
     getEffectiveBaseUrl,
     isMimoProvider,
+    canUseTts,
+    isMimoTtsCompatible,
     updateMode,
     updateModel,
     updatePresetVoice,

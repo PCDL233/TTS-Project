@@ -7,6 +7,7 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
+import type { Relation } from 'typeorm';
 import { KnowledgeDocument } from './knowledge-document.entity';
 
 @Entity()
@@ -20,7 +21,7 @@ export class KnowledgeChunk {
 
   @ManyToOne(() => KnowledgeDocument, (doc) => doc.chunks, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'documentId' })
-  document: KnowledgeDocument;
+  document: Relation<KnowledgeDocument>;
 
   @Index()
   @Column()
