@@ -10,12 +10,14 @@ import { OperationLogService } from './log/operation-log.service';
 import { RoleService } from './role/role.service';
 import { getClientIp } from './common/utils/ip.util';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { FileLoggerService } from './common/logger/file-logger.service';
 
 async function bootstrap() {
-  const logger = new Logger('HTTP');
+  const logger = new FileLoggerService('HTTP');
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+    logger,
   });
+  app.useLogger(logger);
 
   app.useBodyParser('json', { limit: '10mb' });
   app.useBodyParser('urlencoded', { limit: '10mb', extended: true });
