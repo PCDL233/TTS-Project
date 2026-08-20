@@ -448,7 +448,7 @@ async function loadKnowledgeBases() {
     try {
         knowledgeBases.value = await fetchKnowledgeBases()
     } catch {
-        // 静默失败
+        ElMessage.error('加载知识库失败')
     }
 }
 

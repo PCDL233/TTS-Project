@@ -104,7 +104,9 @@ function setupAudio(url: string) {
     // 销毁旧的
     destroyAudio();
 
-    if (!url) return;
+    if(!url) {
+        return
+    }
 
     // 创建新的 Audio 对象（不挂载到 DOM，完全按需加载）
     audioEl = new Audio();

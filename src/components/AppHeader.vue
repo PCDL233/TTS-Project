@@ -1,16 +1,10 @@
 <template>
     <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div
-            class="max-w-400 mx-auto px-4 h-14 flex items-center justify-between"
-        >
+        <div class="max-w-400 mx-auto px-4 h-14 flex items-center justify-between">
             <div class="flex items-center gap-6">
                 <div class="flex items-center gap-3">
-                    <div
-                        class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center"
-                    >
-                        <el-icon color="white" :size="20"
-                            ><magic-stick
-                        /></el-icon>
+                    <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                        <el-icon color="white" :size="20"><magic-stick /></el-icon>
                     </div>
                     <h1 class="text-lg font-bold text-gray-800">
                         {{ systemName }}
@@ -19,51 +13,33 @@
 
                 <!-- 模块切换 -->
                 <div class="flex items-center bg-gray-100 rounded-lg p-1">
-                    <router-link
-                        to="/assistant"
-                        class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
-                        :class="$route.path === '/assistant' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
-                    >
+                    <router-link to="/assistant" class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
+                        :class="$route.path === '/assistant' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'">
                         智能助手
                     </router-link>
-                    <router-link
-                        to="/agents"
-                        class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
-                        :class="$route.path.startsWith('/agents') ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
-                    >
+                    <router-link to="/agents" class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
+                        :class="$route.path.startsWith('/agents') ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'">
                         智能体
                     </router-link>
-                    <router-link
-                        to="/mcp-servers"
-                        class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
-                        :class="$route.path === '/mcp-servers' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
-                    >
+                    <router-link to="/mcp-servers" class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
+                        :class="$route.path === '/mcp-servers' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'">
                         MCP
                     </router-link>
-                    <router-link
-                        to="/knowledge-base"
+                    <router-link to="/knowledge-base"
                         class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
-                        :class="$route.path === '/knowledge-base' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
-                    >
+                        :class="$route.path === '/knowledge-base' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'">
                         知识库
                     </router-link>
-                    <router-link
-                        to="/tts"
-                        class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
-                        :class="$route.path === '/tts' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
-                    >
+                    <router-link to="/tts" class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
+                        :class="$route.path === '/tts' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'">
                         语音合成
                     </router-link>
                 </div>
             </div>
 
             <div class="flex items-center gap-3">
-                <el-tag
-                    :type="
-                        configStore.config.apiKey ? 'success' : 'warning'
-                    "
-                    size="small"
-                >
+                <el-tag :type="configStore.config.apiKey ? 'success' : 'warning'
+                    " size="small">
                     {{
                         configStore.config.apiKey
                             ? "API Key 已设置"
@@ -71,15 +47,12 @@
                     }}
                 </el-tag>
                 <el-button size="small" @click="showApiKeyDialog = true">
-                    <el-icon><setting /></el-icon>
+                    <el-icon>
+                        <setting />
+                    </el-icon>
                     API 设置
                 </el-button>
-                <el-button
-                    v-if="showHelp"
-                    size="small"
-                    link
-                    @click="$emit('help')"
-                >
+                <el-button v-if="showHelp" size="small" link @click="$emit('help')">
                     <el-icon><question-filled /></el-icon>
                     帮助
                 </el-button>
@@ -90,13 +63,16 @@
                         <el-avatar :size="28" :src="avatarUrl">
                             <el-icon><user-filled /></el-icon>
                         </el-avatar>
-                        <span class="text-sm text-gray-700">{{ authStore.user?.nickname || authStore.user?.username }}</span>
+                        <span class="text-sm text-gray-700">{{ authStore.user?.nickname || authStore.user?.username
+                            }}</span>
                         <el-icon class="text-gray-400"><arrow-down /></el-icon>
                     </span>
                     <template #dropdown>
                         <el-dropdown-menu>
                             <el-dropdown-item command="profile">
-                                <el-icon><user /></el-icon>
+                                <el-icon>
+                                    <user />
+                                </el-icon>
                                 <span>个人中心</span>
                             </el-dropdown-item>
                             <el-dropdown-item v-if="authStore.isAdmin" command="admin">
@@ -172,17 +148,13 @@ function handleUserCommand(cmd: string) {
 }
 
 async function handleLogout() {
-    try {
-        await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
-            confirmButtonText: '确定',
-            cancelButtonText: '取消',
-            type: 'warning',
-        })
-        authStore.logout()
-        ElMessage.success('已退出登录')
-        router.push('/login')
-    } catch {
-        // 取消退出
-    }
+    await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+    })
+    authStore.logout()
+    ElMessage.success('已退出登录')
+    router.push('/login')
 }
 </script>

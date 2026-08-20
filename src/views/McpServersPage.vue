@@ -311,7 +311,7 @@ async function handleDelete(id: number) {
     await mcpStore.deleteServer(id)
     ElMessage.success('删除成功')
   } catch {
-    // error handled in store
+    ElMessage.error('删除失败')
   }
 }
 

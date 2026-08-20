@@ -182,7 +182,7 @@ const ttsBlockReason = computed(() => {
     if (!configStore.isMimoProvider()) {
         return "语音合成仅支持小米 MiMo 端点，当前 API 设置为其他厂商。";
     }
-    return "当前模型不是 MiMo TTS 模型，请选择 mimo-v2.5-tts、mimo-v2.5-tts-voicedesign 或 mimo-v2.5-tts-voiceclone。";
+    return "当前模型不是 MiMo TTS 模型。";
 });
 
 async function onGenerate(text: string) {

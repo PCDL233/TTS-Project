@@ -208,14 +208,10 @@ async function onTextFileChange(uploadFile: UploadFile) {
   if (!rawFile.name.endsWith('.txt')) {
     return
   }
-  try {
-    const content = await readTextFile(rawFile)
-    text.value = content
-    if (uploadRef.value) {
-      uploadRef.value.clearFiles()
-    }
-  } catch {
-    // ignore
+  const content = await readTextFile(rawFile)
+  text.value = content
+  if (uploadRef.value) {
+    uploadRef.value.clearFiles()
   }
 }
 

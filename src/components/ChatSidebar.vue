@@ -59,15 +59,11 @@ async function handleNewChat() {
 }
 
 async function handleDelete(id: number) {
-    try {
-        await ElMessageBox.confirm('确定要删除这个对话吗？', '提示', {
-            confirmButtonText: '删除',
-            cancelButtonText: '取消',
-            type: 'warning',
-        })
-        await chatStore.deleteConversation(id)
-    } catch {
-        // 取消删除
-    }
+    await ElMessageBox.confirm('确定要删除这个对话吗？', '提示', {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+    })
+    await chatStore.deleteConversation(id)
 }
 </script>

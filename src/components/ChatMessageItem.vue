@@ -370,12 +370,20 @@ function formatDate(dateStr: string): string {
         const now = new Date()
         const diffMs = now.getTime() - date.getTime()
         const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-        if (diffDays < 1) return '今天'
-        if (diffDays < 2) return '昨天'
-        if (diffDays < 7) return `${diffDays}天前`
-        if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前`
-        if (diffDays < 365) return `${Math.floor(diffDays / 30)}个月前`
-        return `${Math.floor(diffDays / 365)}年前`
+        switch (true) {
+            case diffDays < 1:
+                return '今天'
+            case diffDays < 2:
+                return '昨天'
+            case diffDays < 7:
+                return `${diffDays}天前`
+            case diffDays < 30:
+                return `${Math.floor(diffDays / 7)}周前`
+            case diffDays < 365:
+                return `${Math.floor(diffDays / 30)}个月前`
+            default:
+                return `${Math.floor(diffDays / 365)}年前`
+        }
     } catch {
         return dateStr
     }

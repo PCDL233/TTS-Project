@@ -558,20 +558,18 @@ async function handleSwitchModel() {
 }
 
 async function handleDeleteDoc(docId: number) {
-    if (!selectedKb.value) return
-    try {
-        await ElMessageBox.confirm('确定要删除这个文档吗？', '提示', {
-            confirmButtonText: '删除',
-            cancelButtonText: '取消',
-            type: 'warning',
-        })
-        await deleteDocument(selectedKb.value.id, docId)
-        ElMessage.success('已删除')
-        await loadDocuments()
-        await loadKnowledgeBases()
-    } catch {
-        // 取消
+    if (!selectedKb.value) {
+        return
     }
+    await ElMessageBox.confirm('确定要删除这个文档吗？', '提示', {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+    })
+    await deleteDocument(selectedKb.value.id, docId)
+    ElMessage.success('已删除')
+    await loadDocuments()
+    await loadKnowledgeBases()
 }
 
 onMounted(() => {
