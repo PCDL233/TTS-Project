@@ -1,3 +1,5 @@
+/// <reference types="jest" />
+
 import {
   evaluateCondition,
   validateAgentDraftSafety,
@@ -11,7 +13,12 @@ function node(
   type: AgentNode['type'],
   data: AgentNode['data'] = { label: id },
 ): AgentNode {
-  return { id, type, position: { x: 0, y: 0 }, data: { label: id, ...data } };
+  return {
+    id,
+    type,
+    position: { x: 0, y: 0 },
+    data: { ...data, label: data.label ?? id },
+  };
 }
 
 function graph(nodes: AgentNode[], edges: AgentGraphV1['edges']): AgentGraphV1 {

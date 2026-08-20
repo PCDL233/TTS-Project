@@ -21,7 +21,6 @@ export class DocumentProcessingService {
     @InjectRepository(KnowledgeChunk)
     private chunkRepository: Repository<KnowledgeChunk>,
     @InjectRepository(KnowledgeBase)
-    private knowledgeBaseRepository: Repository<KnowledgeBase>,
     private readonly embeddingService: EmbeddingService,
     private readonly vectorDbService: VectorDbService,
     private readonly statsService: KnowledgeBaseStatsService,

@@ -20,8 +20,6 @@ if (!existsSync(KB_UPLOAD_DIR)) {
 @Controller('knowledge-base')
 @UseGuards(JwtAuthGuard)
 export class KnowledgeBaseController {
-  private readonly logger = new Logger(KnowledgeBaseController.name);
-
   constructor(private readonly kbService: KnowledgeBaseService) {}
 
   @Post()

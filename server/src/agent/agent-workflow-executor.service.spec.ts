@@ -1,3 +1,5 @@
+/// <reference types="jest" />
+
 import { AgentWorkflowExecutor } from './agent-workflow-executor.service';
 import type { AgentGraphV1, AgentNode } from './agent.types';
 
@@ -6,7 +8,7 @@ function node(
   type: AgentNode['type'],
   data: AgentNode['data'] = { label: id },
 ): AgentNode {
-  return { id, type, position: { x: 0, y: 0 }, data: { label: id, ...data } };
+  return { id, type, position: { x: 0, y: 0 }, data: { ...data , label: data.label ?? id  } };
 }
 
 async function collect(generator: AsyncGenerator<unknown>): Promise<any[]> {
